@@ -21,6 +21,32 @@ const bool DEBUG = false;
 
 bool g_ilp_mode = false;
 
+struct ExtractRegionTimingSample {
+	size_t egraph_size;
+	long long duration_ns;
+};
+
+static string g_extract_region_timings_path;
+static vector<ExtractRegionTimingSample> g_extract_region_timings;
+
+static void append_extract_region_timing(size_t egraph_size, long long duration_ns) {
+	g_extract_region_timings.push_back(ExtractRegionTimingSample{egraph_size, duration_ns});
+}
+
+static void write_extract_region_timings() {
+	if (g_extract_region_timings_path.empty()) {
+		return;
+	}
+	ofstream out(g_extract_region_timings_path.c_str());
+	if (!out.good()) {
+		cerr << "Failed to open extract region timings file: " << g_extract_region_timings_path << endl;
+		return;
+	}
+	for (const auto &sample : g_extract_region_timings) {
+		out << sample.egraph_size << ' ' << sample.duration_ns << '\n';
+	}
+}
+
 const char* TMPFILENAME = "extract.tmp";
 
 FILE* preprocessing() {
@@ -992,20 +1018,24 @@ typedef int RegionId;
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
 Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+	auto start = std::chrono::steady_clock::now();
+	Extraction extraction;
 	if (g_ilp_mode) {
-		return extractRegionILP(g, initc, initn, root, nsubregion);
+		extraction = extractRegionILP(g, initc, initn, root, nsubregion);
 	} else {
-		auto start = std::chrono::steady_clock::now();
 		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-		Extraction extraction = regionExtractionWithStateWalk(g, root, sw).second;
-		auto elapsed = std::chrono::steady_clock::now() - start;
+		extraction = regionExtractionWithStateWalk(g, root, sw).second;
+	}
+	auto elapsed = std::chrono::steady_clock::now() - start;
+	if (!g_ilp_mode) {
 		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
 		if (elapsed_seconds > g_ilp_timeout_seconds) {
 			cout << "TIMEOUT" << endl;
 			std::exit(1);
 		}
-		return extraction;
 	}
+	append_extract_region_timing(g.eclasses.size(), std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count());
+	return extraction;
 }
 
 ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {
@@ -1234,6 +1264,19 @@ int main(int argc, char** argv) {
 			g_ilp_minimize_objective = false;
 			continue;
 		}
+		const string timings_prefix = "--extract-region-timings=";
+		if (arg == "--extract-region-timings") {
+			if (i + 1 >= argc) {
+				cerr << "Missing path for --extract-region-timings" << endl;
+				return 1;
+			}
+			g_extract_region_timings_path = argv[++i];
+			continue;
+		}
+		if (arg.rfind(timings_prefix, 0) == 0) {
+			g_extract_region_timings_path = arg.substr(timings_prefix.size());
+			continue;
+		}
 		cerr << "Unknown argument: " << arg << endl;
 		return 1;
 	}
@@ -1299,6 +1342,7 @@ int main(int argc, char** argv) {
 		assert(linearExtraction(g, fun_root, e));
 	}
 	print_egg_end();
+	write_extract_region_timings();
 	/*
 	vector<pair<EGraph, SubEGraphMap>> region_egraphs;
 	for (int i = 0; i < (int)region_roots.size(); ++i) {

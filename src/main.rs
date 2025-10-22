@@ -153,7 +153,7 @@ fn main() {
             ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
             use_tiger: args.use_tiger,
             tiger_ilp: args.tiger_ilp,
-            use_context: !args.with_context,
+            use_context: args.with_context,
             ilp_minimize_objective: !args.ilp_no_minimize,
         },
     };

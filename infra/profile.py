@@ -223,7 +223,7 @@ def optimize(benchmark):
       "eggccSerializationTimeSecs": False,
       "eggccExtractionTimeSecs": False,
       "llvmCompileTimeSecs": False,
-      "ilpTestTimes": False,
+      "extractRegionTimings": False,
       "failed": True,
       "ILPTimeOut": False,
       "error": '',
@@ -259,7 +259,7 @@ def optimize(benchmark):
     raise Exception(f'Error running {cmd2}: {process2.stderr}')
 
   eggcc_compile_time = eggcc_extraction_time = eggcc_serialization_time = 0.0
-  ilp_test_times = []
+  extract_region_timings = []
   # parse json from eggcc run data (guard if file unexpectedly missing)
   if os.path.isfile(eggcc_run_data):
     with open(eggcc_run_data) as f:
@@ -273,7 +273,7 @@ def optimize(benchmark):
       secs = eggcc_data["eggcc_extraction_time"]["secs"]
       nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
       eggcc_extraction_time = secs + nanos / 1e9
-      ilp_test_times = eggcc_data.get("ilp_test_times", [])
+  extract_region_timings = eggcc_data.get("extract_region_timings", [])
 
   llvm_compile_time = 0.0
   if os.path.isfile(llvm_run_data):
@@ -287,7 +287,7 @@ def optimize(benchmark):
     "eggccSerializationTimeSecs": eggcc_serialization_time,
     "eggccExtractionTimeSecs": eggcc_extraction_time,
     "llvmCompileTimeSecs": llvm_compile_time,
-    "ilpTestTimes": ilp_test_times,
+    "extractRegionTimings": extract_region_timings,
     "failed": False,
     "ILPTimeOut": False,
   }
@@ -375,7 +375,7 @@ def aggregate(compile_data, bench_times, paths):
         result[key] = compile_data[path][key]
       # Enforce timeout invariant
       if result.get("failed"):
-        for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "ilpTestTimes"]:
+        for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "extractRegionTimings"]:
           result[k] = False
       else:
         # basic sanity checks (best effort)

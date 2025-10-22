@@ -6,7 +6,7 @@ use clap::ValueEnum;
 use dag_in_context::dag2svg::tree_to_svg;
 use dag_in_context::schedule::{self};
 use dag_in_context::{
-    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, ExtractionTimeSample,
+    build_program, check_roundtrip_egraph, EggccConfig, EggccTimeStatistics, ExtractRegionTiming,
     Schedule,
 };
 
@@ -423,10 +423,8 @@ pub struct RunResult {
     pub eggcc_compile_time: Duration,
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
-    /// None when ilp isn't being tested or ilp timed out
-    /// Some when ilp didn't time out, the sum of all time
-    /// spent in ILP
-    pub ilp_test_times: Vec<ExtractionTimeSample>,
+    /// Per-region timings collected from the tiger extractor.
+    pub extract_region_timings: Vec<ExtractRegionTiming>,
 }
 
 impl Run {
@@ -1008,7 +1006,7 @@ impl Run {
             eggcc_compile_time: Duration::from_millis(0),
             eggcc_extraction_time: time_statistics.eggcc_extraction_time,
             eggcc_serialization_time: time_statistics.eggcc_serialization_time,
-            ilp_test_times: time_statistics.ilp_test_times,
+            extract_region_timings: time_statistics.extract_region_timings,
         })
     }
 

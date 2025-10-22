@@ -2,7 +2,7 @@ use clap::ValueEnum;
 use egglog::{ast::Symbol, Term, TermDag};
 use egraph_serialize::Cost;
 use greedy_dag_extractor::{
-    extract_ilp, greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
+    greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
 };
 use indexmap::IndexMap;
 use indexmap::IndexSet;
@@ -12,11 +12,13 @@ use schema::{Expr, RcExpr, TreeProgram};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
+    ffi::OsString,
     fmt::Write,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 use to_egglog::TreeToEgglog;
+use tempfile::NamedTempFile;
 
 use crate::from_egglog::FromEgglog;
 use crate::util::run_cmd_line;
@@ -371,17 +373,15 @@ pub struct EggccConfig {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ExtractionTimeSample {
+pub struct ExtractRegionTiming {
     pub egraph_size: usize,
-    pub ilp_time: Option<Duration>,
-    pub eggcc_time: Duration,
+    pub ilp_time: Duration,
 }
 
 pub struct EggccTimeStatistics {
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
-    // if ilp didn't time out, what portion of the time was spent in the extraction gym code
-    pub ilp_test_times: Vec<ExtractionTimeSample>,
+    pub extract_region_timings: Vec<ExtractRegionTiming>,
 }
 
 impl Default for EggccTimeStatistics {
@@ -389,7 +389,7 @@ impl Default for EggccTimeStatistics {
         Self {
             eggcc_extraction_time: Duration::from_millis(0),
             eggcc_serialization_time: Duration::from_millis(0),
-            ilp_test_times: vec![],
+            extract_region_timings: vec![],
         }
     }
 }
@@ -529,7 +529,7 @@ fn run_tiger_pipeline(
     batch: &[String],
     egraph: &egraph_serialize::EGraph,
     _should_maintain_linearity: bool,
-) -> TreeProgram {
+) -> (TreeProgram, Vec<ExtractRegionTiming>) {
     let json = serde_json::to_string_pretty(egraph)
         .map_err(|err| format!("failed to serialize egraph: {err}"))
         .unwrap();
@@ -551,15 +551,22 @@ fn run_tiger_pipeline(
         .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
         .unwrap();
 
-    let mut tiger_args: Vec<&std::ffi::OsStr> = Vec::new();
+    let mut tiger_args: Vec<OsString> = Vec::new();
     if eggcc_config.tiger_ilp {
-        tiger_args.push(std::ffi::OsStr::new("--ilp-mode"));
+        tiger_args.push(OsString::from("--ilp-mode"));
         if !eggcc_config.ilp_minimize_objective {
-            tiger_args.push(std::ffi::OsStr::new("--ilp-no-minimize"));
+            tiger_args.push(OsString::from("--ilp-no-minimize"));
         }
     }
 
-    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args, &egraph_text) {
+    let extract_timing_file = NamedTempFile::new()
+        .map_err(|err| format!("failed to create extract timing tempfile: {err}"))
+        .unwrap();
+    let extract_timing_path = extract_timing_file.path().to_owned();
+    tiger_args.push(OsString::from("--extract-region-timings"));
+    tiger_args.push(extract_timing_path.clone().into_os_string());
+
+    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args.iter(), &egraph_text) {
         Ok(output) => output,
         Err(err) => {
             let message = err.to_string();
@@ -578,7 +585,55 @@ fn run_tiger_pipeline(
         .map_err(|err| format!("failed to run tiger egglog program: {err}"))
         .unwrap();
 
-    extract_program_with_egglog(original_prog, batch, &mut tiger_egraph).override_arg_types()
+    let extracted =
+        extract_program_with_egglog(original_prog, batch, &mut tiger_egraph).override_arg_types();
+
+    let mut region_timings = Vec::new();
+    match std::fs::read_to_string(&extract_timing_path) {
+        Ok(contents) => {
+            for (idx, line) in contents.lines().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                if parts.len() != 2 {
+                    log::warn!(
+                        "Skipping malformed extract-region timing on line {}: {}",
+                        idx + 1,
+                        trimmed
+                    );
+                    continue;
+                }
+                let parsed = parts[0].parse::<usize>();
+                let nanos = parts[1].parse::<u64>();
+                match (parsed, nanos) {
+                    (Ok(egraph_size), Ok(duration_ns)) => {
+                        region_timings.push(ExtractRegionTiming {
+                            egraph_size,
+                            ilp_time: Duration::from_nanos(duration_ns),
+                        });
+                    }
+                    _ => {
+                        log::warn!(
+                            "Skipping extract-region timing with invalid numbers on line {}: {}",
+                            idx + 1,
+                            trimmed
+                        );
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            log::warn!(
+                "Failed to read extract-region timings from {}: {}",
+                extract_timing_path.display(),
+                err
+            );
+        }
+    }
+
+    (extracted, region_timings)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -591,7 +646,7 @@ fn extract(
     termdag: &mut TermDag,
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
-) -> TreeProgram {
+) -> (TreeProgram, Vec<ExtractRegionTiming>) {
     if eggcc_config.use_tiger {
         run_tiger_pipeline(
             eggcc_config,
@@ -601,7 +656,7 @@ fn extract(
             should_maintain_linearity,
         )
     } else {
-        greedy_dag_extract(
+        let result = greedy_dag_extract(
             original_prog,
             batch.clone(),
             egraph.clone(),
@@ -611,7 +666,8 @@ fn extract(
             should_maintain_linearity,
             extract_debug_exprs,
         )
-        .1
+        .1;
+        (result, Vec::new())
     }
 }
 
@@ -627,7 +683,7 @@ pub fn optimize(
     let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.get_schedule_list();
     let mut res = program.clone();
-    let mut ilp_test_times = vec![];
+    let mut extract_region_timings: Vec<ExtractRegionTiming> = vec![];
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
@@ -693,7 +749,7 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let iter_result = extract(
+            let (iter_result, region_timings) = extract(
                 eggcc_config,
                 &res,
                 batch.clone(),
@@ -709,19 +765,7 @@ pub fn optimize(
             eggcc_extraction_time += extraction_end - extraction_start;
             eggcc_serialization_time += extraction_start - serialization_start;
 
-            // now extract with ILP if we were told to
-            if let Some(timeout) = eggcc_config.ilp_extraction_test_timeout {
-                let times = extract_ilp(
-                    &res,
-                    batch,
-                    serialized,
-                    unextractables,
-                    DefaultCostModel,
-                    timeout,
-                );
-
-                ilp_test_times.extend(times);
-            }
+            extract_region_timings.extend(region_timings);
 
             // typecheck the program as a sanity check
             iter_result.typecheck();
@@ -735,7 +779,7 @@ pub fn optimize(
                     EggccTimeStatistics {
                         eggcc_extraction_time,
                         eggcc_serialization_time,
-                        ilp_test_times,
+                        extract_region_timings,
                     },
                 ));
             }
@@ -746,7 +790,7 @@ pub fn optimize(
         EggccTimeStatistics {
             eggcc_extraction_time,
             eggcc_serialization_time,
-            ilp_test_times,
+            extract_region_timings,
         },
     ))
 }

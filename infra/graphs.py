@@ -39,7 +39,7 @@ COLOR_MAP = {
   "eggcc-tiger-WL-O0-O0": "magenta",
   "eggcc-tiger-ILP-O0-O0": "green",
   "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
-  "eggcc-tiger-ILP-WITHCTX-O0-O0": "darkcyan",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
 }
 
 SHAPE_MAP = {
@@ -103,9 +103,9 @@ def get_eggcc_compile_time(data, benchmark_name):
 def get_eggcc_extraction_time(data, benchmark_name):
   return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccExtractionTimeSecs']
 
-def get_ilp_test_times(data, benchmark_name):
+def get_extract_region_timings(data, benchmark_name):
   row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
-  return row['ilpTestTimes']
+  return row.get('extractRegionTimings', [])
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -132,21 +132,14 @@ def make_ilp(json, output, benchmark_suite_folder):
     # exclude raytrace, since it uses too much memory
     if benchmark == 'raytrace':
       continue
-    # a list of ExtractionTimeSample
-    ilp_test_times = get_ilp_test_times(json, benchmark)
+  # a list of ExtractRegionTiming records
+    region_timings = get_extract_region_timings(json, benchmark)
 
-    for sample in ilp_test_times:
+    for sample in region_timings:
       ilp_time = sample["ilp_time"]
       egraph_size = sample["egraph_size"]
-      eggcc_time = sample["eggcc_time"]
 
-      eggcc_time = eggcc_time["secs"] + eggcc_time["nanos"] / 1e9
-
-      if ilp_time == None:
-        ilp_timeout_points.append([egraph_size, ilp_timeout])
-      else:
-        ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
-      eggcc_points.append([egraph_size, eggcc_time])
+      ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
   
     # graph data
   plt.figure(figsize=(10, 8))
@@ -453,11 +446,7 @@ def make_macros(profile, benchmark_suites, output_file):
       # skip raytrace
       if benchmark == 'raytrace':
         continue
-      ilp_all = ilp_all + get_ilp_test_times(profile, benchmark)
-
-    ilp_all_above_100k = list(filter(lambda x: x["egraph_size"] > 100000, ilp_all))
-    out.write(format_latex_macro_percent("PercentILPTimeout", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all))) / len(ilp_all)))
-    out.write(format_latex_macro_percent("PercentILPTimeoutAbove100k", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all_above_100k))) / max(len(ilp_all_above_100k), 1)))
+      ilp_all = ilp_all + get_extract_region_timings(profile, benchmark)
   
 
 def get_code_size(benchmark, suites_path):

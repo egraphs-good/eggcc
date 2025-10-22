@@ -120,7 +120,11 @@ def all_region_extract_points(treatment, data, benchmarks):
   res = []
   for benchmark in benchmarks:
     # a list of ExtractRegionTiming records
-    res = res + get_extract_region_timings(treatment, data, benchmark)
+    timings = get_extract_region_timings(treatment, data, benchmark)
+    if timings == False:
+      print("WARNING: Skipping benchmark " + benchmark + " treatment " + treatment + " because it errored")
+    else:
+      res = res + timings
 
   return res
 
@@ -140,7 +144,7 @@ def make_region_extract_plot(json, output):
   for sample in points:
     extract_time = sample["extract_time"]
     egraph_size = sample["egraph_size"]
-    ilp_solve_time = sample["ilp_solve_time"]
+    ilp_solve_time = sample["ilp_extract_time"]
 
     eggcc_points.append((egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9))
 
@@ -159,30 +163,29 @@ def make_region_extract_plot(json, output):
   alpha = 0.2
   circleLineWidth = 1.0
   # Plot extraction time points
-  eggcc_x, eggcc_y = zip(*eggcc_points)
+  eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
   plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
 
   # Plot ILP solve time points
-  ilp_x, ilp_y = zip(*ilp_points)
+  ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
   plt.scatter(ilp_x, ilp_y, color='green', label="ILP Solve Time", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
 
   # Plot ILP timeout points
-  timeout_x, timeout_y = zip(*ilp_timeout_points)
+  timeout_x, timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
   plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='red')
 
   fsize = 27
   plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
-  plt.ylabel('Extraction Time', fontsize=fsize)
-  plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
+  plt.ylabel('Extraction Time (Seconds)', fontsize=fsize)
+  #plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   # slightly down
-  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.))
+  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.3))
 
   # set axis font size
   plt.xticks(fontsize=fsize)
   plt.yticks(fontsize=fsize)
 
-  # set x limit to 330 k
-  plt.gca().set_xlim(left=-100, right=2000)
+  #plt.gca().set_xlim(left=-100, right=2000)
   plt.tight_layout()
 
   plt.savefig(output)

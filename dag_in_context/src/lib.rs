@@ -17,8 +17,8 @@ use std::{
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
-use to_egglog::TreeToEgglog;
 use tempfile::NamedTempFile;
+use to_egglog::TreeToEgglog;
 
 use crate::from_egglog::FromEgglog;
 use crate::util::run_cmd_line;
@@ -375,7 +375,7 @@ pub struct EggccConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
-    pub ilp_time: Duration,
+    pub extract_time: Duration,
 }
 
 pub struct EggccTimeStatistics {
@@ -611,7 +611,7 @@ fn run_tiger_pipeline(
                     (Ok(egraph_size), Ok(duration_ns)) => {
                         region_timings.push(ExtractRegionTiming {
                             egraph_size,
-                            ilp_time: Duration::from_nanos(duration_ns),
+                            extract_time: Duration::from_nanos(duration_ns),
                         });
                     }
                     _ => {

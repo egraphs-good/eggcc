@@ -119,9 +119,7 @@ def group_by_benchmark(profile):
 # a graph of how the ilp solver time changes
 # compared to the number of lines in the bril file
 # when the ilp solve time is null it timed out
-def make_ilp(json, output, benchmark_suite_folder):
-  ilp_timeout = profile.ilp_extraction_test_timeout()
-
+def make_region_extract_plot(json, output, benchmark_suite_folder):
   eggcc_points = []
   ilp_timeout_points = []
   ilp_points = []
@@ -136,10 +134,10 @@ def make_ilp(json, output, benchmark_suite_folder):
     region_timings = get_extract_region_timings(json, benchmark)
 
     for sample in region_timings:
-      ilp_time = sample["ilp_time"]
+      extract_time = sample["extract_time"]
       egraph_size = sample["egraph_size"]
 
-      ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
+      ilp_points.append([egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9])
   
     # graph data
   plt.figure(figsize=(10, 8))
@@ -541,7 +539,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.pdf', benchmark_suite_folder)
+  make_region_extract_plot(profile, f'{graphs_folder}/ilp_vs_lines.pdf', benchmark_suite_folder)
 
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

@@ -51,9 +51,24 @@ static void write_extract_region_timings() {
 		cerr << "Failed to open extract region timings file: " << g_extract_region_timings_path << endl;
 		return;
 	}
-	for (const auto &sample : g_extract_region_timings) {
-		out << sample.egraph_size << ' ' << sample.tiger_duration_ns << ' ' << sample.ilp_duration_ns << ' ' << (sample.ilp_timed_out ? 1 : 0) << '\n';
+	out << "{\n  \"rows\": [";
+	if (!g_extract_region_timings.empty()) {
+		out << '\n';
+		for (size_t i = 0; i < g_extract_region_timings.size(); ++i) {
+			const auto &sample = g_extract_region_timings[i];
+			out << "    {\"egraph_size\": " << sample.egraph_size
+			    << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
+			    << ", \"ilp_duration_ns\": " << sample.ilp_duration_ns
+			    << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
+			    << "}";
+			if (i + 1 != g_extract_region_timings.size()) {
+				out << ',';
+			}
+			out << '\n';
+		}
+		out << "  ";
 	}
+	out << "]\n}\n";
 }
 
 const char* TMPFILENAME = "extract.tmp";

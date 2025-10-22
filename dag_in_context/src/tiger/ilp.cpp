@@ -22,7 +22,7 @@
 
 using namespace std;
 
-bool g_use_gurobi = false;
+bool g_use_gurobi = true;
 // 10 sec timeout on nightly with cbc
 int g_ilp_timeout_seconds = 10;
 // 5 min timeout with gurobi

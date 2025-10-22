@@ -603,55 +603,55 @@ fn run_tiger_pipeline(
 
     let mut region_timings = Vec::new();
     if let Some((_, extract_timing_path)) = &extract_timing_file {
+        #[derive(Deserialize)]
+        struct TimingFile {
+            rows: Vec<TimingRow>,
+        }
+
+        #[derive(Deserialize)]
+        struct TimingRow {
+            egraph_size: usize,
+            tiger_duration_ns: u64,
+            #[serde(default)]
+            ilp_duration_ns: Option<u64>,
+            #[serde(default)]
+            ilp_timed_out: Option<bool>,
+        }
+
         match std::fs::read_to_string(extract_timing_path) {
-            Ok(contents) => {
-                for (idx, line) in contents.lines().enumerate() {
-                    let trimmed = line.trim();
-                    if trimmed.is_empty() {
-                        continue;
-                    }
-                    let parts: Vec<&str> = trimmed.split_whitespace().collect();
-                    if parts.len() != 4 {
-                        log::warn!(
-                            "Skipping malformed extract-region timing on line {}: {}",
-                            idx + 1,
-                            trimmed
-                        );
-                        continue;
-                    }
-                    let parsed_size = parts[0].parse::<usize>();
-                    let tiger_nanos = parts[1].parse::<u64>();
-                    let ilp_nanos = parts[2].parse::<u64>();
-                    let ilp_timeout_flag = parts[3].parse::<u64>();
-                    match (parsed_size, tiger_nanos, ilp_nanos, ilp_timeout_flag) {
-                        (
-                            Ok(egraph_size),
-                            Ok(tiger_duration_ns),
-                            Ok(ilp_duration_ns),
-                            Ok(timeout),
-                        ) => {
-                            let ilp_duration = if timeout != 0 {
+            Ok(contents) => match serde_json::from_str::<TimingFile>(&contents) {
+                Ok(parsed) => {
+                    for (idx, row) in parsed.rows.into_iter().enumerate() {
+                        let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
+                        let ilp_extract_time = match (row.ilp_duration_ns, ilp_timed_out) {
+                            (Some(nanos), false) => Some(Duration::from_nanos(nanos)),
+                            (Some(_), true) => None,
+                            (None, true) => None,
+                            (None, false) => {
+                                log::warn!(
+                                    "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
+                                    idx + 1
+                                );
                                 None
-                            } else {
-                                Some(Duration::from_nanos(ilp_duration_ns))
-                            };
-                            region_timings.push(ExtractRegionTiming {
-                                egraph_size,
-                                extract_time: Duration::from_nanos(tiger_duration_ns),
-                                ilp_extract_time: ilp_duration,
-                                ilp_timed_out: timeout != 0,
-                            });
-                        }
-                        _ => {
-                            log::warn!(
-                                "Skipping extract-region timing with invalid numbers on line {}: {}",
-                                idx + 1,
-                                trimmed
-                            );
-                        }
+                            }
+                        };
+
+                        region_timings.push(ExtractRegionTiming {
+                            egraph_size: row.egraph_size,
+                            extract_time: Duration::from_nanos(row.tiger_duration_ns),
+                            ilp_extract_time,
+                            ilp_timed_out,
+                        });
                     }
                 }
-            }
+                Err(err) => {
+                    log::warn!(
+                        "Failed to parse extract-region timings JSON from {}: {}",
+                        extract_timing_path.display(),
+                        err
+                    );
+                }
+            },
             Err(err) => {
                 log::warn!(
                     "Failed to read extract-region timings from {}: {}",

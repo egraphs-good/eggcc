@@ -103,8 +103,8 @@ def get_eggcc_compile_time(data, benchmark_name):
 def get_eggcc_extraction_time(data, benchmark_name):
   return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccExtractionTimeSecs']
 
-def get_extract_region_timings(data, benchmark_name):
-  row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
+def get_extract_region_timings(treatment, data, benchmark_name):
+  row = get_row(data, benchmark_name, treatment)
   return row.get('extractRegionTimings', [])
 
 def group_by_benchmark(profile):
@@ -116,30 +116,35 @@ def group_by_benchmark(profile):
     grouped_by_benchmark[benchmark_name].append(benchmark)
   return [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
 
-# a graph of how the ilp solver time changes
-# compared to the number of lines in the bril file
-# when the ilp solve time is null it timed out
-def make_region_extract_plot(json, output, benchmark_suite_folder):
-  eggcc_points = []
-  ilp_timeout_points = []
-  ilp_points = []
-
-  benchmarks = dedup([b.get('benchmark') for b in json])
-
+def all_region_extract_points(treatment, data, benchmarks):
+  res = []
   for benchmark in benchmarks:
-    # exclude raytrace, since it uses too much memory
-    if benchmark == 'raytrace':
-      continue
-  # a list of ExtractRegionTiming records
-    region_timings = get_extract_region_timings(json, benchmark)
+    # a list of ExtractRegionTiming records
+    region_timings = get_extract_region_timings(treatment, data, benchmark)
 
     for sample in region_timings:
       extract_time = sample["extract_time"]
       egraph_size = sample["egraph_size"]
+      res.append([egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9])
+  return res
 
-      ilp_points.append([egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9])
+# a graph of how the ilp solver time changes
+# compared to the size of the egraph
+# when the ilp solve time is null it timed out
+def make_region_extract_plot(json, output, benchmark_suite_folder):
+  eggcc_points = []
+  ilp_timeout_points = []
   
-    # graph data
+  benchmarks = dedup([b.get('benchmark') for b in json])
+  ilp_points = all_region_extract_points('eggcc-tiger-ILP-O0-O0', json, benchmarks)
+  eggcc_points = all_region_extract_points('eggcc-tiger-O0-O0', json, benchmarks)
+
+  # separate ilp points into timeout and non-timeout
+  ilp_timeout_points = [point for point in ilp_points if point[1]
+                        is None]
+  ilp_points = [point for point in ilp_points if point[1]]
+
+  # graph data
   plt.figure(figsize=(10, 8))
 
   psize = 150
@@ -158,7 +163,7 @@ def make_region_extract_plot(json, output, benchmark_suite_folder):
   plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
 
   fsize = 27
-  plt.xlabel('Size of egraph', fontsize=fsize)
+  plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
   plt.ylabel('Extraction Time', fontsize=fsize)
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   # slightly down
@@ -169,7 +174,7 @@ def make_region_extract_plot(json, output, benchmark_suite_folder):
   plt.yticks(fontsize=fsize)
 
   # set x limit to 330 k
-  plt.gca().set_xlim(left=-1000, right=330000)
+  # plt.gca().set_xlim(left=-1000, right=330000)
   plt.tight_layout()
 
   plt.savefig(output)
@@ -439,12 +444,6 @@ def make_macros(profile, benchmark_suites, output_file):
     benchmarks = dedup([b.get('benchmark') for b in profile])
     out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
-    ilp_all = []
-    for benchmark in benchmarks:
-      # skip raytrace
-      if benchmark == 'raytrace':
-        continue
-      ilp_all = ilp_all + get_extract_region_timings(profile, benchmark)
   
 
 def get_code_size(benchmark, suites_path):

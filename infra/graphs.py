@@ -105,7 +105,7 @@ def get_eggcc_extraction_time(data, benchmark_name):
 
 def get_extract_region_timings(treatment, data, benchmark_name):
   row = get_row(data, benchmark_name, treatment)
-  return row.get('extractRegionTimings', [])
+  return row['extractRegionTimings']
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -120,29 +120,37 @@ def all_region_extract_points(treatment, data, benchmarks):
   res = []
   for benchmark in benchmarks:
     # a list of ExtractRegionTiming records
-    region_timings = get_extract_region_timings(treatment, data, benchmark)
+    res = res + get_extract_region_timings(treatment, data, benchmark)
 
-    for sample in region_timings:
-      extract_time = sample["extract_time"]
-      egraph_size = sample["egraph_size"]
-      res.append([egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9])
   return res
+
 
 # a graph of how the ilp solver time changes
 # compared to the size of the egraph
 # when the ilp solve time is null it timed out
-def make_region_extract_plot(json, output, benchmark_suite_folder):
+def make_region_extract_plot(json, output):
   eggcc_points = []
-  ilp_timeout_points = []
   
   benchmarks = dedup([b.get('benchmark') for b in json])
-  ilp_points = all_region_extract_points('eggcc-tiger-ILP-O0-O0', json, benchmarks)
-  eggcc_points = all_region_extract_points('eggcc-tiger-O0-O0', json, benchmarks)
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", json, benchmarks)
+  ilp_points = []
+  eggcc_points = []
+  ilp_timeout_points = []
 
-  # separate ilp points into timeout and non-timeout
-  ilp_timeout_points = [point for point in ilp_points if point[1]
-                        is None]
-  ilp_points = [point for point in ilp_points if point[1]]
+  for sample in points:
+    extract_time = sample["extract_time"]
+    egraph_size = sample["egraph_size"]
+    ilp_solve_time = sample["ilp_solve_time"]
+
+    eggcc_points.append((egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9))
+
+    if ilp_solve_time is None:
+      # WARNING HARDCODED 5 MIN TIMEOUT
+      ilp_timeout_points.append((egraph_size, 5 * 60))
+    else:
+      ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
+      ilp_points.append((egraph_size, ilp_time))
+
 
   # graph data
   plt.figure(figsize=(10, 8))
@@ -151,30 +159,30 @@ def make_region_extract_plot(json, output, benchmark_suite_folder):
   alpha = 0.2
   circleLineWidth = 1.0
   # Plot extraction time points
-  eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
+  eggcc_x, eggcc_y = zip(*eggcc_points)
   plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
 
-  # Plot ILP timeout points
-  ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='purple', label='ILP Timeout', alpha=alpha/2, marker='o', s=psize, linewidths=circleLineWidth, edgecolors='red')
-
   # Plot ILP solve time points
-  ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
-  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
+  ilp_x, ilp_y = zip(*ilp_points)
+  plt.scatter(ilp_x, ilp_y, color='green', label="ILP Solve Time", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
+
+  # Plot ILP timeout points
+  timeout_x, timeout_y = zip(*ilp_timeout_points)
+  plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='red')
 
   fsize = 27
   plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
   plt.ylabel('Extraction Time', fontsize=fsize)
   plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   # slightly down
-  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 0.9))
+  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.))
 
   # set axis font size
   plt.xticks(fontsize=fsize)
   plt.yticks(fontsize=fsize)
 
   # set x limit to 330 k
-  # plt.gca().set_xlim(left=-1000, right=330000)
+  plt.gca().set_xlim(left=-100, right=2000)
   plt.tight_layout()
 
   plt.savefig(output)
@@ -406,6 +414,8 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
     return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-COMPARISON':
+    return 'EQCC-Tiger-ILP-Comparison'
   raise KeyError(f"Unknown treatment {treatment}")
 
 
@@ -538,8 +548,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  make_region_extract_plot(profile, f'{graphs_folder}/ilp_vs_lines.pdf', benchmark_suite_folder)
-
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_extract_vs_ILP.pdf')
+  
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)

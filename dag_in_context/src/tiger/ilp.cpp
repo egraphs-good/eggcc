@@ -22,11 +22,13 @@
 
 using namespace std;
 
-bool g_use_gurobi = false;
-// 10 sec timeout
-// TODO increase for eval runs
-int g_ilp_timeout_seconds = 10;
+bool g_use_gurobi = true;
+// 10 sec timeout on nightly with cbc
+int g_ilp_timeout_seconds = 10
+// 5 min timeout with gurobi
+int g_ilp_timeout_gurobi = 5 * 60;
 bool g_ilp_minimize_objective = true;
+extern bool g_time_ilp;
 
 static void kill_process_group(pid_t pid) {
 	if (pid <= 0) {
@@ -432,11 +434,12 @@ static ExtractionENodeId build_extraction_node(
 
 } // namespace
 
-Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion)  {
+Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion, bool &timed_out)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
 		exit(1);
 	};
+	timed_out = false;
 
 	if (root == initc) {
 		StateWalk sw;
@@ -714,6 +717,14 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	}
 	bool solver_timed_out = false;
 	int ret = run_command_with_timeout(cmd, g_ilp_timeout_seconds, solver_timed_out);
+	if (solver_timed_out) {
+		timed_out = true;
+		if (!g_time_ilp) {
+			cout << "TIMEOUT" << endl;
+			fail(solver_name + " timed out after " + to_string(g_ilp_timeout_seconds) + " seconds");
+		}
+		return Extraction();
+	}
 	string solver_log;
 	{
 		ifstream log_in(log_path.c_str(), ios::binary);
@@ -725,10 +736,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		ifstream in_debug_log(log_path.c_str(), ios::binary);
 		ofstream out_debug_log("/tmp/tiger_last_extract.log", ios::binary);
 		out_debug_log << in_debug_log.rdbuf();
-	}
-	if (solver_timed_out) {
-		cout << "TIMEOUT" << endl;
-		fail(solver_name + " timed out after " + to_string(g_ilp_timeout_seconds) + " seconds");
 	}
 	if (ret != 0) {
 		cerr << solver_name << " log output:\n" << solver_log << endl;

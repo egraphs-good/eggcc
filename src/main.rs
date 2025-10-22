@@ -89,6 +89,8 @@ struct Args {
 
     #[clap(long)]
     tiger_ilp: bool,
+    #[clap(long)]
+    time_ilp: bool,
     /// By default,  rules that match on context are disabled. References to context in the rule body are replaced with a dummy context. Finally, any rules that depend on context fundamentally (annotated manually) are skipped.
     /// Using this flag enables all context-aware rules and adds context to the initial program.
     #[clap(long)]
@@ -153,6 +155,7 @@ fn main() {
             ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
             use_tiger: args.use_tiger,
             tiger_ilp: args.tiger_ilp,
+            time_ilp: args.time_ilp,
             use_context: args.with_context,
             ilp_minimize_objective: !args.ilp_no_minimize,
         },

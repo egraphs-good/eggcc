@@ -63,6 +63,7 @@ treatments = [
   "eggcc-tiger-ILP-NOMIN-O0-O0",
   "eggcc-tiger-ILP-WITHCTX-O0-O0",
   "eggcc-WITHCTX-O0-O0",
+  "eggcc-tiger-ILP-COMPARISON", # run both tiger and ILP on the same egraphs
 ]
 
 example_subset_treatments = [
@@ -163,6 +164,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-COMPARISON":
+      return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":

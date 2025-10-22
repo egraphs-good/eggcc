@@ -367,6 +367,8 @@ pub struct EggccConfig {
     pub use_tiger: bool,
     /// If use_tiger is true and tiger_ilp is true, use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
+    /// When true, collect region timing samples by running both the tiger and ILP extractors.
+    pub time_ilp: bool,
     pub use_context: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
@@ -376,6 +378,10 @@ pub struct EggccConfig {
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
     pub extract_time: Duration,
+    #[serde(default)]
+    pub ilp_extract_time: Option<Duration>,
+    #[serde(default)]
+    pub ilp_timed_out: bool,
 }
 
 pub struct EggccTimeStatistics {
@@ -425,6 +431,7 @@ impl Default for EggccConfig {
             non_weakly_linear: false,
             use_tiger: false,
             tiger_ilp: false,
+            time_ilp: false,
             use_context: true,
             ilp_minimize_objective: true,
         }
@@ -559,12 +566,18 @@ fn run_tiger_pipeline(
         }
     }
 
-    let extract_timing_file = NamedTempFile::new()
-        .map_err(|err| format!("failed to create extract timing tempfile: {err}"))
-        .unwrap();
-    let extract_timing_path = extract_timing_file.path().to_owned();
-    tiger_args.push(OsString::from("--extract-region-timings"));
-    tiger_args.push(extract_timing_path.clone().into_os_string());
+    let extract_timing_file = if eggcc_config.time_ilp {
+        tiger_args.push(OsString::from("--time-ilp"));
+        let file = NamedTempFile::new()
+            .map_err(|err| format!("failed to create extract timing tempfile: {err}"))
+            .unwrap();
+        let extract_timing_path = file.path().to_owned();
+        tiger_args.push(OsString::from("--extract-region-timings"));
+        tiger_args.push(extract_timing_path.clone().into_os_string());
+        Some((file, extract_timing_path))
+    } else {
+        None
+    };
 
     let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args.iter(), &egraph_text) {
         Ok(output) => output,
@@ -589,47 +602,63 @@ fn run_tiger_pipeline(
         extract_program_with_egglog(original_prog, batch, &mut tiger_egraph).override_arg_types();
 
     let mut region_timings = Vec::new();
-    match std::fs::read_to_string(&extract_timing_path) {
-        Ok(contents) => {
-            for (idx, line) in contents.lines().enumerate() {
-                let trimmed = line.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                let parts: Vec<&str> = trimmed.split_whitespace().collect();
-                if parts.len() != 2 {
-                    log::warn!(
-                        "Skipping malformed extract-region timing on line {}: {}",
-                        idx + 1,
-                        trimmed
-                    );
-                    continue;
-                }
-                let parsed = parts[0].parse::<usize>();
-                let nanos = parts[1].parse::<u64>();
-                match (parsed, nanos) {
-                    (Ok(egraph_size), Ok(duration_ns)) => {
-                        region_timings.push(ExtractRegionTiming {
-                            egraph_size,
-                            extract_time: Duration::from_nanos(duration_ns),
-                        });
+    if let Some((_, extract_timing_path)) = &extract_timing_file {
+        match std::fs::read_to_string(extract_timing_path) {
+            Ok(contents) => {
+                for (idx, line) in contents.lines().enumerate() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
                     }
-                    _ => {
+                    let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                    if parts.len() != 4 {
                         log::warn!(
-                            "Skipping extract-region timing with invalid numbers on line {}: {}",
+                            "Skipping malformed extract-region timing on line {}: {}",
                             idx + 1,
                             trimmed
                         );
+                        continue;
+                    }
+                    let parsed_size = parts[0].parse::<usize>();
+                    let tiger_nanos = parts[1].parse::<u64>();
+                    let ilp_nanos = parts[2].parse::<u64>();
+                    let ilp_timeout_flag = parts[3].parse::<u64>();
+                    match (parsed_size, tiger_nanos, ilp_nanos, ilp_timeout_flag) {
+                        (
+                            Ok(egraph_size),
+                            Ok(tiger_duration_ns),
+                            Ok(ilp_duration_ns),
+                            Ok(timeout),
+                        ) => {
+                            let ilp_duration = if timeout != 0 {
+                                None
+                            } else {
+                                Some(Duration::from_nanos(ilp_duration_ns))
+                            };
+                            region_timings.push(ExtractRegionTiming {
+                                egraph_size,
+                                extract_time: Duration::from_nanos(tiger_duration_ns),
+                                ilp_extract_time: ilp_duration,
+                                ilp_timed_out: timeout != 0,
+                            });
+                        }
+                        _ => {
+                            log::warn!(
+                                "Skipping extract-region timing with invalid numbers on line {}: {}",
+                                idx + 1,
+                                trimmed
+                            );
+                        }
                     }
                 }
             }
-        }
-        Err(err) => {
-            log::warn!(
-                "Failed to read extract-region timings from {}: {}",
-                extract_timing_path.display(),
-                err
-            );
+            Err(err) => {
+                log::warn!(
+                    "Failed to read extract-region timings from {}: {}",
+                    extract_timing_path.display(),
+                    err
+                );
+            }
         }
     }
 

@@ -22,9 +22,9 @@
 
 using namespace std;
 
-bool g_use_gurobi = true;
+bool g_use_gurobi = false;
 // 10 sec timeout on nightly with cbc
-int g_ilp_timeout_seconds = 10
+int g_ilp_timeout_seconds = 10;
 // 5 min timeout with gurobi
 int g_ilp_timeout_gurobi = 5 * 60;
 bool g_ilp_minimize_objective = true;
@@ -716,12 +716,13 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	bool solver_timed_out = false;
-	int ret = run_command_with_timeout(cmd, g_ilp_timeout_seconds, solver_timed_out);
+	int timeout = g_use_gurobi ? g_ilp_timeout_gurobi : g_ilp_timeout_seconds;
+	int ret = run_command_with_timeout(cmd, timeout, solver_timed_out);
 	if (solver_timed_out) {
 		timed_out = true;
 		if (!g_time_ilp) {
 			cout << "TIMEOUT" << endl;
-			fail(solver_name + " timed out after " + to_string(g_ilp_timeout_seconds) + " seconds");
+			fail(solver_name + " timed out after " + to_string(timeout) + " seconds");
 		}
 		return Extraction();
 	}

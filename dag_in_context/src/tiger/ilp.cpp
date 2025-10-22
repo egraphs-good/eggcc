@@ -762,7 +762,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	if (infeasible) {
 		cout << "infeasible" << endl;
 		// try the old extraction method for debugging
-		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion).state_walk;
 
 		// does this state walk use a node multiple times?
 		auto encode_node = [](EClassId cls, ENodeId node) -> long long {

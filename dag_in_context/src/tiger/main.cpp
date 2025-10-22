@@ -27,6 +27,7 @@ struct ExtractRegionTimingSample {
 	long long tiger_duration_ns;
 	long long ilp_duration_ns;
 	bool ilp_timed_out;
+	size_t statewalk_width;
 };
 
 static string g_extract_region_timings_path;
@@ -35,11 +36,12 @@ static vector<ExtractRegionTimingSample> g_extract_region_timings;
 static void append_extract_region_timing(size_t egraph_size,
 		long long tiger_duration_ns,
 		long long ilp_duration_ns,
-		bool ilp_timed_out) {
+		bool ilp_timed_out,
+		size_t statewalk_width) {
 	if (!g_time_ilp) {
 		return;
 	}
-	g_extract_region_timings.push_back(ExtractRegionTimingSample{egraph_size, tiger_duration_ns, ilp_duration_ns, ilp_timed_out});
+	g_extract_region_timings.push_back(ExtractRegionTimingSample{egraph_size, tiger_duration_ns, ilp_duration_ns, ilp_timed_out, statewalk_width});
 }
 
 static void write_extract_region_timings() {
@@ -60,6 +62,7 @@ static void write_extract_region_timings() {
 			    << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
 			    << ", \"ilp_duration_ns\": " << sample.ilp_duration_ns
 			    << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
+			    << ", \"statewalk_width\": " << static_cast<unsigned long long>(sample.statewalk_width)
 			    << "}";
 			if (i + 1 != g_extract_region_timings.size()) {
 				out << ',';
@@ -738,7 +741,15 @@ typedef pair<EClassId, ExtractableSet> ExVertex;
 typedef pair<EClassId, CompressedSet> IndVertex;
 typedef int ExVertexId;
 
-StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+// The main tiger algorithm: finds a low-cost statewalk for a regionalized egraph
+// via dynamic programming.
+// The DP groups statewalks by their set of extractable pure eclasses.
+StateWalkResult UnguidedFindStateWalk(
+	const EGraph &g,
+	const EClassId initc,
+	const ENodeId initn,
+	const EClassId root,
+	const vector<vector<int> > &nsubregion) {
 	//cout << "!!!" << initc << ' ' << initn << ' ' << root << endl;
 	//print_egraph(g);
 	//cout << "---" << endl;
@@ -856,7 +867,14 @@ StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENo
 		sw.push_back(make_pair(vs[cur].first, pa[cur].first));
 		cur = pa[cur].second;
 	}
-	return sw;
+	size_t max_width = 0;
+	for (const auto &entry : wlcnt) {
+		size_t width = static_cast<size_t>(entry.second);
+		if (width > max_width) {
+			max_width = width;
+		}
+	}
+	return StateWalkResult{std::move(sw), max_width};
 }
 
 typedef int Rank;
@@ -1039,12 +1057,22 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 
 typedef int RegionId;
 
-static pair<Extraction, std::chrono::nanoseconds> run_tiger_extractor(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+struct TigerExtractOutcome {
+	Extraction extraction;
+	std::chrono::nanoseconds duration;
+	size_t statewalk_width;
+};
+
+static TigerExtractOutcome run_tiger_extractor(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
 	auto start = std::chrono::steady_clock::now();
-	StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-	Extraction extraction = regionExtractionWithStateWalk(g, root, sw).second;
+	StateWalkResult sw_result = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+	Extraction extraction = regionExtractionWithStateWalk(g, root, sw_result.state_walk).second;
 	auto elapsed = std::chrono::steady_clock::now() - start;
-	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
+	return TigerExtractOutcome{
+		extraction,
+		std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed),
+		sw_result.statewalk_width,
+	};
 }
 
 static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion, bool &timed_out) {
@@ -1074,16 +1102,16 @@ Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId in
 			return ilp_result.first;
 		} else {
 			auto tiger_result = run_tiger_extractor(g, initc, initn, root, nsubregion);
-			auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.second).count();
+			auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.duration).count();
 			if (elapsed_seconds > g_ilp_timeout_seconds) {
 				cout << "TIMEOUT" << endl;
 				std::exit(1);
 			}
-			return tiger_result.first;
+			return tiger_result.extraction;
 		}
 	} else {
 		auto tiger_result = run_tiger_extractor(g, initc, initn, root, nsubregion);
-		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.second).count();
+		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.duration).count();
 		// if tiger times out, hard error with TIMEOUT
 		if (elapsed_seconds > g_ilp_timeout_seconds) {
 			cout << "TIMEOUT" << endl;
@@ -1094,11 +1122,12 @@ Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId in
 		auto ilp_result = run_ilp_extractor(g, initc, initn, root, nsubregion, ilp_timed_out);
 		append_extract_region_timing(
 			g.eclasses.size(),
-			tiger_result.second.count(),
+			tiger_result.duration.count(),
 			ilp_result.second.count(),
-			ilp_timed_out);
+			ilp_timed_out,
+			tiger_result.statewalk_width);
 		
-		return tiger_result.first;
+		return tiger_result.extraction;
 	}
 }
 

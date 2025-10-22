@@ -382,6 +382,7 @@ pub struct ExtractRegionTiming {
     pub ilp_extract_time: Option<Duration>,
     #[serde(default)]
     pub ilp_timed_out: bool,
+    pub statewalk_width: usize,
 }
 
 pub struct EggccTimeStatistics {
@@ -616,49 +617,55 @@ fn run_tiger_pipeline(
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
             ilp_timed_out: Option<bool>,
+            statewalk_width: u64,
         }
 
-        match std::fs::read_to_string(extract_timing_path) {
-            Ok(contents) => match serde_json::from_str::<TimingFile>(&contents) {
-                Ok(parsed) => {
-                    for (idx, row) in parsed.rows.into_iter().enumerate() {
-                        let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
-                        let ilp_extract_time = match (row.ilp_duration_ns, ilp_timed_out) {
-                            (Some(nanos), false) => Some(Duration::from_nanos(nanos)),
-                            (Some(_), true) => None,
-                            (None, true) => None,
-                            (None, false) => {
-                                log::warn!(
-                                    "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
-                                    idx + 1
-                                );
-                                None
-                            }
-                        };
+        let contents = std::fs::read_to_string(extract_timing_path).unwrap_or_else(|err| {
+            panic!(
+                "Failed to read extract-region timings from {}: {}",
+                extract_timing_path.display(),
+                err
+            )
+        });
 
-                        region_timings.push(ExtractRegionTiming {
-                            egraph_size: row.egraph_size,
-                            extract_time: Duration::from_nanos(row.tiger_duration_ns),
-                            ilp_extract_time,
-                            ilp_timed_out,
-                        });
-                    }
-                }
-                Err(err) => {
-                    log::warn!(
-                        "Failed to parse extract-region timings JSON from {}: {}",
-                        extract_timing_path.display(),
-                        err
-                    );
-                }
-            },
-            Err(err) => {
-                log::warn!(
-                    "Failed to read extract-region timings from {}: {}",
+        let TimingFile { rows } =
+            serde_json::from_str::<TimingFile>(&contents).unwrap_or_else(|err| {
+                panic!(
+                    "Failed to parse extract-region timings JSON from {}: {}",
                     extract_timing_path.display(),
                     err
-                );
-            }
+                )
+            });
+
+        for (idx, row) in rows.into_iter().enumerate() {
+            let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
+            let ilp_extract_time = match (row.ilp_duration_ns, ilp_timed_out) {
+                (Some(nanos), false) => Some(Duration::from_nanos(nanos)),
+                (Some(_), true) => None,
+                (None, true) => None,
+                (None, false) => {
+                    panic!(
+                        "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
+                        idx + 1
+                    );
+                }
+            };
+
+            let statewalk_width = usize::try_from(row.statewalk_width).unwrap_or_else(|_| {
+                panic!(
+                    "statewalk_width value {} does not fit in usize on timing row {}",
+                    row.statewalk_width,
+                    idx + 1
+                )
+            });
+
+            region_timings.push(ExtractRegionTiming {
+                egraph_size: row.egraph_size,
+                extract_time: Duration::from_nanos(row.tiger_duration_ns),
+                ilp_extract_time,
+                ilp_timed_out,
+                statewalk_width,
+            });
         }
     }
 

@@ -15,7 +15,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
+EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:

@@ -2,6 +2,7 @@
 
 import json
 import random
+from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
@@ -188,6 +189,52 @@ def make_region_extract_plot(json, output):
   #plt.gca().set_xlim(left=-100, right=2000)
   plt.tight_layout()
 
+  plt.savefig(output)
+
+
+def make_statewalk_width_histogram(data, output):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  widths = []
+  missing_widths = 0
+
+  for sample in points:
+    width = sample.get("statewalk_width")
+    if width is None:
+      missing_widths += 1
+      continue
+    widths.append(width)
+
+  if missing_widths:
+    print(f"WARNING: Skipping {missing_widths} timing samples with missing statewalk_width")
+
+  if not widths:
+    print("WARNING: No statewalk width data found; skipping histogram")
+    return
+
+  counts = Counter(widths)
+  sorted_widths = sorted(counts.keys())
+  frequencies = [counts[w] for w in sorted_widths]
+
+  plt.figure(figsize=(10, 6))
+  plt.bar(sorted_widths, frequencies, color='skyblue', edgecolor='black')
+  plt.xlabel('Statewalk Width')
+  plt.ylabel('Number of Region e-graphs')
+  plt.title('Distribution of Statewalk Width')
+
+  max_ticks = 25
+  if len(sorted_widths) > max_ticks:
+    step = max(1, len(sorted_widths) // max_ticks)
+    tick_positions = sorted_widths[::step]
+    if sorted_widths[-1] not in tick_positions:
+      tick_positions.append(sorted_widths[-1])
+    plt.xticks(tick_positions, rotation=45, ha='right')
+  else:
+    plt.xticks(sorted_widths)
+
+  plt.grid(axis='y', linestyle='--', alpha=0.5)
+  plt.tight_layout()
   plt.savefig(output)
 
 
@@ -552,6 +599,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_extract_vs_ILP.pdf')
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

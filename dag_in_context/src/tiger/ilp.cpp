@@ -178,8 +178,15 @@ static SolverSolution parse_solver_solution(const string &sol_path,
 		}
 	}
 	sol.close();
-	if (!has_content && !result.infeasible) {
-		fail_with_log(string("") + solver_name + " produced an empty solution file");
+	bool log_mentions_infeasible = contains_case_insensitive(solver_log, "infeasible");
+	if (!has_content) {
+		if (log_mentions_infeasible) {
+			result.infeasible = true;
+			return result;
+		}
+		if (!result.infeasible) {
+			fail_with_log(string("") + solver_name + " produced an empty solution file");
+		}
 	}
 	if (result.infeasible) {
 		return result;
@@ -227,7 +234,7 @@ static SolverSolution parse_solver_solution(const string &sol_path,
 			}
 		}
 	}
-	if (result.values.empty() && contains_case_insensitive(solver_log, "infeasible")) {
+	if (result.values.empty() && log_mentions_infeasible) {
 		result.infeasible = true;
 	}
 	return result;
@@ -760,9 +767,10 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 	bool infeasible = solver_solution.infeasible;
 	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
 	if (infeasible) {
-		cout << "infeasible" << endl;
+		cout << "infeasible ILP problem" << endl;
 		// try the old extraction method for debugging
 		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion).state_walk;
+		cerr << "state walk found" << endl;
 
 		// does this state walk use a node multiple times?
 		auto encode_node = [](EClassId cls, ENodeId node) -> long long {
@@ -783,6 +791,7 @@ Extraction extractRegionILP(const EGraph &g, const EClassId initc, const ENodeId
 		}
 
 		regionExtractionWithStateWalk(g, root, sw);
+		cerr << "ILP extraction failed due to infeasibility, but a state walk was found." << endl;
 		fail(solver_name + " reported infeasibility");
 	}
 

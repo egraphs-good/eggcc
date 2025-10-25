@@ -1,0 +1,23 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@inc(v0: int): int {
+  c1_: int = const 2;
+  c2_: int = const 1;
+  v3_: int = add c2_ v0;
+  v4_: int = mul c1_ v3_;
+  ret v4_;
+}
+@double(v0: int): int {
+  c1_: int = const 2;
+  v2_: int = mul c1_ v0;
+  ret v2_;
+}
+@main {
+  c0_: int = const 2;
+  print c0_;
+  print c0_;
+  ret;
+}

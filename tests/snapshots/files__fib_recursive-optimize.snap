@@ -89,7 +89,7 @@ expression: visualization.result
   br v46_ .b47_ .b48_;
 .b47_:
   v49_: int = call @fac c1_;
-  v50_: int = id v0;
+  v50_: int = id c34_;
   v41_: int = id v50_;
   v45_: int = add v38_ v41_;
   v23_: int = id v45_;
@@ -118,7 +118,7 @@ expression: visualization.result
   br v56_ .b57_ .b58_;
 .b57_:
   v59_: int = call @fac c1_;
-  v60_: int = id v0;
+  v60_: int = id c36_;
   v38_: int = id v60_;
   v41_: int = id v0;
   jmp .b42_;

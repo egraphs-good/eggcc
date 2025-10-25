@@ -1,15 +1,18 @@
-#include<map>
-#include<set>
-#include<queue>
-#include<vector>
-#include<cstdio>
-#include<climits>
-#include<cassert>
-#include<cstring>
-#include<string>
-#include<iostream>
 #include<algorithm>
+#include<cassert>
+#include<chrono>
+#include<climits>
+#include<cstring>
+#include<cstdio>
+#include<cstdlib>
 #include<fstream>
+#include<iostream>
+#include<map>
+#include<queue>
+#include<set>
+#include<utility>
+#include<string>
+#include<vector>
 #include"ilp.h"
 
 using namespace std;
@@ -17,6 +20,59 @@ using namespace std;
 const bool DEBUG = false;
 
 bool g_ilp_mode = false;
+bool g_time_ilp = false;
+
+struct ExtractRegionTimingSample {
+	size_t egraph_size;
+	long long tiger_duration_ns;
+	long long ilp_duration_ns;
+	bool ilp_timed_out;
+	size_t statewalk_width;
+};
+
+static string g_extract_region_timings_path;
+static vector<ExtractRegionTimingSample> g_extract_region_timings;
+
+static void append_extract_region_timing(size_t egraph_size,
+		long long tiger_duration_ns,
+		long long ilp_duration_ns,
+		bool ilp_timed_out,
+		size_t statewalk_width) {
+	if (!g_time_ilp) {
+		return;
+	}
+	g_extract_region_timings.push_back(ExtractRegionTimingSample{egraph_size, tiger_duration_ns, ilp_duration_ns, ilp_timed_out, statewalk_width});
+}
+
+static void write_extract_region_timings() {
+	if (g_extract_region_timings_path.empty()) {
+		return;
+	}
+	ofstream out(g_extract_region_timings_path.c_str());
+	if (!out.good()) {
+		cerr << "Failed to open extract region timings file: " << g_extract_region_timings_path << endl;
+		return;
+	}
+	out << "{\n  \"rows\": [";
+	if (!g_extract_region_timings.empty()) {
+		out << '\n';
+		for (size_t i = 0; i < g_extract_region_timings.size(); ++i) {
+			const auto &sample = g_extract_region_timings[i];
+			out << "    {\"egraph_size\": " << sample.egraph_size
+			    << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
+			    << ", \"ilp_duration_ns\": " << sample.ilp_duration_ns
+			    << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
+			    << ", \"statewalk_width\": " << static_cast<unsigned long long>(sample.statewalk_width)
+			    << "}";
+			if (i + 1 != g_extract_region_timings.size()) {
+				out << ',';
+			}
+			out << '\n';
+		}
+		out << "  ";
+	}
+	out << "]\n}\n";
+}
 
 const char* TMPFILENAME = "extract.tmp";
 
@@ -138,7 +194,8 @@ bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) 
 				cerr << "Found: " << ch << endl;
 				return false;
 			}
-			if (e[ch].c != g.eclasses[n.c].enodes[n.n].ch[j]) {
+			EClassId expected_child = g.eclasses[n.c].enodes[n.n].ch[j];
+			if (e[ch].c != expected_child) {
 				cerr << "Error: Extraction referring to a child of wrong eclass." << endl;
 				return false;
 			}
@@ -272,74 +329,185 @@ struct SubEGraphMap {
 	vector<EClassId> eclassmp;
 	map<EClassId, EClassId> inv;
 	vector<vector<int> > nsubregion;
+	vector<vector<ENodeId> > enode_map;
 };
+
+// Prune any nodes that refer to empty eclasses
+// Then can happen after we prune nodes that have this same subregion as a child.
+static void prune_region_egraph(EGraph &g,
+					     vector<vector<int> > *nsubregion,
+					     vector<vector<ENodeId> > *enode_map) {
+	assert(nsubregion != nullptr);
+	assert(enode_map != nullptr);
+	assert(nsubregion->size() == g.eclasses.size());
+	assert(enode_map->size() == g.eclasses.size());
+
+	vector<bool> empty(g.eclasses.size(), false);
+	for (size_t i = 0; i < g.eclasses.size(); ++i) {
+		empty[i] = g.eclasses[i].enodes.empty();
+	}
+
+	bool changed = true;
+	while (changed) {
+		changed = false;
+		for (size_t i = 0; i < g.eclasses.size(); ++i) {
+			vector<ENode> &enodes = g.eclasses[i].enodes;
+			vector<int> &subregion_counts = (*nsubregion)[i];
+			vector<ENodeId> &orig_enode_ids = (*enode_map)[i];
+			assert(subregion_counts.size() == enodes.size());
+			assert(orig_enode_ids.size() == enodes.size());
+
+			size_t write_idx = 0;
+			for (size_t j = 0; j < enodes.size(); ++j) {
+				const ENode &node = enodes[j];
+				bool prune = false;
+				for (EClassId child : node.ch) {
+					if (child < 0 || child >= static_cast<EClassId>(g.eclasses.size()) || empty[child]) {
+						prune = true;
+						break;
+					}
+				}
+				if (!prune) {
+					if (write_idx != j) {
+						enodes[write_idx] = node;
+						subregion_counts[write_idx] = subregion_counts[j];
+						orig_enode_ids[write_idx] = orig_enode_ids[j];
+					}
+					++write_idx;
+				} else {
+					changed = true;
+				}
+			}
+			if (write_idx != enodes.size()) {
+				enodes.resize(write_idx);
+				subregion_counts.resize(write_idx);
+				orig_enode_ids.resize(write_idx);
+			}
+			if (!empty[i] && enodes.empty()) {
+				empty[i] = true;
+				changed = true;
+			}
+		}
+	}
+}
+
+static EClassId get_inv_entry_or_fail(const map<EClassId, EClassId> &inv,
+									 		 EClassId key,
+									 		 const char *context) {
+	auto it = inv.find(key);
+	if (it == inv.end()) {
+		cerr << "Error: SubEGraphMap missing mapping for eclass " << key;
+		if (context != nullptr) {
+			cerr << " while " << context;
+		}
+		cerr << endl;
+		exit(1);
+	}
+	return it->second;
+}
+
+static bool should_skip_region_enode(const EGraph &g,
+								 const EClassId parent_eclass,
+								 const ENode &enode,
+								 const EClassId region_root) {
+	if (!g.eclasses[parent_eclass].isEffectful) {
+		return false;
+	}
+	bool saw_effectful_child = false;
+	for (EClassId child : enode.ch) {
+		if (!g.eclasses[child].isEffectful) {
+			continue;
+		}
+		if (saw_effectful_child && child == region_root) {
+			return true;
+		}
+		saw_effectful_child = true;
+	}
+	return false;
+}
 
 pair<EGraph, SubEGraphMap> createRegionEGraph(const EGraph &g, const EClassId region_root) {
 	SubEGraphMap mp;
-	mp.inv[region_root] = 0;
-	mp.eclassmp.push_back(region_root);
-	mp.nsubregion.push_back(vector<int>(g.eclasses[region_root].enodes.size(), 0));
-	// First BFS: only follow non-subregion child edges to get connected effectful eclasses
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		assert(mp.nsubregion[mp.inv[u]].size() == g.eclasses[u].enodes.size());
+	queue<EClassId> worklist;
+	auto enqueue = [&](EClassId c) {
+		if (mp.inv.count(c)) {
+			return;
+		}
+		mp.inv[c] = mp.eclassmp.size();
+		mp.eclassmp.push_back(c);
+		mp.nsubregion.push_back(vector<int>(g.eclasses[c].enodes.size(), 0));
+		mp.enode_map.push_back(vector<ENodeId>());
+		worklist.push(c);
+	};
+
+	enqueue(region_root);
+	while (!worklist.empty()) {
+		EClassId u = worklist.front();
+		worklist.pop();
+		EClassId u_idx = get_inv_entry_or_fail(mp.inv, u, "accessing nsubregion");
+		assert(mp.nsubregion[u_idx].size() == g.eclasses[u].enodes.size());
+		bool parent_effectful = g.eclasses[u].isEffectful;
 		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			bool subregionchild = false;
+			bool saw_effectful_child = false;
 			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
 				EClassId v = g.eclasses[u].enodes[i].ch[j];
 				if (g.eclasses[v].isEffectful) {
-					if (subregionchild) {
-						mp.nsubregion[mp.inv[u]][i]++;
+					if (saw_effectful_child) {
+						if (parent_effectful) {
+							mp.nsubregion[u_idx][i]++;
+						}
 						continue;
 					}
-					subregionchild = true;
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
+					saw_effectful_child = true;
 				}
+				enqueue(v);
 			}
 		}
 	}
-	// Second BFS: only look at pure children
-	for (int _ = 0; _ < (int)mp.eclassmp.size(); ++_) {
-		EClassId u = mp.eclassmp[_];
-		for (int i = 0; i < (int)g.eclasses[u].enodes.size(); ++i) {
-			for (int j = 0; j < (int)g.eclasses[u].enodes[i].ch.size(); ++j) {
-				EClassId v = g.eclasses[u].enodes[i].ch[j];
-				if (!g.eclasses[v].isEffectful) {
-					if (!mp.inv.count(v)) {
-						mp.inv[v] = mp.eclassmp.size();
-						mp.eclassmp.push_back(v);
-						mp.nsubregion.push_back(vector<int>(g.eclasses[v].enodes.size(), 0));
-					}
-				}
-			}
-		}
-	}
-	// Add all the enodes
+
 	EGraph gr;
 	for (int i = 0; i < (int)mp.eclassmp.size(); ++i) {
 		EClass c;
 		c.isEffectful = g.eclasses[mp.eclassmp[i]].isEffectful;
-		c.enodes.resize(g.eclasses[mp.eclassmp[i]].enodes.size());
-		for (int j = 0; j < (int)g.eclasses[mp.eclassmp[i]].enodes.size(); ++j) {
+		const auto &orig_enodes = g.eclasses[mp.eclassmp[i]].enodes;
+		vector<int> filtered_nsubregion;
+		vector<ENodeId> filtered_enode_map;
+		for (int j = 0; j < (int)orig_enodes.size(); ++j) {
+			const ENode &orig_node = orig_enodes[j];
+			if (should_skip_region_enode(g, mp.eclassmp[i], orig_node, region_root)) {
+				continue;
+			}
+			ENode node;
+			node.eclass = i;
+			node.head = orig_node.head;
 			bool subregionchild = false;
-			c.enodes[j].eclass = i;
-			c.enodes[j].head = g.eclasses[mp.eclassmp[i]].enodes[j].head;
-			for (int k = 0; k < (int)g.eclasses[mp.eclassmp[i]].enodes[j].ch.size(); ++k) {
-				EClassId cp = g.eclasses[mp.eclassmp[i]].enodes[j].ch[k];
+			for (int k = 0; k < (int)orig_node.ch.size(); ++k) {
+				EClassId cp = orig_node.ch[k];
 				if (g.eclasses[cp].isEffectful) {
 					if (subregionchild) {
 						continue;
 					}
 					subregionchild = true;
 				}
-				c.enodes[j].ch.push_back(mp.inv[cp]);
+				node.ch.push_back(get_inv_entry_or_fail(mp.inv, cp, "building region egraph"));
 			}
+			c.enodes.push_back(node);
+			filtered_nsubregion.push_back(mp.nsubregion[i][j]);
+			filtered_enode_map.push_back(j);
 		}
+		assert(filtered_nsubregion.size() == c.enodes.size());
+		assert(filtered_enode_map.size() == c.enodes.size());
+		mp.nsubregion[i] = filtered_nsubregion;
+		mp.enode_map[i] = filtered_enode_map;
 		gr.eclasses.push_back(c);
+	}
+
+	prune_region_egraph(gr, &mp.nsubregion, &mp.enode_map);
+	EClassId root_idx = get_inv_entry_or_fail(mp.inv, region_root, "getting region root mapping after pruning region egraph");
+	if (gr.eclasses[root_idx].enodes.empty()) {
+		cerr << "Error: Region root eclass " << region_root
+		     << " became empty after pruning invalid enodes." << endl;
+		exit(1);
 	}
 	return make_pair(gr, mp);
 }
@@ -573,7 +741,15 @@ typedef pair<EClassId, ExtractableSet> ExVertex;
 typedef pair<EClassId, CompressedSet> IndVertex;
 typedef int ExVertexId;
 
-StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+// The main tiger algorithm: finds a low-cost statewalk for a regionalized egraph
+// via dynamic programming.
+// The DP groups statewalks by their set of extractable pure eclasses.
+StateWalkResult UnguidedFindStateWalk(
+	const EGraph &g,
+	const EClassId initc,
+	const ENodeId initn,
+	const EClassId root,
+	const vector<vector<int> > &nsubregion) {
 	//cout << "!!!" << initc << ' ' << initn << ' ' << root << endl;
 	//print_egraph(g);
 	//cout << "---" << endl;
@@ -691,7 +867,14 @@ StateWalk UnguidedFindStateWalk(const EGraph &g, const EClassId initc, const ENo
 		sw.push_back(make_pair(vs[cur].first, pa[cur].first));
 		cur = pa[cur].second;
 	}
-	return sw;
+	size_t max_width = 0;
+	for (const auto &entry : wlcnt) {
+		size_t width = static_cast<size_t>(entry.second);
+		if (width > max_width) {
+			max_width = width;
+		}
+	}
+	return StateWalkResult{std::move(sw), max_width};
 }
 
 typedef int Rank;
@@ -874,14 +1057,77 @@ EClassId pick_next_variable_heuristics(const vector<EClassId> &v) {
 
 typedef int RegionId;
 
+struct TigerExtractOutcome {
+	Extraction extraction;
+	std::chrono::nanoseconds duration;
+	size_t statewalk_width;
+};
+
+static TigerExtractOutcome run_tiger_extractor(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
+	auto start = std::chrono::steady_clock::now();
+	StateWalkResult sw_result = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
+	Extraction extraction = regionExtractionWithStateWalk(g, root, sw_result.state_walk).second;
+	auto elapsed = std::chrono::steady_clock::now() - start;
+	return TigerExtractOutcome{
+		extraction,
+		std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed),
+		sw_result.statewalk_width,
+	};
+}
+
+static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion, bool &timed_out) {
+	auto start = std::chrono::steady_clock::now();
+	timed_out = false;
+	Extraction extraction = extractRegionILP(g, initc, initn, root, nsubregion, timed_out);
+	auto elapsed = std::chrono::steady_clock::now() - start;
+	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
+}
+
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
 Extraction extractRegion(const EGraph &g, const EClassId initc, const ENodeId initn, const EClassId root, const vector<vector<int> > &nsubregion) {
-	if (g_ilp_mode) {
-		return extractRegionILP(g, initc, initn, root, nsubregion);
+	if (g_time_ilp && g_ilp_mode) {
+		cerr << "ERROR: ILP timing mode cannot be used with ILP extraction mode." << endl;
+		std::exit(1);
+	}
+
+	if (!g_time_ilp) {
+		if (g_ilp_mode) {
+			bool ilp_timed_out = false;
+			auto ilp_result = run_ilp_extractor(g, initc, initn, root, nsubregion, ilp_timed_out);
+			if (ilp_timed_out) {
+				cout << "TIMEOUT" << endl;
+				std::exit(1);
+			}
+			return ilp_result.first;
+		} else {
+			auto tiger_result = run_tiger_extractor(g, initc, initn, root, nsubregion);
+			auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.duration).count();
+			if (elapsed_seconds > g_ilp_timeout_seconds) {
+				cout << "TIMEOUT" << endl;
+				std::exit(1);
+			}
+			return tiger_result.extraction;
+		}
 	} else {
-		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion);
-		return regionExtractionWithStateWalk(g, root, sw).second;
+		auto tiger_result = run_tiger_extractor(g, initc, initn, root, nsubregion);
+		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.duration).count();
+		// if tiger times out, hard error with TIMEOUT
+		if (elapsed_seconds > g_ilp_timeout_seconds) {
+			cout << "TIMEOUT" << endl;
+			std::exit(1);
+		}
+
+		bool ilp_timed_out = false;
+		auto ilp_result = run_ilp_extractor(g, initc, initn, root, nsubregion, ilp_timed_out);
+		append_extract_region_timing(
+			g.eclasses.size(),
+			tiger_result.duration.count(),
+			ilp_result.second.count(),
+			ilp_timed_out,
+			tiger_result.statewalk_width);
+		
+		return tiger_result.extraction;
 	}
 }
 
@@ -898,14 +1144,16 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	pair<EClassId, ENodeId> arg = findArg(gr);
 	EClassId argc = arg.first;
 	ENodeId argn = arg.second;
-	EClassId root = rmap.inv[region_root];
+	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
 	Extraction er = extractRegion(gr, argc, argn, root, rmap.nsubregion);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
 		ExtractionENode &en = er[i], &nen = ner[i];
 		EClassId oric = rmap.eclassmp[en.c];
 		nen.c = oric;
-		ENodeId orin = en.n;
+		assert(en.c < (int)rmap.enode_map.size());
+		assert(en.n < (int)rmap.enode_map[en.c].size());
+		ENodeId orin = rmap.enode_map[en.c][en.n];
 		nen.n = orin;
 		bool subregionchild = false;
 		for (int j = 0, k = 0; j < (int)g.eclasses[oric].enodes[orin].ch.size(); ++j) {
@@ -938,7 +1186,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 				ner[i].ch[j] += delta;
 			}
 		}
-	}
+		}
 	e.insert(e.end(), ner.begin(), ner.end());
 	extracted_roots[cur_region] = e.size() - 1;
 	return extracted_roots[cur_region];
@@ -1105,6 +1353,27 @@ int main(int argc, char** argv) {
 			g_ilp_mode = true;
 			continue;
 		}
+		if (arg == "--ilp-no-minimize") {
+			g_ilp_minimize_objective = false;
+			continue;
+		}
+		if (arg == "--time-ilp") {
+			g_time_ilp = true;
+			continue;
+		}
+		const string timings_prefix = "--extract-region-timings=";
+		if (arg == "--extract-region-timings") {
+			if (i + 1 >= argc) {
+				cerr << "Missing path for --extract-region-timings" << endl;
+				return 1;
+			}
+			g_extract_region_timings_path = argv[++i];
+			continue;
+		}
+		if (arg.rfind(timings_prefix, 0) == 0) {
+			g_extract_region_timings_path = arg.substr(timings_prefix.size());
+			continue;
+		}
 		cerr << "Unknown argument: " << arg << endl;
 		return 1;
 	}
@@ -1170,6 +1439,7 @@ int main(int argc, char** argv) {
 		assert(linearExtraction(g, fun_root, e));
 	}
 	print_egg_end();
+	write_extract_region_timings();
 	/*
 	vector<pair<EGraph, SubEGraphMap>> region_egraphs;
 	for (int i = 0; i < (int)region_roots.size(); ++i) {

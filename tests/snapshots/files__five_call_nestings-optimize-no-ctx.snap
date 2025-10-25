@@ -1,0 +1,28 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@one {
+  call @four;
+  ret;
+}
+@two {
+  c0_: int = const 4;
+  print c0_;
+  ret;
+}
+@three {
+  c0_: int = const 4;
+  print c0_;
+  ret;
+}
+@four {
+  c0_: int = const 4;
+  print c0_;
+  ret;
+}
+@main {
+  call @three;
+  ret;
+}

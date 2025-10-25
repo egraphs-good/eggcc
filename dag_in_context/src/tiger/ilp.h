@@ -34,12 +34,23 @@ struct ExtractionENode {
 using Extraction = std::vector<ExtractionENode>;
 using StateWalk = std::vector<std::pair<EClassId, ENodeId>>;
 
+struct StateWalkResult {
+    StateWalk state_walk;
+    size_t statewalk_width;
+};
+
 bool validExtraction(const EGraph &g, EClassId root, const Extraction &e);
 std::pair<bool, Extraction> regionExtractionWithStateWalk(const EGraph &g, EClassId root, const StateWalk &sw);
-StateWalk UnguidedFindStateWalk(const EGraph &g, EClassId initc, ENodeId initn, EClassId root, const std::vector<std::vector<int>> &nsubregion);
-Extraction extractRegionILP(const EGraph &g, EClassId initc, ENodeId initn, EClassId root, const std::vector<std::vector<int>> &nsubregion);
+StateWalkResult UnguidedFindStateWalk(
+    const EGraph &g,
+    EClassId initc,
+    ENodeId initn,
+    EClassId root,
+    const std::vector<std::vector<int>> &nsubregion);
+Extraction extractRegionILP(const EGraph &g, EClassId initc, ENodeId initn, EClassId root, const std::vector<std::vector<int>> &nsubregion, bool &timed_out);
 
 extern bool g_use_gurobi;
 extern int g_ilp_timeout_seconds;
+extern bool g_ilp_minimize_objective;
 
 #endif  // DAG_IN_CONTEXT_TIGER_ILP_H

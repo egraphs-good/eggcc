@@ -1,0 +1,28 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@main {
+  c0_: int = const 2;
+  c1_: int = const 3;
+  c2_: int = const 0;
+  c3_: int = const 1;
+  c4_: int = const 40;
+  v5_: int = id c1_;
+  v6_: int = id c2_;
+  v7_: int = id c3_;
+  v8_: int = id c4_;
+.b9_:
+  v10_: int = add v5_ v7_;
+  v11_: int = add v6_ v7_;
+  v12_: bool = lt v11_ v8_;
+  v5_: int = id v10_;
+  v6_: int = id v11_;
+  v7_: int = id v7_;
+  v8_: int = id v8_;
+  br v12_ .b9_ .b13_;
+.b13_:
+  print c0_;
+  ret;
+}

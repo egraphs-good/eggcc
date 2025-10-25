@@ -19,7 +19,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
 ```
 {
   "benchmark": "matmul",
-  "runMethod": "llvm-eggcc-O3-O3",
+  "runMethod": "eggcc-O3-O3",
   "suite": "polybench",
   "path": "benchmarks/passing/polybench/matmul.bril",
   "cycles": [120345, 120100, 120512],
@@ -27,7 +27,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "eggccSerializationTimeSecs": 0.045,
   "eggccExtractionTimeSecs": 5.678,
   "llvmCompileTimeSecs": 0.890,
-  "ilpTestTimes": [],
+  "extractRegionTimings": [],
   "failed": false,
   "ILPTimeOut": false
 }
@@ -37,7 +37,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
 ```
 {
   "benchmark": "matmul",
-  "runMethod": "llvm-eggcc-tiger-O0-O0",
+  "runMethod": "eggcc-tiger-O0-O0",
   "suite": "polybench",
   "path": "benchmarks/passing/polybench/matmul.bril",
   "cycles": false,
@@ -45,7 +45,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "eggccSerializationTimeSecs": false,
   "eggccExtractionTimeSecs": false,
   "llvmCompileTimeSecs": false,
-  "ilpTestTimes": false,
+  "extractRegionTimings": false,
   "failed": true,
   "ILPTimeOut": true
 }

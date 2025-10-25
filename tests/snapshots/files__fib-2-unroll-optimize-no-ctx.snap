@@ -1,0 +1,85 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 100000
+@main(v0: int) {
+  v1_: ptr<int> = alloc v0;
+  c2_: int = const 1;
+  v3_: ptr<int> = ptradd v1_ c2_;
+  c4_: int = const 0;
+  store v1_ c4_;
+  store v3_ c2_;
+  c5_: int = const 2;
+  v6_: ptr<int> = id v1_;
+  v7_: int = id c5_;
+  v8_: int = id c2_;
+  v9_: int = id v0;
+.b10_:
+  v11_: bool = lt v7_ v9_;
+  c12_: bool = const false;
+  v13_: ptr<int> = id v6_;
+  v14_: int = id v7_;
+  v15_: bool = id c12_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+  br v11_ .b18_ .b19_;
+.b18_:
+  v20_: int = add v7_ v8_;
+  v21_: bool = lt v20_ v9_;
+  v22_: ptr<int> = ptradd v6_ v7_;
+  c23_: int = const -2;
+  v24_: ptr<int> = ptradd v22_ c23_;
+  c25_: int = const -1;
+  v26_: ptr<int> = ptradd v22_ c25_;
+  v27_: int = load v26_;
+  v28_: int = load v24_;
+  v29_: int = add v27_ v28_;
+  store v22_ v29_;
+  v30_: ptr<int> = id v6_;
+  v31_: int = id v20_;
+  v32_: int = id v8_;
+  v33_: int = id v9_;
+  br v21_ .b34_ .b35_;
+.b34_:
+  v36_: ptr<int> = ptradd v6_ v20_;
+  c37_: int = const -2;
+  v38_: ptr<int> = ptradd v36_ c37_;
+  c39_: int = const -1;
+  v40_: ptr<int> = ptradd v36_ c39_;
+  v41_: int = load v40_;
+  v42_: int = load v38_;
+  v43_: int = add v41_ v42_;
+  store v36_ v43_;
+  v44_: int = add v20_ v8_;
+  v30_: ptr<int> = id v6_;
+  v31_: int = id v44_;
+  v32_: int = id v8_;
+  v33_: int = id v9_;
+.b35_:
+  v45_: int = add v20_ v8_;
+  v46_: int = select v21_ v45_ v20_;
+  v13_: ptr<int> = id v6_;
+  v14_: int = id v46_;
+  v15_: bool = id v21_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+.b19_:
+  v47_: int = add v7_ v8_;
+  v48_: bool = lt v47_ v9_;
+  c49_: bool = const false;
+  v50_: bool = select v11_ v48_ c49_;
+  v6_: ptr<int> = id v6_;
+  v7_: int = id v14_;
+  v8_: int = id v8_;
+  v9_: int = id v9_;
+  br v50_ .b10_ .b51_;
+.b51_:
+  v52_: ptr<int> = ptradd v6_ v7_;
+  c53_: int = const -1;
+  v54_: ptr<int> = ptradd v52_ c53_;
+  v55_: int = load v54_;
+  free v6_;
+  print v55_;
+  ret;
+}

@@ -1,0 +1,38 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: false
+@main(v0: bool) {
+  c1_: int = const 3;
+  v2_: ptr<int> = alloc c1_;
+  c3_: int = const 1;
+  v4_: ptr<int> = ptradd v2_ c3_;
+  c5_: int = const 2;
+  v6_: ptr<int> = ptradd v2_ c5_;
+  v7_: ptr<int> = id v4_;
+  v8_: ptr<int> = id v2_;
+  v9_: ptr<int> = id v6_;
+  v10_: bool = id v0;
+  v7_: ptr<int> = id v8_;
+  v8_: ptr<int> = id v7_;
+  v9_: ptr<int> = id v9_;
+  v10_: bool = id v10_;
+.b11_:
+  br v10_ .b12_ .b13_;
+.b12_:
+  v7_: ptr<int> = id v8_;
+  v8_: ptr<int> = id v7_;
+  v9_: ptr<int> = id v9_;
+  v10_: bool = id v10_;
+  jmp .b11_;
+.b13_:
+  c14_: int = const 20;
+  c15_: int = const 10;
+  store v8_ c15_;
+  store v9_ c14_;
+  v16_: int = load v8_;
+  print v16_;
+  free v7_;
+  ret;
+}

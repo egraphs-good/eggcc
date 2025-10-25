@@ -2,7 +2,7 @@
 
 import json
 import os
-import time
+import signal
 from glob import glob
 from sys import stdout
 import sys
@@ -15,7 +15,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 20 * 60 # 20 minutes
+EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -50,32 +50,36 @@ treatments = [
   "llvm-O0-O0",
   "llvm-O1-O0",
   "llvm-O2-O0",
-  "llvm-eggcc-O0-O0",
-  "llvm-eggcc-sequential-O0-O0",
+  "eggcc-O0-O0",
+  "eggcc-sequential-O0-O0",
   "llvm-O3-O0",
   "llvm-O3-O3",
-  "llvm-eggcc-O3-O0",
-  "llvm-eggcc-O3-O3",
+  "eggcc-O3-O0",
+  "eggcc-O3-O3",
   "eggcc-ILP-O0-O0",
-  "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0",
-  "llvm-eggcc-tiger-ILP-O0-O0"
+  "eggcc-tiger-WL-O0-O0",
+  "eggcc-tiger-O0-O0",
+  "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-NOMIN-O0-O0",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0",
+  "eggcc-WITHCTX-O0-O0",
+  "eggcc-tiger-ILP-COMPARISON", # run both tiger and ILP on the same egraphs
 ]
 
 example_subset_treatments = [
   "llvm-O0-O0",
-  "llvm-eggcc-O0-O0",
+  "eggcc-O0-O0",
   "llvm-O3-O0",
-  "llvm-eggcc-tiger-WL-O0-O0",
-  "llvm-eggcc-tiger-O0-O0"
+  "eggcc-tiger-WL-O0-O0",
+  "eggcc-tiger-O0-O0"
 ]
 
 
 if TO_ABLATE != "":
   treatments.extend([
-    "llvm-eggcc-ablation-O0-O0",
-    "llvm-eggcc-ablation-O3-O0",
-    "llvm-eggcc-ablation-O3-O3",
+    "eggcc-ablation-O0-O0",
+    "eggcc-ablation-O3-O0",
+    "eggcc-ablation-O3-O3",
   ])
 
 # Where to output files that are needed for nightly report
@@ -85,6 +89,40 @@ DATA_DIR = None
 TMP_DIR = "tmp"
 
 EGGCC_BINARY = "target/release/eggcc"
+
+
+def _terminate_process_tree(proc):
+  try:
+    os.killpg(proc.pid, signal.SIGTERM)
+  except ProcessLookupError:
+    return
+  try:
+    proc.wait(timeout=5)
+  except subprocess.TimeoutExpired:
+    try:
+      os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+      pass
+    proc.wait()
+
+
+def run_with_timeout_killing_tree(cmd, timeout_secs):
+  with subprocess.Popen(
+      cmd,
+      shell=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+      text=True,
+      start_new_session=True) as proc:
+    try:
+      stdout, stderr = proc.communicate(timeout=timeout_secs)
+      return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired as exc:
+      _terminate_process_tree(proc)
+      stdout, stderr = proc.communicate()
+      exc.output = stdout
+      exc.stderr = stderr
+      raise
 
 
 # returns two strings:
@@ -104,29 +142,40 @@ def get_eggcc_options(benchmark):
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
     case "llvm-O3-O3":
       return (f'parse', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
-    case "llvm-eggcc-sequential-O0-O0":
+    case "eggcc-sequential-O0-O0":
       return (f'optimize --eggcc-schedule sequential', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-O0-O0":
+    case "eggcc-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-O3-O0":
+    case "eggcc-O3-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0')
-    case "llvm-eggcc-O3-O3":
+    case "eggcc-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3')
-    case "llvm-eggcc-ablation-O0-O0":
+    case "eggcc-ablation-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0 --ablate {TO_ABLATE}')
-    case "llvm-eggcc-ablation-O3-O0":
+    case "eggcc-ablation-O3-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
-    case "llvm-eggcc-ablation-O3-O3":
+    case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
+    # TODO rip out old ILP
     case "eggcc-ILP-O0-O0":
       # run with the ilp-extraction-timeout flag
       return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-WL-O0-O0":
+    case "eggcc-tiger-WL-O0-O0":
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-O0-O0":
+    case "eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
-    case "llvm-eggcc-tiger-ILP-O0-O0":
+    case "eggcc-tiger-ILP-COMPARISON":
+      return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-WITHCTX-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-NOMIN-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+
+    case "eggcc-WITHCTX-O0-O0":
+      # run with the with-context flag
+      return (f'optimize --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -177,7 +226,7 @@ def optimize(benchmark):
       "eggccSerializationTimeSecs": False,
       "eggccExtractionTimeSecs": False,
       "llvmCompileTimeSecs": False,
-      "ilpTestTimes": False,
+      "extractRegionTimings": False,
       "failed": True,
       "ILPTimeOut": False,
       "error": '',
@@ -185,7 +234,7 @@ def optimize(benchmark):
 
   timed_out = False
   try:
-    process = subprocess.run(cmd1, shell=True, capture_output=True, text=True, timeout=EGGCC_TIMEOUT_SECS)
+    process = run_with_timeout_killing_tree(cmd1, EGGCC_TIMEOUT_SECS)
   except subprocess.TimeoutExpired:
     # Timeouts are failures
     print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds', flush=True)
@@ -213,7 +262,7 @@ def optimize(benchmark):
     raise Exception(f'Error running {cmd2}: {process2.stderr}')
 
   eggcc_compile_time = eggcc_extraction_time = eggcc_serialization_time = 0.0
-  ilp_test_times = []
+  extract_region_timings = []
   # parse json from eggcc run data (guard if file unexpectedly missing)
   if os.path.isfile(eggcc_run_data):
     with open(eggcc_run_data) as f:
@@ -227,7 +276,7 @@ def optimize(benchmark):
       secs = eggcc_data["eggcc_extraction_time"]["secs"]
       nanos = eggcc_data["eggcc_extraction_time"]["nanos"]
       eggcc_extraction_time = secs + nanos / 1e9
-      ilp_test_times = eggcc_data.get("ilp_test_times", [])
+  extract_region_timings = eggcc_data.get("extract_region_timings", [])
 
   llvm_compile_time = 0.0
   if os.path.isfile(llvm_run_data):
@@ -241,7 +290,7 @@ def optimize(benchmark):
     "eggccSerializationTimeSecs": eggcc_serialization_time,
     "eggccExtractionTimeSecs": eggcc_extraction_time,
     "llvmCompileTimeSecs": llvm_compile_time,
-    "ilpTestTimes": ilp_test_times,
+    "extractRegionTimings": extract_region_timings,
     "failed": False,
     "ILPTimeOut": False,
   }
@@ -329,7 +378,7 @@ def aggregate(compile_data, bench_times, paths):
         result[key] = compile_data[path][key]
       # Enforce timeout invariant
       if result.get("failed"):
-        for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "ilpTestTimes"]:
+        for k in ["cycles", "eggccCompileTimeSecs", "eggccSerializationTimeSecs", "eggccExtractionTimeSecs", "llvmCompileTimeSecs", "extractRegionTimings"]:
           result[k] = False
       else:
         # basic sanity checks (best effort)
@@ -422,7 +471,11 @@ if __name__ == '__main__':
 
   compile_data = {}
   # get the number of cores on this machine 
-  parallelism = os.cpu_count()
+  parallelism = (os.cpu_count() - 1)
+  # for large machines leave a few cores free
+  if parallelism > 30:
+    parallelism -= 4
+
 
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:

@@ -2,6 +2,7 @@
 
 import json
 import random
+from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
@@ -11,10 +12,10 @@ import profile
 
 EGGCC_NAME = "eggcc"
 
-GRAPH_RUN_MODES = ["llvm-O0-O0", "llvm-eggcc-O0-O0", "llvm-O3-O0"]
+GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 if profile.TO_ABLATE != "":
-  GRAPH_RUN_MODES.extend(["llvm-eggcc-ablation-O0-O0", "llvm-eggcc-ablation-O3-O0", "llvm-eggcc-ablation-O3-O3"])
+  GRAPH_RUN_MODES.extend(["eggcc-ablation-O0-O0", "eggcc-ablation-O3-O0", "eggcc-ablation-O3-O3"])
 
 # need ilp and graph run modes for this script to work
 NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
@@ -27,17 +28,19 @@ COLOR_MAP = {
   "llvm-O2-O0": "orange",
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
-  "llvm-eggcc-O0-O0": "blue",
-  "llvm-eggcc-sequential-O0-O0": "pink",
-  "llvm-eggcc-O3-O0": "brown",
-  "llvm-eggcc-O3-O3": "lightblue",
-  "llvm-eggcc-ablation-O0-O0": "blue",
-  "llvm-eggcc-ablation-O3-O0": "green",
-  "llvm-eggcc-ablation-O3-O3": "orange",
+  "eggcc-O0-O0": "blue",
+  "eggcc-sequential-O0-O0": "pink",
+  "eggcc-O3-O0": "brown",
+  "eggcc-O3-O3": "lightblue",
+  "eggcc-ablation-O0-O0": "blue",
+  "eggcc-ablation-O3-O0": "green",
+  "eggcc-ablation-O3-O3": "orange",
   "eggcc-ILP-O0-O0": "red",
-  "llvm-eggcc-tiger-O0-O0": "cyan",
-  "llvm-eggcc-tiger-WL-O0-O0": "magenta",
-  "llvm-eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-O0-O0": "cyan",
+  "eggcc-tiger-WL-O0-O0": "magenta",
+  "eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
 }
 
 SHAPE_MAP = {
@@ -47,13 +50,13 @@ SHAPE_MAP = {
   "llvm-O2-O0": "o",
   "llvm-O3-O0": "o",
   "llvm-O3-O3": "o",
-  "llvm-eggcc-O0-O0": "o",
-  "llvm-eggcc-sequential-O0-O0": "o",
-  "llvm-eggcc-O3-O0": "o",
-  "llvm-eggcc-O3-O3": "o",
-  "llvm-eggcc-ablation-O0-O0": "o",
-  "llvm-eggcc-ablation-O3-O0": "o",
-  "llvm-eggcc-ablation-O3-O3": "o",
+  "eggcc-O0-O0": "o",
+  "eggcc-sequential-O0-O0": "o",
+  "eggcc-O3-O0": "o",
+  "eggcc-O3-O3": "o",
+  "eggcc-ablation-O0-O0": "o",
+  "eggcc-ablation-O3-O0": "o",
+  "eggcc-ablation-O3-O3": "o",
 }
 
 BENCHMARK_SPACE = 1.0 / len(GRAPH_RUN_MODES)
@@ -96,14 +99,14 @@ def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
 
 def get_eggcc_compile_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccCompileTimeSecs']
+  return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccCompileTimeSecs']
 
 def get_eggcc_extraction_time(data, benchmark_name):
-  return get_row(data, benchmark_name, 'llvm-eggcc-O0-O0')['eggccExtractionTimeSecs']
+  return get_row(data, benchmark_name, 'eggcc-O0-O0')['eggccExtractionTimeSecs']
 
-def get_ilp_test_times(data, benchmark_name):
-  row = get_row(data, benchmark_name, 'eggcc-ILP-O0-O0')
-  return row['ilpTestTimes']
+def get_extract_region_timings(treatment, data, benchmark_name):
+  row = get_row(data, benchmark_name, treatment)
+  return row['extractRegionTimings']
 
 def group_by_benchmark(profile):
   grouped_by_benchmark = {}
@@ -114,71 +117,125 @@ def group_by_benchmark(profile):
     grouped_by_benchmark[benchmark_name].append(benchmark)
   return [grouped_by_benchmark[benchmark] for benchmark in grouped_by_benchmark]
 
-# a graph of how the ilp solver time changes
-# compared to the number of lines in the bril file
-# when the ilp solve time is null it timed out
-def make_ilp(json, output, benchmark_suite_folder):
-  ilp_timeout = profile.ilp_extraction_test_timeout()
+def all_region_extract_points(treatment, data, benchmarks):
+  res = []
+  for benchmark in benchmarks:
+    # a list of ExtractRegionTiming records
+    timings = get_extract_region_timings(treatment, data, benchmark)
+    if timings == False:
+      print("WARNING: Skipping benchmark " + benchmark + " treatment " + treatment + " because it errored")
+    else:
+      res = res + timings
 
+  return res
+
+
+# a graph of how the ilp solver time changes
+# compared to the size of the egraph
+# when the ilp solve time is null it timed out
+def make_region_extract_plot(json, output):
+  eggcc_points = []
+  
+  benchmarks = dedup([b.get('benchmark') for b in json])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", json, benchmarks)
+  ilp_points = []
   eggcc_points = []
   ilp_timeout_points = []
-  ilp_points = []
 
-  benchmarks = dedup([b.get('benchmark') for b in json])
+  for sample in points:
+    extract_time = sample["extract_time"]
+    egraph_size = sample["egraph_size"]
+    ilp_solve_time = sample["ilp_extract_time"]
 
-  for benchmark in benchmarks:
-    # exclude raytrace, since it uses too much memory
-    if benchmark == 'raytrace':
-      continue
-    # a list of ExtractionTimeSample
-    ilp_test_times = get_ilp_test_times(json, benchmark)
+    eggcc_points.append((egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9))
 
-    for sample in ilp_test_times:
-      ilp_time = sample["ilp_time"]
-      egraph_size = sample["egraph_size"]
-      eggcc_time = sample["eggcc_time"]
+    if ilp_solve_time is None:
+      # WARNING HARDCODED 5 MIN TIMEOUT
+      ilp_timeout_points.append((egraph_size, 5 * 60))
+    else:
+      ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
+      ilp_points.append((egraph_size, ilp_time))
 
-      eggcc_time = eggcc_time["secs"] + eggcc_time["nanos"] / 1e9
 
-      if ilp_time == None:
-        ilp_timeout_points.append([egraph_size, ilp_timeout])
-      else:
-        ilp_points.append([egraph_size, ilp_time["secs"] + ilp_time["nanos"] / 1e9])
-      eggcc_points.append([egraph_size, eggcc_time])
-  
-    # graph data
+  # graph data
   plt.figure(figsize=(10, 8))
 
   psize = 150
   alpha = 0.2
   circleLineWidth = 1.0
+  timeoutLineWidth = 3.0
   # Plot extraction time points
   eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
   plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
 
-  # Plot ILP timeout points
-  ilp_timeout_x, ilp_timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(ilp_timeout_x, ilp_timeout_y, color='purple', label='ILP Timeout', alpha=alpha/2, marker='o', s=psize, linewidths=circleLineWidth, edgecolors='red')
-
   # Plot ILP solve time points
   ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
-  plt.scatter(ilp_x, ilp_y, color='green', label='ILP Solve Time', alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
+  plt.scatter(ilp_x, ilp_y, color='green', label="ILP Solve Time", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
+
+  # Plot ILP timeout points
+  timeout_x, timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
+  plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=timeoutLineWidth, edgecolors='red')
 
   fsize = 27
-  plt.xlabel('Size of egraph', fontsize=fsize)
-  plt.ylabel('Extraction Time', fontsize=fsize)
-  plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
+  plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
+  plt.ylabel('Extraction Time (Seconds)', fontsize=fsize)
+  #plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
   # slightly down
-  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 0.9))
+  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.3))
 
   # set axis font size
   plt.xticks(fontsize=fsize)
   plt.yticks(fontsize=fsize)
 
-  # set x limit to 330 k
-  plt.gca().set_xlim(left=-1000, right=330000)
+  #plt.gca().set_xlim(left=-100, right=2000)
   plt.tight_layout()
 
+  plt.savefig(output)
+
+
+def make_statewalk_width_histogram(data, output):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  widths = []
+  missing_widths = 0
+
+  for sample in points:
+    width = sample.get("statewalk_width")
+    if width is None:
+      missing_widths += 1
+      continue
+    widths.append(width)
+
+  if missing_widths:
+    print(f"WARNING: Skipping {missing_widths} timing samples with missing statewalk_width")
+
+  if not widths:
+    print("WARNING: No statewalk width data found; skipping histogram")
+    return
+
+  counts = Counter(widths)
+  sorted_widths = sorted(counts.keys())
+  frequencies = [counts[w] for w in sorted_widths]
+
+  plt.figure(figsize=(10, 6))
+  plt.bar(sorted_widths, frequencies, color='skyblue', edgecolor='black')
+  plt.xlabel('Statewalk Width')
+  plt.ylabel('Number of Region e-graphs')
+  plt.title('Distribution of Statewalk Width')
+
+  max_ticks = 25
+  if len(sorted_widths) > max_ticks:
+    step = max(1, len(sorted_widths) // max_ticks)
+    tick_positions = sorted_widths[::step]
+    if sorted_widths[-1] not in tick_positions:
+      tick_positions.append(sorted_widths[-1])
+    plt.xticks(tick_positions, rotation=45, ha='right')
+  else:
+    plt.xticks(sorted_widths)
+
+  plt.grid(axis='y', linestyle='--', alpha=0.5)
+  plt.tight_layout()
   plt.savefig(output)
 
 
@@ -372,15 +429,15 @@ def to_paper_names_treatment(treatment):
     return 'LLVM-O0-O0'
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
-  if treatment == 'llvm-eggcc-O0-O0':
+  if treatment == 'eggcc-O0-O0':
     return 'EQCC-O0-O0'
-  if treatment == 'llvm-eggcc-O3-O0':
+  if treatment == 'eggcc-O3-O0':
     return 'EQCC-O3-O0'
-  if treatment == 'llvm-eggcc-ablation-O0-O0':
+  if treatment == 'eggcc-ablation-O0-O0':
     return 'EQCC-Ablation-O0-O0'
-  if treatment == 'llvm-eggcc-ablation-O3-O0':
+  if treatment == 'eggcc-ablation-O3-O0':
     return 'EQCC-Ablation-O3-O0'
-  if treatment == 'llvm-eggcc-ablation-O3-O3':
+  if treatment == 'eggcc-ablation-O3-O3':
     return 'EQCC-Ablation-O3-O3'
   if treatment == 'rvsdg-round-trip-to-executable':
     return 'RVSDG-Executable'
@@ -390,20 +447,26 @@ def to_paper_names_treatment(treatment):
     return 'LLVM-O2-O0'
   if treatment == 'llvm-O3-O3':
     return 'LLVM-O3-O3'
-  if treatment == 'llvm-eggcc-sequential-O0-O0':
+  if treatment == 'eggcc-sequential-O0-O0':
     return 'EQCC-Sequential-O0-O0'
-  if treatment == 'llvm-eggcc-O3-O3':
+  if treatment == 'eggcc-O3-O3':
     return 'EQCC-O3-O3'
   if treatment == 'eggcc-ILP-O0-O0':
     return 'EQCC-ILP-O0-O0'
-  if treatment == 'llvm-eggcc-NOCTX-O0-O0':
-    return 'EQCC-NOCTX-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-O0-O0':
+  if treatment == 'eggcc-WITHCTX-O0-O0':
+    return 'EQCC-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-O0-O0':
     return 'EQCC-Tiger-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-WL-O0-O0':
+  if treatment == 'eggcc-tiger-WL-O0-O0':
     return 'EQCC-Tiger-WL-O0-O0'
-  if treatment == 'llvm-eggcc-tiger-ILP-O0-O0':
+  if treatment == 'eggcc-tiger-ILP-O0-O0':
     return 'EQCC-Tiger-ILP-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
+    return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
+    return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-COMPARISON':
+    return 'EQCC-Tiger-ILP-Comparison'
   raise KeyError(f"Unknown treatment {treatment}")
 
 
@@ -442,16 +505,6 @@ def make_macros(profile, benchmark_suites, output_file):
     benchmarks = dedup([b.get('benchmark') for b in profile])
     out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
-    ilp_all = []
-    for benchmark in benchmarks:
-      # skip raytrace
-      if benchmark == 'raytrace':
-        continue
-      ilp_all = ilp_all + get_ilp_test_times(profile, benchmark)
-
-    ilp_all_above_100k = list(filter(lambda x: x["egraph_size"] > 100000, ilp_all))
-    out.write(format_latex_macro_percent("PercentILPTimeout", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all))) / len(ilp_all)))
-    out.write(format_latex_macro_percent("PercentILPTimeoutAbove100k", len(list(filter(lambda x: x["ilp_time"] == None, ilp_all_above_100k))) / max(len(ilp_all_above_100k), 1)))
   
 
 def get_code_size(benchmark, suites_path):
@@ -546,8 +599,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  make_ilp(profile, f'{graphs_folder}/ilp_vs_lines.pdf', benchmark_suite_folder)
-
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_extract_vs_ILP.pdf')
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
+  
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
@@ -565,7 +619,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       xanchor = 0.4
       yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["llvm-eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
   """

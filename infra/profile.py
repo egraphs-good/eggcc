@@ -13,7 +13,7 @@ from generate_cfgs import make_cfgs
 
 
 # testing mode takes much fewer samples than the real eval in the paper
-IS_TESTING_MODE = True
+IS_TESTING_MODE = False
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
 EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
 
@@ -27,13 +27,6 @@ def num_samples():
     return 100
   return 1000
 
-
-# timeout in seconds, per function, that we give ILP to find
-# a solution ignoring linearity constraints
-def ilp_extraction_test_timeout():
-  if IS_TESTING_MODE:
-    return 5 # 5 second timeout
-  return 600 # 5 minute timeout
 
 def average(lst):
   return sum(lst) / len(lst)
@@ -56,7 +49,6 @@ treatments = [
   "llvm-O3-O3",
   "eggcc-O3-O0",
   "eggcc-O3-O3",
-  "eggcc-ILP-O0-O0",
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
   "eggcc-tiger-ILP-O0-O0",
@@ -156,10 +148,6 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
     case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
-    # TODO rip out old ILP
-    case "eggcc-ILP-O0-O0":
-      # run with the ilp-extraction-timeout flag
-      return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-WL-O0-O0":
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-O0-O0":

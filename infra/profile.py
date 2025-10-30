@@ -83,8 +83,8 @@ TMP_DIR = "tmp"
 
 EGGCC_BINARY = "target/release/eggcc"
 
-MEMORY_LIMIT_BYTES = 8 * 1024 * 1024 * 1024  # 8 GiB
-MEMORY_LIMIT_HUMAN = "8 GiB"
+MEMORY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024 
+MEMORY_LIMIT_HUMAN = "16 GiB"
 
 
 def _set_memory_limits():

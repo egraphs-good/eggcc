@@ -34,9 +34,15 @@ RESOURCE_DIR="$MYDIR/nightly-resources"
 
 # Nightly run directories. OUTPUT_DIR is where results go. Other temporary files can go in NIGHTLY_DIR.
 NIGHTLY_DIR="$TOP_DIR/nightly"
+# Output generated from data, such as graphs and the resulting report
 OUTPUT_DIR="$NIGHTLY_DIR/output"
+# Output for paper figures, macros
 PAPER_DIR="$NIGHTLY_DIR/output/paper"
-DATA_DIR="$TOP_DIR/nightly/output/data"
+# data_dir stays even when regenerating output with --update
+DATA_DIR="$TOP_DIR/nightly/data" # data from the run stored here
+# we copy the data to output for archiving
+OUTPUT_DATA_DIR="$OUTPUT_DIR/data" # copy the data to output
+# stores llvm svgs for the website
 LLVM_DIR="$DATA_DIR/llvm"
 LOG_FILE="$OUTPUT_DIR/log.txt"
 PROFILE_JSON="$DATA_DIR/profile.json"
@@ -87,6 +93,9 @@ popd
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$OUTPUT_DIR"
+
+# copy data over to output
+cp -r "$DATA_DIR" "$OUTPUT_DATA_DIR"
 
 # gzip all JSON and svgs in the nightly dir
 if [ "$LOCAL" == "" ]; then

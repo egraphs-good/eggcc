@@ -22,7 +22,7 @@ use tempfile::NamedTempFile;
 use to_egglog::TreeToEgglog;
 
 use crate::from_egglog::FromEgglog;
-use crate::util::run_cmd_line;
+use crate::util::{run_cmd_line, run_cmd_line_with_memory_limit, MemoryLimitExceeded};
 use crate::{
     dag2svg::tree_to_svg, interpreter::interpret_dag_prog,
     optimizations::function_inlining::perform_inlining, remove_context::remove_new_contexts,
@@ -533,6 +533,9 @@ fn extract_program_with_egglog(
     res
 }
 
+const TIGER_MEMORY_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
+const MEMORY_LIMIT_HUMAN: &str = "8 GiB";
+
 // Run tiger extractor pipeline using the tiger binaries built from c++.
 // See the build.rs file.
 fn run_tiger_pipeline(
@@ -572,9 +575,25 @@ fn run_tiger_pipeline(
         None
     };
 
-    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args.iter(), &json_input) {
+    let tiger_output = match run_cmd_line_with_memory_limit(
+        tiger_bin.as_os_str(),
+        tiger_args.iter(),
+        &json_input,
+        Some(TIGER_MEMORY_LIMIT_BYTES),
+    ) {
         Ok(output) => output,
         Err(err) => {
+            if let Some(limit_err) = err
+                .get_ref()
+                .and_then(|inner| inner.downcast_ref::<MemoryLimitExceeded>())
+            {
+                eprintln!("tiger exceeded the memory limit ({MEMORY_LIMIT_HUMAN}).");
+                #[cfg(unix)]
+                if let Some(signal) = limit_err.signal() {
+                    std::process::exit(128 + signal);
+                }
+                std::process::exit(1);
+            }
             let message = err.to_string();
             if message.contains("TIMEOUT") {
                 println!("TIMEOUT");

@@ -361,7 +361,6 @@ pub struct EggccConfig {
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
-    pub ilp_extraction_test_timeout: Option<Duration>,
     pub non_weakly_linear: bool,
     /// If true, use the experimental tiger extractor format output instead of greedy extractor.
     pub use_tiger: bool,
@@ -428,7 +427,6 @@ impl Default for EggccConfig {
             linearity: true,
             optimize_functions: None,
             ablate: None,
-            ilp_extraction_test_timeout: None,
             non_weakly_linear: false,
             use_tiger: false,
             tiger_ilp: false,
@@ -583,11 +581,17 @@ fn run_tiger_pipeline(
         None
     };
 
+    let mem_limit = if eggcc_config.tiger_ilp {
+        None
+    } else {
+        Some(TIGER_MEMORY_LIMIT_BYTES)
+    };
+
     let tiger_output = match run_cmd_line_with_memory_limit(
         tiger_bin.as_os_str(),
         tiger_args.iter(),
         &egraph_text,
-        Some(TIGER_MEMORY_LIMIT_BYTES),
+        mem_limit,
     ) {
         Ok(output) => output,
         Err(err) => {

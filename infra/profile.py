@@ -7,6 +7,7 @@ from glob import glob
 from sys import stdout
 import sys
 import subprocess
+import resource
 
 import concurrent.futures
 from generate_cfgs import make_cfgs
@@ -15,7 +16,7 @@ from generate_cfgs import make_cfgs
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
 # Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 40 * 60 # 40 minutes
+EGGCC_TIMEOUT_SECS = 15 * 60 # 15 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -27,13 +28,6 @@ def num_samples():
     return 100
   return 1000
 
-
-# timeout in seconds, per function, that we give ILP to find
-# a solution ignoring linearity constraints
-def ilp_extraction_test_timeout():
-  if IS_TESTING_MODE:
-    return 5 # 5 second timeout
-  return 600 # 5 minute timeout
 
 def average(lst):
   return sum(lst) / len(lst)
@@ -56,7 +50,6 @@ treatments = [
   "llvm-O3-O3",
   "eggcc-O3-O0",
   "eggcc-O3-O3",
-  "eggcc-ILP-O0-O0",
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
   "eggcc-tiger-ILP-O0-O0",
@@ -90,6 +83,31 @@ TMP_DIR = "tmp"
 
 EGGCC_BINARY = "target/release/eggcc"
 
+MEMORY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024 
+MEMORY_LIMIT_HUMAN = "16 GiB"
+
+
+def _set_memory_limits():
+  limits_to_set = [getattr(resource, name, None) for name in ("RLIMIT_AS", "RLIMIT_DATA")]
+  for limit in limits_to_set:
+    if limit is None:
+      continue
+    try:
+      resource.setrlimit(limit, (MEMORY_LIMIT_BYTES, MEMORY_LIMIT_BYTES))
+    except (ValueError, OSError):
+      continue
+
+
+def _memory_limit_exceeded(returncode):
+  if returncode is None:
+    return False
+
+  signals = (signal.SIGKILL, signal.SIGABRT)
+  if returncode < 0:
+    return -returncode in signals
+
+  return returncode in [128 + sig for sig in signals]
+
 
 def _terminate_process_tree(proc):
   try:
@@ -107,13 +125,15 @@ def _terminate_process_tree(proc):
 
 
 def run_with_timeout_killing_tree(cmd, timeout_secs):
+  preexec = _set_memory_limits
   with subprocess.Popen(
       cmd,
       shell=True,
       stdout=subprocess.PIPE,
       stderr=subprocess.PIPE,
       text=True,
-      start_new_session=True) as proc:
+      start_new_session=True,
+      preexec_fn=preexec) as proc:
     try:
       stdout, stderr = proc.communicate(timeout=timeout_secs)
       return subprocess.CompletedProcess(proc.args, proc.returncode, stdout, stderr)
@@ -156,10 +176,6 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
     case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
-    # TODO rip out old ILP
-    case "eggcc-ILP-O0-O0":
-      # run with the ilp-extraction-timeout flag
-      return (f'optimize --ilp-extraction-test-timeout {ilp_extraction_test_timeout()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-WL-O0-O0":
       return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-O0-O0":
@@ -241,6 +257,14 @@ def optimize(benchmark):
     failure_data["error"] = f'Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds'
     return failure_data
 
+  if _memory_limit_exceeded(process.returncode):
+    stderr_msg = process.stderr.strip()
+    detail = f" Details: {stderr_msg}" if stderr_msg else ""
+    msg = f'eggcc exceeded the memory limit ({MEMORY_LIMIT_HUMAN}) while optimizing {benchmark.name} with {benchmark.treatment}.{detail}'
+    print(f'[{benchmark.index}/{benchmark.total}] {msg}', flush=True, file=sys.stderr)
+    failure_data["error"] = msg
+    return failure_data
+
 
   # check for an ILP timeout in the output
   if "TIMEOUT" in process.stdout:
@@ -257,7 +281,22 @@ def optimize(benchmark):
     f.write(process.stdout)
 
   # Second command intentionally has no timeout (can run longer than first phase)
-  process2 = subprocess.run(cmd2, shell=True)
+  preexec = _set_memory_limits if os.name != "nt" else None
+  process2 = subprocess.run(
+    cmd2,
+    shell=True,
+    text=True,
+    capture_output=True,
+    preexec_fn=preexec,
+  )
+
+  if _memory_limit_exceeded(process2.returncode):
+    stderr_msg = process2.stderr.strip()
+    details = f"\nDetails: {stderr_msg}" if stderr_msg else ""
+    raise RuntimeError(
+      f'eggcc exceeded the memory limit ({MEMORY_LIMIT_HUMAN}) while lowering {benchmark.name} with {benchmark.treatment}.{details}'
+    )
+
   if process2.returncode != 0:
     raise Exception(f'Error running {cmd2}: {process2.stderr}')
 

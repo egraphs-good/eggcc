@@ -232,7 +232,7 @@ async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   let latexMacros = "";
   try {
-    const response = await fetch("nightlymacros.tex");
+    const response = await fetch("paper/nightlymacros.tex");
     if (!response.ok) {
       throw new Error(
         `Failed to load nightlymacros.tex: ${response.status}. This is expected if you are running with UNSAFE_TREATMENTS.`,

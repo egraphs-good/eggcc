@@ -28,13 +28,24 @@ while [ -L "$src" ]; do
 done
 MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 
-# Absolute directory paths
+# eggcc paths
 TOP_DIR="$MYDIR/.."
 RESOURCE_DIR="$MYDIR/nightly-resources"
+
+# Nightly run directories. OUTPUT_DIR is where results go. Other temporary files can go in NIGHTLY_DIR.
 NIGHTLY_DIR="$TOP_DIR/nightly"
+# Output generated from data, such as graphs and the resulting report
 OUTPUT_DIR="$NIGHTLY_DIR/output"
-GRAPHS_DIR="$NIGHTLY_DIR/output/graphs"
-DATA_DIR="$TOP_DIR/nightly/data"
+# Output for paper figures, macros
+PAPER_DIR="$NIGHTLY_DIR/output/paper"
+# data_dir stays even when regenerating output with --update
+DATA_DIR="$TOP_DIR/nightly/data" # data from the run stored here
+# we copy the data to output for archiving
+OUTPUT_DATA_DIR="$OUTPUT_DIR/data" # copy the data to output
+# stores llvm svgs for the website
+LLVM_DIR="$DATA_DIR/llvm"
+LOG_FILE="$OUTPUT_DIR/log.txt"
+PROFILE_JSON="$DATA_DIR/profile.json"
 
 # Make sure we're in the right place
 cd $MYDIR
@@ -45,11 +56,11 @@ echo "Switching to nighly script directory: $MYDIR"
 if [ "$1" == "--update" ]; then
   echo "updating front end only (output folder) due to --update flag"
   rm -rf $OUTPUT_DIR
-  mkdir -p "$OUTPUT_DIR" "$GRAPHS_DIR"
+  mkdir -p "$OUTPUT_DIR" "$PAPER_DIR"
 else
   rm -rf $NIGHTLY_DIR
   # Prepare output directories
-  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR/data" "$NIGHTLY_DIR/data/llvm" "$OUTPUT_DIR" "$GRAPHS_DIR"
+  mkdir -p "$NIGHTLY_DIR" "$NIGHTLY_DIR" "$OUTPUT_DIR" "$DATA_DIR" "$LLVM_DIR" "$PAPER_DIR"
 fi
 
 
@@ -61,37 +72,34 @@ pushd $TOP_DIR
 if [ "$1" == "--update" ]; then
   echo "skipping profile.py, updating front end"
 elif [ "$LOCAL" != "" ]; then
-  ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py "$DATA_DIR" "$@" 2>&1 | tee "$LOG_FILE"
 else
   export LLVM_SYS_180_PREFIX="/usr/lib/llvm-18/"
   make runtime
   # run on all benchmarks in nightly
-  ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee $NIGHTLY_DIR/log.txt
+  ./infra/profile.py "$DATA_DIR" benchmarks/passing  2>&1 | tee "$LOG_FILE"
 fi
 
 # CFGs now generated inside profile.py (removed separate generate_cfgs.py call)
 
 # generate the plots
 # needs to know what the benchmark suites are
-./infra/graphs.py "$OUTPUT_DIR" "$NIGHTLY_DIR/data/profile.json" benchmarks/passing 2>&1 | tee $NIGHTLY_DIR/log.txt
+./infra/graphs.py  "$OUTPUT_DIR" "$PAPER_DIR" "$PROFILE_JSON" benchmarks/passing 2>&1 | tee "$LOG_FILE"
 
 # Generate latex after running the profiler (depends on profile.json)
-./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee $NIGHTLY_DIR/log.txt
+./infra/generate_line_counts.py "$DATA_DIR" 2>&1 | tee "$LOG_FILE"
 
 popd
 
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$OUTPUT_DIR"
 
-# Copy data directory to the artifact
-cp -r "$NIGHTLY_DIR/data" "$OUTPUT_DIR/data"
-
-# Copy log
-cp "$NIGHTLY_DIR/log.txt" "$OUTPUT_DIR"
+# copy data over to output
+cp -r "$DATA_DIR" "$OUTPUT_DATA_DIR"
 
 # gzip all JSON and svgs in the nightly dir
 if [ "$LOCAL" == "" ]; then
-  gzip "$OUTPUT_DIR/data/profile.json"
+  gzip "$PROFILE_JSON"
   find "$OUTPUT_DIR" -name '*.svg' -exec gzip {} +
   find "$OUTPUT_DIR" -name '*.ll' -exec gzip {} +
 fi

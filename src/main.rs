@@ -1,7 +1,7 @@
 use clap::Parser;
 use dag_in_context::{EggccConfig, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
-use std::{ffi::OsStr, iter::once, path::PathBuf, time::Duration};
+use std::{ffi::OsStr, iter::once, path::PathBuf};
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -73,10 +73,6 @@ struct Args {
     /// With the two pass extractor, this will probably error out.
     #[clap(long)]
     non_weakly_linear: bool,
-    /// If we are testing ILP extraction, the timeout
-    /// for this test in seconds
-    #[clap(long)]
-    ilp_extraction_test_timeout: Option<u64>,
 
     #[clap(long)]
     optimize_function: Option<String>,
@@ -155,7 +151,6 @@ fn main() {
             non_weakly_linear: args.non_weakly_linear,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
-            ilp_extraction_test_timeout: args.ilp_extraction_test_timeout.map(Duration::from_secs),
             use_tiger: args.use_tiger,
             tiger_ilp: args.tiger_ilp,
             time_ilp: args.time_ilp,

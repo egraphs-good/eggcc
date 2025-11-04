@@ -7,8 +7,6 @@
 
 using namespace std;
 
-using RegionId = int;
-
 static int timestamp = 0;
 vector<int> region_vis;
 vector<EClassId> region_eclass_inv;

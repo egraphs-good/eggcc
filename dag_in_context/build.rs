@@ -57,6 +57,7 @@ fn main() {
             "greedy.cpp",
             "json2egraphin.cpp",
             "ilp.cpp",
+            "time_ilp.cpp",
             "main.cpp",
             "regionalize.cpp",
             "statewalkdp.cpp",

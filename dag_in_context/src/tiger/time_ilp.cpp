@@ -5,9 +5,9 @@
 #include <unordered_set>
 
 #include "greedy.h"
-#include "regionalize.h"
-#include "statewalkdp.h"
 #include "ilp.h"
+#include "regionalize.h"
+#include "tiger.h"
 
 using namespace std;
 
@@ -21,25 +21,10 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
     vector<ExtractRegionTiming> timings;
 
     vector<EClassId> region_roots = find_all_region_roots(g, fun_roots);
-    if (region_roots.empty()) {
-        return timings;
-    }
-
-    vector<RegionId> region_root_id(g.neclasses(), -1);
-    for (size_t i = 0; i < region_roots.size(); ++i) {
-        region_root_id[region_roots[i]] = static_cast<RegionId>(i);
-    }
-
     
 
     timings.reserve(region_roots.size());
     for (size_t idx = 0; idx < region_roots.size(); ++idx) {
-        RegionId rid = region_root_id[region_roots[idx]];
-        if (rid == -1) {
-            continue;
-        }
-
-        
         auto tiger_start = Clock::now();
 
         Extraction tiger_extraction;
@@ -49,13 +34,10 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
         for (size_t j = 0; j < region_extraction_cache.size(); ++j) {
             region_extraction_cache[j].second = -1;
         }
-        extract_region_tiger(
-            g,
-            region_roots[idx],
-            tiger_extraction,
-            region_root_id,
-            region_extraction_cache,
-            statewalk_cost);
+        pair<EGraph, EGraphMapping> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
+
+        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, region_roots[idx], project_statewalk_cost(regionalized.second, statewalk_cost));
+
         auto tiger_end = Clock::now();
         long long tiger_ns = chrono::duration_cast<chrono::nanoseconds>(tiger_end - tiger_start).count();
 
@@ -67,12 +49,6 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
             ilp_extraction,
             ilp_timed_out);
 
-        Statewalk statewalk = statewalkDP(g, region_roots[idx], statewalk_cost);
-        unordered_set<EClassId> unique_effectful;
-        for (const auto &step : statewalk) {
-            unique_effectful.insert(step.first);
-        }
-        size_t statewalk_width = unique_effectful.size();
 
         ExtractRegionTiming sample;
         sample.egraph_size = g.eclasses.size();
@@ -83,7 +59,8 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
             sample.ilp_duration_ns = ilp_ns;
         }
         sample.ilp_timed_out = ilp_timed_out;
-        sample.statewalk_width = statewalk_width;
+        // TODO implement statewalk width computation
+        sample.statewalk_width = 0;
         timings.push_back(sample);
     }
 

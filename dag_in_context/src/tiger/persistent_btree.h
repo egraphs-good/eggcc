@@ -181,7 +181,7 @@ class PersistentBitSet : public PersistentBTree<2, 0> {
             DEBUG_ASSERT(0 <= i && i < len);
             PBId cur = root;
             for (int h = 0; h < height; ++h) {
-                cur = chid(height - h, i);
+                cur = getc(cur, chid(height - h, i));
             }
             unsigned &c = getc(cur, chid(0, i));
             unsigned val = (c >> pos(i)) & 1;

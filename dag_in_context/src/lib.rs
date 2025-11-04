@@ -14,6 +14,7 @@ use std::{
     collections::HashSet,
     ffi::OsString,
     fmt::Write,
+    fs,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -372,6 +373,8 @@ pub struct EggccConfig {
     pub use_context: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
+    /// When set, dump the serialized e-graphs sent to tiger into this directory.
+    pub egraph_dump_dir: Option<PathBuf>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -435,6 +438,7 @@ impl Default for EggccConfig {
             time_ilp: false,
             use_context: true,
             ilp_minimize_objective: true,
+            egraph_dump_dir: None,
         }
     }
 }
@@ -708,6 +712,16 @@ pub fn optimize(
     let schedule_list = eggcc_config.get_schedule_list();
     let mut res = program.clone();
     let mut extract_region_timings: Vec<ExtractRegionTiming> = vec![];
+    if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
+        fs::create_dir_all(dir).unwrap_or_else(|err| {
+            panic!(
+                "Failed to create tiger e-graph output directory {}: {}",
+                dir.display(),
+                err
+            )
+        });
+    }
+    let mut tiger_dump_counter: usize = 0;
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
@@ -764,6 +778,25 @@ pub fn optimize(
 
             let serialization_start = Instant::now();
             let (serialized, unextractables) = serialized_egraph(egraph);
+
+            if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
+                tiger_dump_counter += 1;
+                let filename = format!("tiger_egraph_{:04}.json", tiger_dump_counter);
+                let path = dir.join(filename);
+                let json = serde_json::to_string_pretty(&serialized).unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to serialize tiger e-graph #{:04} for dumping: {}",
+                        tiger_dump_counter, err
+                    )
+                });
+                fs::write(&path, json).unwrap_or_else(|err| {
+                    panic!(
+                        "Failed to write tiger e-graph to {}: {}",
+                        path.display(),
+                        err
+                    )
+                });
+            }
 
             let extraction_start = Instant::now();
             let mut termdag = egglog::TermDag::default();

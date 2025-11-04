@@ -20,6 +20,8 @@
 
 void debug_print_egraph(const EGraph &g);
 
+void debug_print_extraction(const EGraph &g, const Extraction &e);
+
 bool is_wellformed_egraph(const EGraph &g, bool allow_unextractable_child, bool allow_subregion_child);
 
 bool is_valid_egraph_mapping(const EGraphMapping &g2gp, const EGraph &g, const EGraph &gp, bool isPartial, bool isInjective, bool isSurjective, bool checkChildrenConsistentcy);

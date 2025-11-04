@@ -322,6 +322,7 @@ Extraction statewalk_greedy_extraction(const EGraph &g, const EClassId root) {
                     }
                 }
             }
+            DEBUG_ASSERT(q.size() == buf.size());
             int base = e.size();
             e.resize(e.size() + q.size());
             for (size_t i = 0; i < q.size(); ++i) {
@@ -341,12 +342,14 @@ Extraction statewalk_greedy_extraction(const EGraph &g, const EClassId root) {
                 }
             }
             // processed optimization
-            for (size_t i = 0; i < q.size(); ++i) {
-                int u = buf[q[i]];
+            for (size_t j = 0; j < q.size(); ++j) {
+                int u = buf[q[j]];
                 if (dis[u].sum > 0) {
                     dis[u].sum = 0;
                     dis[u].bag.clear();
-                    maxheap.push(make_pair(~0, u));
+                    if (u != i) {
+                        maxheap.push(make_pair(~0, u));
+                    }
                 }
             }
         }

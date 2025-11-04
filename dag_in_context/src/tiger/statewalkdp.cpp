@@ -169,9 +169,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
             liveness[i][i >> 6] |= 1ull << (i & 63);
             while (q.size()) {
                 EClassId u = q.front();
-                #ifdef DEBUG
-                    cerr << i << ' ' << u << endl;
-                #endif
                 q.pop();
                 if (g.eclasses[u].isEffectful) {
                     for (size_t j = 0; j < parent_edge_to_effectful[u].size(); ++j) {
@@ -182,7 +179,8 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                         }
                     }
                 } 
-                if (u != i) {
+                if ((liveness[i][u >> 6] >> (u & 63)) & 1) {
+                    const EClass &c = g.eclasses[u];
                     for (ENodeId j = 0; j < (ENodeId)c.nenodes(); ++j) {
                         const ENode &n = c.enodes[j];
                         for (size_t k = 0; k < n.ch.size(); ++k) {
@@ -207,6 +205,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                 if (!liveness_delta[i].count(v)) {
                     vector<EClassId> &l = liveness_delta[i][v];
                     for (size_t k = 0; k < liveness[i].size(); ++k) {
+                        DEBUG_ASSERT((liveness[i][k] & liveness[v][k]) == liveness[v][k]);
                         unsigned long long delta = liveness[i][k] ^ liveness[v][k];
                         while (delta != 0) {
                             unsigned long long lb = delta & (-delta);
@@ -234,7 +233,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
     dp.push_back(DPValue(init_cost, init_extractable_id, -1, argc, argn));
     bitset_extra.insert_or_assign(init_extractable_id, BitsetExtraInfo(init_true_hash, init_masked_hash, init_cnt_id));
     unifier[init_true_hash] = init_extractable_id;
-    DEBUG_CERR("--------new statewalk dp----------");
     priority_queue<pair<Cost, DPId> > maxheap;
     maxheap.push(make_pair(~init_cost, 0));
     DPId best_statewalk = root == argc ? 0 : -1;
@@ -242,13 +240,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         Cost c = ~maxheap.top().first;
         DPId uid = maxheap.top().second;
         maxheap.pop();
-        #ifdef DEBUG
-            cerr << "[" << dp[uid].ec << ',';
-            for (int pos = 0; pos < 32 && pos < compressed_init_extractable.size(); ++pos) {
-                cerr << (true_extractable_pool.getpos(dp[uid].root, pos) ? 1 : 0);
-            }            
-            cerr << "] : " << c << endl;
-        #endif
         if (best_statewalk != -1 && dp[uid].c == dp[best_statewalk].c) {
             break;
         }
@@ -257,32 +248,16 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
             for (size_t i = 0; i < parent_edge_to_effectful[u].size(); ++i) {
                 EClassId v = parent_edge_to_effectful[u][i].first;
                 ENodeId vn = parent_edge_to_effectful[u][i].second;
-                #ifdef DEBUG
-                    cerr << v << ' ' << vn << endl;
-                #endif
                 // test for validity
                 bool can_extend = true;
                 const ENode &n = g.eclasses[v].enodes[vn];
                 for (size_t j = 0; j < n.ch.size(); ++j) {
                     EClassId chc = n.ch[j];
-                    #ifdef DEBUG
-                        if (init_extractable[chc]) {
-                            cerr << '*' << chc << ' ';
-                        } else {
-                            cerr << '?' << chc << '(' << compressed_eclass_id[chc] << ')' << ' ';
-                        }
-                    #endif
                     if (!init_extractable[chc] && (true_extractable_pool.getpos(dp[uid].root, compressed_eclass_id[chc]) == 0)) {
-                        #ifdef DEBUG
-                            cerr << "AH";
-                        #endif
                         can_extend = false;
                         break;
                     }
                 }
-                #ifdef DEBUG
-                    cerr << endl;
-                #endif
                 if (can_extend) {
                     // find the new dp state
                     const BitsetExtraInfo &info = bitset_extra.find(dp[uid].root)->second;                    
@@ -359,10 +334,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             nhash = ninfo.masked_hash;
                         }
                     }
-        #ifdef DEBUG
-            cerr << info.true_hash << ' ' << nhash << endl;
-        #endif
-                    
                     // update
                     if (!dpmap[v].count(nhash)) {
                         DPId vid = dpmap[v][nhash] = dp.size();
@@ -371,14 +342,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                         if (v == root) {
                             best_statewalk = vid;
                         }
-                        DEBUG_CERR("New DP state");
-        #ifdef DEBUG
-            cerr << nc << " -> [" << dp[vid].ec << ',';
-            for (int pos = 0; pos < 32 && pos < compressed_init_extractable.size(); ++pos) {
-                cerr << (true_extractable_pool.getpos(dp[vid].root, pos) ? 1 : 0);
-            }            
-            cerr << "]" << endl;
-        #endif
                     } else {
                         DPId vid = dpmap[v][nhash];
                         if (dp[vid].c > nc) {
@@ -390,19 +353,12 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             if (v == root) {
                                 best_statewalk = vid;
                             }
-                            DEBUG_CERR("Updated DP state");
                         }
                     }
                 }
             }
         }
     }
-    #ifdef DEBUG
-        if (best_statewalk == -1) {
-            cerr << root << endl;
-            debug_print_egraph(g);
-        }
-    #endif
     DEBUG_ASSERT(best_statewalk != -1);
     // reconstruct statewalk
     Statewalk sw;

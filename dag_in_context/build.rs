@@ -52,7 +52,17 @@ fn main() {
 
     build_binary(
         &tiger_dir,
-        &["egraphin.cpp", "greedy.cpp", "json2egraphin.cpp", "main.cpp", "regionalize.cpp", "statewalkdp.cpp", "tiger.cpp", "toegglog.cpp", "debug.cpp"],
+        &[
+            "egraphin.cpp",
+            "greedy.cpp",
+            "json2egraphin.cpp",
+            "main.cpp",
+            "regionalize.cpp",
+            "statewalkdp.cpp",
+            "tiger.cpp",
+            "toegglog.cpp",
+            "debug.cpp",
+        ],
         &tiger_out,
         &["-DEMIT_JSON"],
     );

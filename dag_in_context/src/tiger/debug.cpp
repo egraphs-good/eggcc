@@ -1,4 +1,5 @@
 #include "debug.h"
+#include <queue>
 
 void json_print_egraph(const EGraph &g) {
     vector<string> name_for_eclass;

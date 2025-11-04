@@ -40,6 +40,9 @@ bool g_ilp_minimize_objective = true;
 
 bool g_time_ilp = false;
 
+pair<EClassId, ENodeId> findArg(const EGraph &g);
+bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e);
+
 static void kill_process_group(pid_t pid) {
 	if (pid <= 0) {
 		return;

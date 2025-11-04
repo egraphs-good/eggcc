@@ -7,6 +7,8 @@ using namespace std;
 
 struct Config {
     string report_file;
+    bool ilp_mode = false;
+    bool ilp_minimize_objective = true;
 
     bool skip_report();
 };

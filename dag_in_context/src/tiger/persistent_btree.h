@@ -2,6 +2,7 @@
 #define PERSISTENTBTREE_H
 
 #include<vector>
+#include<cstring>
 
 #include "debug.h"
 

@@ -543,18 +543,6 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let json2egraph_bin = find_tiger_binary("json2egraph")
-        .ok_or_else(|| "json2egraph binary not found; build the tiger tools first".to_string())
-        .unwrap();
-
-    let egraph_text = run_cmd_line(
-        json2egraph_bin.as_os_str(),
-        std::iter::empty::<&std::ffi::OsStr>(),
-        &json_input,
-    )
-    .map_err(|err| format!("json2egraph invocation failed: {err}"))
-    .unwrap();
-
     let tiger_bin = find_tiger_binary("tiger")
         .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
         .unwrap();
@@ -580,7 +568,7 @@ fn run_tiger_pipeline(
         None
     };
 
-    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args.iter(), &egraph_text) {
+    let tiger_output = match run_cmd_line(tiger_bin.as_os_str(), tiger_args.iter(), &json_input) {
         Ok(output) => output,
         Err(err) => {
             let message = err.to_string();

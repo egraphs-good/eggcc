@@ -1,17 +1,16 @@
-.PHONY: all main clean json2egraph egraph2json
+.PHONY: all main debug clean
 
-CPPFLAGS = -O2 -Wno-unused-result
+CPPFLAGS = -std=c++17 -Wno-unused-result
 
-json2egraph:
-	g++ $(CPPFLAGS) json2egraph.cpp -o json2egraph
+SRC = egraphin.cpp greedy.cpp json2egraphin.cpp main.cpp regionalize.cpp statewalkdp.cpp tiger.cpp toegglog.cpp debug.cpp 
 
 main:
-	g++ $(CPPFLAGS) main.cpp ilp.cpp -o main
+	g++ -O3 $(CPPFLAGS) $(SRC) -o main
 
-egraph2json:
-	g++ $(CPPFLAGS) egraph2json.cpp -o egraph2json
+debug:
+	g++ -O0 $(CPPFLAGS) -DDEBUG $(SRC) -o main
 
 clean: 
-	rm -f json2egraph main
+	rm -f main
 
-all: json2egraph main
+all: main

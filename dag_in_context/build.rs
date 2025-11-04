@@ -7,7 +7,7 @@ use std::{
 fn build_binary(tiger_dir: &Path, sources: &[&str], output: &Path, extra_flags: &[&str]) {
     let mut cmd = Command::new("g++");
     cmd.current_dir(tiger_dir)
-        .args(["-std=c++17", "-O2", "-Wno-unused-result"])
+        .args(["-std=c++17", "-O3", "-Wno-unused-result"])
         .args(extra_flags);
 
     for source in sources {
@@ -48,13 +48,11 @@ fn main() {
 
     fs::create_dir_all(&target_dir).expect("failed to create target directory");
 
-    let json2egraph_out = target_dir.join(binary_name("json2egraph"));
     let tiger_out = target_dir.join(binary_name("tiger"));
 
-    build_binary(&tiger_dir, &["json2egraph.cpp"], &json2egraph_out, &[]);
     build_binary(
         &tiger_dir,
-        &["main.cpp", "ilp.cpp"],
+        &["egraphin.cpp", "greedy.cpp", "json2egraphin.cpp", "main.cpp", "regionalize.cpp", "statewalkdp.cpp", "tiger.cpp", "toegglog.cpp", "debug.cpp"],
         &tiger_out,
         &["-DEMIT_JSON"],
     );

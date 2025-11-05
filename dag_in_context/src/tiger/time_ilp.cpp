@@ -34,9 +34,9 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
         for (size_t j = 0; j < region_extraction_cache.size(); ++j) {
             region_extraction_cache[j].second = -1;
         }
-        pair<EGraph, EGraphMapping> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
+        pair<EGraph, pair<EClassId, EGraphMapping>> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
 
-        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, region_roots[idx], project_statewalk_cost(regionalized.second, statewalk_cost));
+        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, region_roots[idx], project_statewalk_cost(regionalized.second.second, statewalk_cost));
 
         auto tiger_end = Clock::now();
         long long tiger_ns = chrono::duration_cast<chrono::nanoseconds>(tiger_end - tiger_start).count();

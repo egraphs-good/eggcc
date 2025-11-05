@@ -5,6 +5,7 @@ import random
 from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from matplotlib.patches import Patch
 import numpy as np
 import sys
 import os
@@ -232,101 +233,141 @@ def make_region_extract_plot(json, output, plot_ilp):
   plt.savefig(output)
 
 
-def make_extraction_time_histogram(data, output, cutoff):
+def make_extraction_time_histogram(data, output, max_cutoff=None):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
   extract_times = []
   ilp_times = []
+  extract_overflow = 0
+  ilp_overflow = 0
   ilp_timeout_count = 0
 
   for sample in points:
     extract_time = sample.get("extract_time")
     if extract_time is None:
         raise KeyError("Missing extract_time in sample")
-    tiger_time = extract_time["secs"] + extract_time["nanos"] / 1e9
-    if cutoff and tiger_time > cutoff:
-        raise KeyError("Extract time exceeds cutoff")
-    extract_times.append(tiger_time)
-    
+    extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
+    if max_cutoff is not None and extract_value > max_cutoff:
+      extract_overflow += 1
+    else:
+      extract_times.append(extract_value)
 
     ilp_time = sample.get("ilp_extract_time")
     if ilp_time is None:
       ilp_timeout_count += 1
     else:
-      ilp_time_converted = ilp_time["secs"] + ilp_time["nanos"] / 1e9 
-      if cutoff and ilp_time_converted > cutoff:
-        ilp_timeout_count += 1
+      ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
+      if max_cutoff is not None and ilp_value > max_cutoff:
+        ilp_overflow += 1
       else:
-        ilp_times.append(ilp_time_converted)
+        ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times:
+  if not extract_times and not ilp_times and ilp_timeout_count == 0 and extract_overflow == 0 and ilp_overflow == 0:
     print("WARNING: No extraction timing data found; skipping histogram")
     return
 
   plt.figure(figsize=(10, 6))
 
   all_times = extract_times + ilp_times
-  bin_count = 50
+  bin_count = max(10, int(np.sqrt(len(all_times) if all_times else 1)))
   hist_min = 0.0
-  hist_max = 0
-  if cutoff:
-    hist_max = cutoff
+  if max_cutoff is not None:
+    hist_max = max_cutoff
+  elif all_times:
+    hist_max = max(all_times)
   else:
-      hist_max = max(all_times)
+    hist_max = 1.0
   if hist_max == hist_min:
     hist_max = hist_min + 1.0
-  hist_range = (hist_min, hist_max)
 
+  bin_edges = np.linspace(hist_min, hist_max, bin_count + 1)
+  eggcc_counts = np.zeros(bin_count, dtype=int)
+  ilp_counts = np.zeros(bin_count, dtype=int)
   if extract_times:
-    plt.hist(
-      extract_times,
-      bins=bin_count,
+    eggcc_counts, _ = np.histogram(extract_times, bins=bin_edges)
+  if ilp_times:
+    ilp_counts, _ = np.histogram(ilp_times, bins=bin_edges)
+
+  bin_width = bin_edges[1] - bin_edges[0] if len(bin_edges) > 1 else 1.0
+  eggcc_width = bin_width * 0.45
+  ilp_width = bin_width * 0.45
+
+  legend_handles = []
+  legend_labels = []
+
+  eggcc_lefts = bin_edges[:-1]
+  eggcc_mask = eggcc_counts > 0
+  if eggcc_mask.any():
+    plt.bar(
+      eggcc_lefts[eggcc_mask],
+      eggcc_counts[eggcc_mask],
+      width=eggcc_width,
+      align='edge',
       color='blue',
       edgecolor='black',
-      label=f'{EGGCC_NAME} Extraction Time',
-      rwidth=0.48,
-      log=True,
-      range=hist_range,
+      alpha=0.7,
     )
-  if ilp_times:
-    plt.hist(
-      ilp_times,
-      bins=bin_count,
-      range=hist_range,
-      alpha=0.6,
+    legend_handles.append(Patch(facecolor='blue', edgecolor='black', alpha=0.7))
+    legend_labels.append(f'{EGGCC_NAME} Extraction Time')
+
+  ilp_lefts = bin_edges[:-1] + (bin_width - ilp_width)
+  ilp_mask = ilp_counts > 0
+  if ilp_mask.any():
+    plt.bar(
+      ilp_lefts[ilp_mask],
+      ilp_counts[ilp_mask],
+      width=ilp_width,
+      align='edge',
       color='green',
       edgecolor='black',
-      label='ILP Solve Time',
-      align='right',
-      rwidth=0.48,
-      log=True,
+      alpha=0.7,
     )
+    legend_handles.append(Patch(facecolor='green', edgecolor='black', alpha=0.7))
+    legend_labels.append('ILP Solve Time')
 
   plt.xlabel('Time (Seconds)')
   plt.ylabel('Number of Regions')
-  plt.title('Distribution of Extraction Times')
+  title_suffix = '' if max_cutoff is None else f' (≤ {max_cutoff}s)'
+  plt.title(f'Distribution of Extraction Times{title_suffix}')
 
-  bin_width = 0.5 * (hist_max - hist_min) / bin_count
+  xlim_right = hist_max
+  timeout_width = bin_width * 0.8
   if ilp_timeout_count:
-    timeout_left = hist_max
     plt.bar(
-      timeout_left,
+      hist_max,
       ilp_timeout_count,
-      width=bin_width,
+      width=timeout_width,
       color='red',
       edgecolor='black',
       align='edge',
-      label='ILP Timeouts',
+      alpha=0.7,
     )
-    plt.xlim(hist_min, hist_max + bin_width)
-  else:
-    plt.xlim(hist_range)
+    legend_handles.append(Patch(facecolor='red', edgecolor='black', alpha=0.7))
+    legend_labels.append('ILP Timeouts')
+    xlim_right = hist_max + timeout_width
 
+  if max_cutoff is not None and (extract_overflow or ilp_overflow):
+    overflow_parts = []
+    if extract_overflow:
+      overflow_parts.append(f'{EGGCC_NAME}: {extract_overflow}')
+    if ilp_overflow:
+      overflow_parts.append(f'ILP: {ilp_overflow}')
+    overflow_msg = f'>{max_cutoff}s ' + ', '.join(overflow_parts)
+    plt.annotate(
+      overflow_msg,
+      xy=(0.95, 0.9),
+      xycoords='axes fraction',
+      ha='right',
+      va='top',
+      fontsize=12,
+    )
+
+  plt.xlim(hist_min, xlim_right)
   plt.yscale('log')
 
-  if extract_times or ilp_times:
-    plt.legend()
+  if legend_handles:
+    plt.legend(legend_handles, legend_labels)
 
   plt.tight_layout()
   plt.savefig(output)
@@ -740,8 +781,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf', None)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', cutoff=5.0)
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', max_cutoff=5.0)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
   
   for suite_path in benchmark_suites:
@@ -764,14 +805,6 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
-  """
-  make_code_size_vs_compile_and_extraction_time(
-    profile, 
-    f'{graphs_folder}/code_size_vs_compile_time.png', 
-    f'{graphs_folder}/code_size_vs_extraction_time.png', 
-    f'{graphs_folder}/extraction_ratio.png',
-    benchmark_suite_folder)
-    """
 
   # make json list of graph names and put in in output
   graph_names = []

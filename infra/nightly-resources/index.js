@@ -281,7 +281,7 @@ function addGraphs() {
 
         // create link for plot pdf
         const link = document.createElement("a");
-        link.href = `graphs/${plot}`;
+        link.href = `paper/${plot}`;
         link.innerText = `Open ${plot}`;
         link.target = "_blank";
         link.rel = "noopener noreferrer";

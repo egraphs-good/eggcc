@@ -193,6 +193,52 @@ def make_region_extract_plot(json, output):
   plt.savefig(output)
 
 
+def make_extraction_time_histogram(data, output):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  extract_times = []
+  ilp_times = []
+  ilp_timeout_count = 0
+
+  for sample in points:
+    extract_time = sample.get("extract_time")
+    if extract_time is not None:
+      extract_times.append(extract_time["secs"] + extract_time["nanos"] / 1e9)
+
+    ilp_time = sample.get("ilp_extract_time")
+    if ilp_time is None:
+      ilp_timeout_count += 1
+    else:
+      ilp_times.append(ilp_time["secs"] + ilp_time["nanos"] / 1e9)
+
+  if not extract_times and not ilp_times:
+    print("WARNING: No extraction timing data found; skipping histogram")
+    return
+
+  plt.figure(figsize=(10, 6))
+
+  bins = 30
+  if extract_times:
+    plt.hist(extract_times, bins=bins, alpha=0.6, color='blue', edgecolor='black', label=f'{EGGCC_NAME} Extraction Time')
+  if ilp_times:
+    plt.hist(ilp_times, bins=bins, alpha=0.6, color='green', edgecolor='black', label='ILP Solve Time')
+
+  plt.xlabel('Time (Seconds)')
+  plt.ylabel('Number of Regions')
+  plt.title('Distribution of Extraction Times')
+
+  if ilp_timeout_count:
+    timeout_msg = f'ILP timeouts: {ilp_timeout_count}'
+    plt.annotate(timeout_msg, xy=(0.95, 0.95), xycoords='axes fraction', ha='right', va='top', fontsize=12, color='red')
+
+  if extract_times or ilp_times:
+    plt.legend()
+
+  plt.tight_layout()
+  plt.savefig(output)
+
+
 def make_statewalk_width_histogram(data, output):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
@@ -600,6 +646,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_extract_vs_ILP.pdf')
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
   
   for suite_path in benchmark_suites:

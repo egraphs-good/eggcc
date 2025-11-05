@@ -242,8 +242,10 @@ def make_extraction_time_histogram(data, output):
 
   for sample in points:
     extract_time = sample.get("extract_time")
-    if extract_time is not None:
-      extract_times.append(extract_time["secs"] + extract_time["nanos"] / 1e9)
+    if extract_time is None:
+        raise KeyError("Missing extract_time in sample")
+    extract_times.append(extract_time["secs"] + extract_time["nanos"] / 1e9)
+    
 
     ilp_time = sample.get("ilp_extract_time")
     if ilp_time is None:
@@ -257,19 +259,61 @@ def make_extraction_time_histogram(data, output):
 
   plt.figure(figsize=(10, 6))
 
-  bins = 30
+  all_times = extract_times + ilp_times
+  bin_count = 50
+  hist_min = 0.0
+  hist_max = max(all_times) if all_times else 1.0
+  if hist_max == hist_min:
+    hist_max = hist_min + 1.0
+  hist_range = (hist_min, hist_max)
+
   if extract_times:
-    plt.hist(extract_times, bins=bins, alpha=0.6, color='blue', edgecolor='black', label=f'{EGGCC_NAME} Extraction Time')
+    plt.hist(
+      extract_times,
+      bins=bin_count,
+      range=hist_range,
+      alpha=0.6,
+      color='blue',
+      edgecolor='black',
+      label=f'{EGGCC_NAME} Extraction Time',
+      rwidth=0.48,
+      log=True,
+    )
   if ilp_times:
-    plt.hist(ilp_times, bins=bins, alpha=0.6, color='green', edgecolor='black', label='ILP Solve Time')
+    plt.hist(
+      ilp_times,
+      bins=bin_count,
+      range=hist_range,
+      alpha=0.6,
+      color='green',
+      edgecolor='black',
+      label='ILP Solve Time',
+      align='right',
+      rwidth=0.48,
+      log=True,
+    )
 
   plt.xlabel('Time (Seconds)')
   plt.ylabel('Number of Regions')
   plt.title('Distribution of Extraction Times')
 
+  bin_width = 0.5 * (hist_max - hist_min) / bin_count
   if ilp_timeout_count:
-    timeout_msg = f'ILP timeouts: {ilp_timeout_count}'
-    plt.annotate(timeout_msg, xy=(0.95, 0.95), xycoords='axes fraction', ha='right', va='top', fontsize=12, color='red')
+    timeout_left = hist_max
+    plt.bar(
+      timeout_left,
+      ilp_timeout_count,
+      width=bin_width,
+      color='red',
+      edgecolor='black',
+      align='edge',
+      label='ILP Timeouts',
+    )
+    plt.xlim(hist_min, hist_max + bin_width)
+  else:
+    plt.xlim(hist_range)
+
+  plt.yscale('log')
 
   if extract_times or ilp_times:
     plt.legend()

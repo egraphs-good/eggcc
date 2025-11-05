@@ -347,22 +347,6 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     legend_labels.append('ILP Timeouts')
     xlim_right = hist_max + timeout_width
 
-  if max_cutoff is not None and (extract_overflow or ilp_overflow):
-    overflow_parts = []
-    if extract_overflow:
-      overflow_parts.append(f'{EGGCC_NAME}: {extract_overflow}')
-    if ilp_overflow:
-      overflow_parts.append(f'ILP: {ilp_overflow}')
-    overflow_msg = f'>{max_cutoff}s ' + ', '.join(overflow_parts)
-    plt.annotate(
-      overflow_msg,
-      xy=(0.95, 0.9),
-      xycoords='axes fraction',
-      ha='right',
-      va='top',
-      fontsize=12,
-    )
-
   plt.xlim(hist_min, xlim_right)
   plt.yscale('log')
 

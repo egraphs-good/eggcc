@@ -23,29 +23,26 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
     vector<EClassId> region_roots = find_all_region_roots(g, fun_roots);
     
 
+    vector<vector<Cost>> statewalk_cost = compute_statewalk_cost(g);
+    
     timings.reserve(region_roots.size());
     for (size_t idx = 0; idx < region_roots.size(); ++idx) {
-        auto tiger_start = Clock::now();
 
-        Extraction tiger_extraction;
-
-        vector<vector<Cost>> statewalk_cost = compute_statewalk_cost(g);
-        vector<pair<Extraction, ExtractionENodeId>> region_extraction_cache(region_roots.size());
-        for (size_t j = 0; j < region_extraction_cache.size(); ++j) {
-            region_extraction_cache[j].second = -1;
-        }
         pair<EGraph, pair<EClassId, EGraphMapping>> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
 
-        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, region_roots[idx], project_statewalk_cost(regionalized.second.second, statewalk_cost));
+        auto tiger_start = Clock::now();
+
+        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, regionalized.second.first, project_statewalk_cost(regionalized.second.second, statewalk_cost));
 
         auto tiger_end = Clock::now();
+
         long long tiger_ns = chrono::duration_cast<chrono::nanoseconds>(tiger_end - tiger_start).count();
 
         Extraction ilp_extraction;
         bool ilp_timed_out = false;
         long long ilp_ns = extract_region_ilp_with_timing(
-            g,
-            region_roots[idx],
+            regionalized.first,
+            regionalized.second.first,
             ilp_extraction,
             ilp_timed_out);
 

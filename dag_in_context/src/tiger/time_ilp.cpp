@@ -28,11 +28,16 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
     timings.reserve(region_roots.size());
     for (size_t idx = 0; idx < region_roots.size(); ++idx) {
 
-        pair<EGraph, pair<EClassId, EGraphMapping>> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
+        const pair<EGraph, pair<EClassId, EGraphMapping>> regionalized = construct_regionalized_egraph(g, region_roots[idx]);
+
+        const EGraph &gr = regionalized.first;
+        const EClassId root = regionalized.second.first;
+        const EGraphMapping &gr2g = regionalized.second.second;
+        const vector<vector<Cost> > rstatewalk_cost = project_statewalk_cost(regionalized.second.second, statewalk_cost);
 
         auto tiger_start = Clock::now();
 
-        Extraction tmpe = extract_regionalized_egraph_tiger(regionalized.first, regionalized.second.first, project_statewalk_cost(regionalized.second.second, statewalk_cost));
+        Extraction tmpe = extract_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
 
         auto tiger_end = Clock::now();
 
@@ -57,7 +62,11 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
         }
         sample.ilp_timed_out = ilp_timed_out;
         // TODO implement statewalk width computation
-        sample.statewalk_width = 0;
+        pair<StatewalkWidthReport, StatewalkWidthReport> res = get_stat_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
+        sample.statewalk_width_liveon_max = res.first.max_width;
+        sample.statewalk_width_liveon_avg = res.first.avg_width;
+        sample.statewalk_width_liveoff_max = res.second.max_width;
+        sample.statewalk_width_liveoff_avg = res.second.avg_width;
         timings.push_back(sample);
     }
 
@@ -86,7 +95,10 @@ bool write_extract_region_timings_json(
                 out << "null";
             }
             out << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
-                << ", \"statewalk_width\": " << static_cast<unsigned long long>(sample.statewalk_width)
+                << ", \"statewalk_width_liveon_max\": " << sample.statewalk_width_liveon_max
+                << ", \"statewalk_width_liveon_avg\": " << sample.statewalk_width_liveon_avg
+                << ", \"statewalk_width_liveoff_max\": " << sample.statewalk_width_liveoff_max
+                << ", \"statewalk_width_liveoff_avg\": " << sample.statewalk_width_liveoff_avg
                 << "}";
         }
         out << "\n  ";

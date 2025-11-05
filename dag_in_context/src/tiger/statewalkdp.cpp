@@ -33,7 +33,7 @@ struct BitsetExtraInfo {
     BitsetExtraInfo(HashType true_hash, HashType masked_hash, PBId array) : true_hash(true_hash), masked_hash(masked_hash), array(array) {}
 };
 
-Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost) {
+Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost, const bool use_liveness, StatewalkWidthStat *const stat) {
     // find arg
     DEBUG_ASSERT(arg_check_regionalized_egraph(g));
     EClassId argc = UNEXTRACTABLE_ECLASS;
@@ -50,6 +50,8 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
             }
         }
     }
+
+    Cost init_cost = statewalk_cost[argc][argn];
 
     // prepare for heavy duty data structures
     vector<vector<pair<EClassId, ENodeId> > > parent_edge_to_pure(g.neclasses()), parent_edge_to_effectful(g.neclasses());
@@ -142,79 +144,80 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         --init_cnt[i];
         DEBUG_ASSERT(init_cnt[i] <= 3);
     }
-    vector<unsigned> compressed_init_extractable(inv_compressed_eclass_id.size(), 0);
+    size_t ncompressed_eclass = inv_compressed_eclass_id.size();
 
     PBId init_cnt_id = enode_cnt_pool.init(init_cnt);
-    PBId init_extractable_id = true_extractable_pool.init(compressed_init_extractable);
+    PBId init_extractable_id = true_extractable_pool.init(vector<unsigned>(ncompressed_eclass, 0));
  
     // crazy hash scheme
-    vector<HashType> base_vectors(compressed_init_extractable.size());
+    vector<HashType> base_vectors(ncompressed_eclass);
     mt19937_64 rand_gen;
     for (size_t i = 0; i < base_vectors.size(); ++i) {
         base_vectors[i] = rand_gen();
     }
     HashType init_true_hash = 0, init_masked_hash = 0;
 
-    Cost init_cost = statewalk_cost[argc][argn];
-
     // liveness
 
     vector<vector<unsigned long long> > liveness(g.neclasses());
-    for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
-        const EClass &c = g.eclasses[i];
-        if (c.isEffectful) {
-            liveness[i].resize((g.neclasses() + 63) >> 6, 0);
-            queue<EClassId> q;
-            q.push(i);
-            liveness[i][i >> 6] |= 1ull << (i & 63);
-            while (q.size()) {
-                EClassId u = q.front();
-                q.pop();
-                if (g.eclasses[u].isEffectful) {
-                    for (size_t j = 0; j < parent_edge_to_effectful[u].size(); ++j) {
-                        EClassId v = parent_edge_to_effectful[u][j].first;
-                        if (!((liveness[i][v >> 6] >> (v & 63)) & 1)) {
-                            liveness[i][v >> 6] |= 1ull << (v & 63);
-                            q.push(v);
-                        }
-                    }
-                } 
-                if ((liveness[i][u >> 6] >> (u & 63)) & 1) {
-                    const EClass &c = g.eclasses[u];
-                    for (ENodeId j = 0; j < (ENodeId)c.nenodes(); ++j) {
-                        const ENode &n = c.enodes[j];
-                        for (size_t k = 0; k < n.ch.size(); ++k) {
-                            EClassId v = n.ch[k];
-                            if (!g.eclasses[v].isEffectful && !((liveness[i][v >> 6] >> (v & 63)) & 1)) {
+    vector<unordered_map<EClassId, vector<int> > > liveness_delta(g.neclasses());
+
+    if (use_liveness) {
+        for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
+            const EClass &c = g.eclasses[i];
+            if (c.isEffectful) {
+                liveness[i].resize((g.neclasses() + 63) >> 6, 0);
+                queue<EClassId> q;
+                q.push(i);
+                liveness[i][i >> 6] |= 1ull << (i & 63);
+                while (q.size()) {
+                    EClassId u = q.front();
+                    q.pop();
+                    if (g.eclasses[u].isEffectful) {
+                        for (size_t j = 0; j < parent_edge_to_effectful[u].size(); ++j) {
+                            EClassId v = parent_edge_to_effectful[u][j].first;
+                            if (!((liveness[i][v >> 6] >> (v & 63)) & 1)) {
                                 liveness[i][v >> 6] |= 1ull << (v & 63);
                                 q.push(v);
+                            }
+                        }
+                    } 
+                    if ((liveness[i][u >> 6] >> (u & 63)) & 1) {
+                        const EClass &c = g.eclasses[u];
+                        for (ENodeId j = 0; j < (ENodeId)c.nenodes(); ++j) {
+                            const ENode &n = c.enodes[j];
+                            for (size_t k = 0; k < n.ch.size(); ++k) {
+                                EClassId v = n.ch[k];
+                                if (!g.eclasses[v].isEffectful && !((liveness[i][v >> 6] >> (v & 63)) & 1)) {
+                                    liveness[i][v >> 6] |= 1ull << (v & 63);
+                                    q.push(v);
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
-    vector<unordered_map<EClassId, vector<int> > > liveness_delta(g.neclasses());
-    for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
-        const EClass &c = g.eclasses[i];
-        if (c.isEffectful) {
-            for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
-                EClassId v = parent_edge_to_effectful[i][j].first;
-                if (!liveness_delta[i].count(v)) {
-                    vector<EClassId> &l = liveness_delta[i][v];
-                    for (size_t k = 0; k < liveness[i].size(); ++k) {
-                        DEBUG_ASSERT((liveness[i][k] & liveness[v][k]) == liveness[v][k]);
-                        unsigned long long delta = liveness[i][k] ^ liveness[v][k];
-                        while (delta != 0) {
-                            unsigned long long lb = delta & (-delta);
-                            delta ^= lb;
-                            EClassId w = __builtin_ctzll(lb) + (k << 6);
-                            if (!g.eclasses[w].isEffectful && !init_extractable[w]) {
-                                l.push_back(compressed_eclass_id[w]);
-                            }
-                        } 
+        for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
+            const EClass &c = g.eclasses[i];
+            if (c.isEffectful) {
+                for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
+                    EClassId v = parent_edge_to_effectful[i][j].first;
+                    if (!liveness_delta[i].count(v)) {
+                        vector<EClassId> &l = liveness_delta[i][v];
+                        for (size_t k = 0; k < liveness[i].size(); ++k) {
+                            DEBUG_ASSERT((liveness[i][k] & liveness[v][k]) == liveness[v][k]);
+                            unsigned long long delta = liveness[i][k] ^ liveness[v][k];
+                            while (delta != 0) {
+                                unsigned long long lb = delta & (-delta);
+                                delta ^= lb;
+                                EClassId w = __builtin_ctzll(lb) + (k << 6);
+                                if (!g.eclasses[w].isEffectful && !init_extractable[w]) {
+                                    l.push_back(compressed_eclass_id[w]);
+                                }
+                            } 
+                        }
                     }
                 }
             }
@@ -240,7 +243,8 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         Cost c = ~maxheap.top().first;
         DPId uid = maxheap.top().second;
         maxheap.pop();
-        if (best_statewalk != -1 && dp[uid].c == dp[best_statewalk].c) {
+        // let the dp saturate if in stat mode
+        if (stat != nullptr && (best_statewalk != -1 && dp[uid].c == dp[best_statewalk].c)) {
             break;
         }
         if (dp[uid].c == c) {
@@ -280,11 +284,13 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             true_extractable_pool.new_version();
                             nroot = dp[uid].root;
                             BitsetExtraInfo ninfo(info);
-                            //liveness-1
-                            const vector<int> &delta = liveness_delta[u][v];
-                            for (size_t j = 0; j < delta.size(); ++j) {
-                                if (true_extractable_pool.getpos(nroot, delta[j])) {
-                                    ninfo.masked_hash ^= base_vectors[delta[j]];
+                            if (use_liveness) {
+                                //liveness-1
+                                const vector<int> &delta = liveness_delta[u][v];
+                                for (size_t j = 0; j < delta.size(); ++j) {
+                                    if (true_extractable_pool.getpos(nroot, delta[j])) {
+                                        ninfo.masked_hash ^= base_vectors[delta[j]];
+                                    }
                                 }
                             }
                             const vector<unsigned long long> &nliveness = liveness[v];
@@ -311,7 +317,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                                                 nroot = res.first;
                                                 ninfo.true_hash ^= base_vectors[compressed_eclass_id[v]];
                                                 //liveness-2
-                                                if ((nliveness[v >> 6] >> (v & 63)) & 1) {
+                                                if (!use_liveness || (nliveness[v >> 6] >> (v & 63)) & 1) {
                                                     ninfo.masked_hash ^= base_vectors[compressed_eclass_id[v]];
                                                 }
                                                 q.push(v);
@@ -368,5 +374,13 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         cur = dp[cur].prev;
     }
     DEBUG_ASSERT(is_valid_statewalk(g, root, sw));
+    // stats
+    if (stat != nullptr) {
+        for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
+            if (g.eclasses[i].isEffectful) {
+                (*stat).push_back(dpmap[i].size());
+            }
+        }
+    }
     return sw;
 }

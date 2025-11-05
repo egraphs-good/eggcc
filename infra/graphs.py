@@ -133,13 +133,12 @@ def all_region_extract_points(treatment, data, benchmarks):
 # a graph of how the ilp solver time changes
 # compared to the size of the egraph
 # when the ilp solve time is null it timed out
-def make_region_extract_plot(json, output):
-  eggcc_points = []
-  
+def make_region_extract_plot(json, output, plot_ilp):
   benchmarks = dedup([b.get('benchmark') for b in json])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", json, benchmarks)
-  ilp_points = []
+
   eggcc_points = []
+  ilp_points = []
   ilp_timeout_points = []
 
   for sample in points:
@@ -150,44 +149,84 @@ def make_region_extract_plot(json, output):
     eggcc_points.append((egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9))
 
     if ilp_solve_time is None:
-      # WARNING HARDCODED 5 MIN TIMEOUT
       ilp_timeout_points.append((egraph_size, 5 * 60))
     else:
       ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
       ilp_points.append((egraph_size, ilp_time))
 
+  if plot_ilp and not (ilp_points or ilp_timeout_points):
+    print("WARNING: No ILP timing data found; skipping ILP scatter plot")
+    return
+  if not plot_ilp and not eggcc_points:
+    print("WARNING: No Tiger extraction timing data found; skipping scatter plot")
+    return
 
-  # graph data
   plt.figure(figsize=(10, 8))
 
   psize = 150
   alpha = 0.2
   circleLineWidth = 1.0
   timeoutLineWidth = 3.0
-  # Plot extraction time points
-  eggcc_x, eggcc_y = zip(*eggcc_points) if eggcc_points else ([], [])
-  plt.scatter(eggcc_x, eggcc_y, color='blue', label=f'{EGGCC_NAME} Extraction Time', s=psize, alpha=alpha, linewidths=circleLineWidth, edgecolors='blue')
 
-  # Plot ILP solve time points
-  ilp_x, ilp_y = zip(*ilp_points) if ilp_points else ([], [])
-  plt.scatter(ilp_x, ilp_y, color='green', label="ILP Solve Time", alpha=alpha, s=psize, linewidths=circleLineWidth, edgecolors='green')
+  plotted_any = False
 
-  # Plot ILP timeout points
-  timeout_x, timeout_y = zip(*ilp_timeout_points) if ilp_timeout_points else ([], [])
-  plt.scatter(timeout_x, timeout_y, color='red', marker='x', label="ILP Timeout (5 min)", alpha=alpha, s=psize, linewidths=timeoutLineWidth, edgecolors='red')
+  if not plot_ilp:
+    eggcc_x, eggcc_y = zip(*eggcc_points)
+    plt.scatter(
+      eggcc_x,
+      eggcc_y,
+      color='blue',
+      label=f'{EGGCC_NAME} Extraction Time',
+      s=psize,
+      alpha=alpha,
+      linewidths=circleLineWidth,
+      edgecolors='blue',
+    )
+    plotted_any = True
+  else:
+    if ilp_points:
+      ilp_x, ilp_y = zip(*ilp_points)
+      plt.scatter(
+        ilp_x,
+        ilp_y,
+        color='green',
+        label="ILP Solve Time",
+        alpha=alpha,
+        s=psize,
+        linewidths=circleLineWidth,
+        edgecolors='green',
+      )
+      plotted_any = True
+    if ilp_timeout_points:
+      timeout_x, timeout_y = zip(*ilp_timeout_points)
+      plt.scatter(
+        timeout_x,
+        timeout_y,
+        color='red',
+        marker='x',
+        label="ILP Timeout (5 min)",
+        alpha=alpha,
+        s=psize,
+        linewidths=timeoutLineWidth,
+        edgecolors='red',
+      )
+      plotted_any = True
+
+  if not plotted_any:
+    print("WARNING: No data plotted in make_region_extract_plot")
+    return
 
   fsize = 27
   plt.xlabel('Size of Regionalized e-graph', fontsize=fsize)
-  plt.ylabel('Extraction Time (Seconds)', fontsize=fsize)
-  #plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_k))
-  # slightly down
-  plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.3))
+  ylabel = 'ILP Solve Time (Seconds)' if plot_ilp else 'Extraction Time (Seconds)'
+  plt.ylabel(ylabel, fontsize=fsize)
 
-  # set axis font size
+  if plotted_any:
+    plt.legend(fontsize=fsize, loc='upper right', bbox_to_anchor=(1, 1.3))
+
   plt.xticks(fontsize=fsize)
   plt.yticks(fontsize=fsize)
 
-  #plt.gca().set_xlim(left=-100, right=2000)
   plt.tight_layout()
 
   plt.savefig(output)
@@ -645,7 +684,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
 
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_extract_vs_ILP.pdf')
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
   

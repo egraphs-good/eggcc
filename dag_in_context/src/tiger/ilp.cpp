@@ -1,4 +1,5 @@
 #include "ilp.h"
+#include "main.h"
 
 #include <cassert>
 #include <chrono>
@@ -31,14 +32,8 @@
 
 using namespace std;
 
-bool g_use_gurobi = true;
-// 10 sec timeout on nightly with cbc
-int g_ilp_timeout_seconds = 10;
-// 5 min timeout with gurobi
-int g_ilp_timeout_gurobi = 5 * 60;
-bool g_ilp_minimize_objective = true;
-
-bool g_time_ilp = false;
+pair<EClassId, ENodeId> findArg(const EGraph &g);
+bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e);
 
 static void kill_process_group(pid_t pid) {
 	if (pid <= 0) {
@@ -596,7 +591,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	bool firstTerm = true;
 	// optionally minimize sum pickCost[c][n] * pickNode[c][n]
 	lp << "Minimize\n";
-	if (g_ilp_minimize_objective) {
+	if (g_config.ilp_minimize_objective) {
 		lp << " obj:";
 		for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 			for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
@@ -731,19 +726,19 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		out_debug << in_debug.rdbuf();
 	}
 
-	string solver_name = g_use_gurobi ? "gurobi" : "cbc";
+	string solver_name = g_config.use_gurobi ? "gurobi" : "cbc";
 	string cmd = "";
-	if (g_use_gurobi) {
+	if (g_config.use_gurobi) {
 		cmd = string("gurobi_cl Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
 	} else {
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	bool solver_timed_out = false;
-	int timeout = g_use_gurobi ? g_ilp_timeout_gurobi : g_ilp_timeout_seconds;
+	int timeout = g_config.use_gurobi ? g_config.ilp_timeout_gurobi : g_config.ilp_timeout_seconds;
 	int ret = run_command_with_timeout(cmd, timeout, solver_timed_out);
 	if (solver_timed_out) {
 		timed_out = true;
-		if (!g_time_ilp) {
+		if (!g_config.time_ilp) {
 			cout << "TIMEOUT" << endl;
 			fail(solver_name + " timed out after " + to_string(timeout) + " seconds");
 		}
@@ -778,7 +773,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		cerr << solver_name << " log output:\n" << solver_log << endl;
 		fail(msg);
 	};
-	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_use_gurobi, fail_with_log);
+	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_config.use_gurobi, fail_with_log);
 	const unordered_map<string, double> &values = solver_solution.values;
 	bool infeasible = solver_solution.infeasible;
 	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
@@ -885,58 +880,6 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	}
 	return extraction;
 
-}
-
-struct ExtractRegionTimingSample {
-	size_t egraph_size;
-	long long tiger_duration_ns;
-	long long ilp_duration_ns;
-	bool ilp_timed_out;
-	size_t statewalk_width;
-};
-
-static string g_extract_region_timings_path;
-static vector<ExtractRegionTimingSample> g_extract_region_timings;
-
-static void append_extract_region_timing(size_t egraph_size,
-		long long tiger_duration_ns,
-		long long ilp_duration_ns,
-		bool ilp_timed_out,
-		size_t statewalk_width) {
-	if (!g_time_ilp) {
-		return;
-	}
-	g_extract_region_timings.push_back(ExtractRegionTimingSample{egraph_size, tiger_duration_ns, ilp_duration_ns, ilp_timed_out, statewalk_width});
-}
-
-static void write_extract_region_timings() {
-	if (g_extract_region_timings_path.empty()) {
-		return;
-	}
-	ofstream out(g_extract_region_timings_path.c_str());
-	if (!out.good()) {
-		cerr << "Failed to open extract region timings file: " << g_extract_region_timings_path << endl;
-		return;
-	}
-	out << "{\n  \"rows\": [";
-	if (!g_extract_region_timings.empty()) {
-		out << '\n';
-		for (size_t i = 0; i < g_extract_region_timings.size(); ++i) {
-			const auto &sample = g_extract_region_timings[i];
-			out << "    {\"egraph_size\": " << sample.egraph_size
-			    << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
-			    << ", \"ilp_duration_ns\": " << sample.ilp_duration_ns
-			    << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
-			    << ", \"statewalk_width\": " << static_cast<unsigned long long>(sample.statewalk_width)
-			    << "}";
-			if (i + 1 != g_extract_region_timings.size()) {
-				out << ',';
-			}
-			out << '\n';
-		}
-		out << "  ";
-	}
-	out << "]\n}\n";
 }
 
 bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) {
@@ -1274,16 +1217,15 @@ static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph
 	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
 }
 
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out) {
+	auto result = run_ilp_extractor(g, root, timed_out);
+	out = std::move(result.first);
+	return result.second.count();
+}
+
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
 Extraction extractRegionILP(const EGraph &g, const EClassId root) {
-/*
-	if (g_time_ilp && g_ilp_mode) {
-		cerr << "ERROR: ILP timing mode cannot be used with ILP extraction mode." << endl;
-		std::exit(1);
-	}
-*/
-
 	bool ilp_timed_out = false;
 	auto ilp_result = run_ilp_extractor(g, root, ilp_timed_out);
 	if (ilp_timed_out) {
@@ -1291,26 +1233,6 @@ Extraction extractRegionILP(const EGraph &g, const EClassId root) {
 		std::exit(1);
 	}
 	return ilp_result.first;
-	/*
-		auto tiger_result = run_tiger_extractor(g, initc, initn, root, nsubregion);
-		auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(tiger_result.duration).count();
-		// if tiger times out, hard error with TIMEOUT
-		if (elapsed_seconds > g_ilp_timeout_seconds) {
-			cout << "TIMEOUT" << endl;
-			std::exit(1);
-		}
-
-		bool ilp_timed_out = false;
-		auto ilp_result = run_ilp_extractor(g, initc, initn, root, nsubregion, ilp_timed_out);
-		append_extract_region_timing(
-			g.eclasses.size(),
-			tiger_result.duration.count(),
-			ilp_result.second.count(),
-			ilp_timed_out,
-			tiger_result.statewalk_width);
-		
-		return tiger_result.extraction;
-	*/
 }
 
 ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {

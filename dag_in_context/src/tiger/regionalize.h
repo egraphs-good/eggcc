@@ -2,6 +2,7 @@
 #define REGIONALIZE_H
 
 #include "egraphin.h"
+#include "greedy.h"
 
 pair<EGraph, pair<EClassId, EGraphMapping> > construct_regionalized_egraph(const EGraph &g, const EClassId root);
 

@@ -6,14 +6,14 @@
 using namespace std;
 
 struct Config {
-    string report_file;
-
-    bool skip_report();
+    string extract_region_timings_path;
+    bool ilp_mode = false;
+    bool ilp_minimize_objective = true;
+    bool use_gurobi = true;
+    int ilp_timeout_seconds = 10;
+    int ilp_timeout_gurobi = 5 * 60;
+    bool time_ilp = false;
 };
-
-bool Config::skip_report() {
-    return report_file.empty();
-}
 
 extern Config g_config;
 

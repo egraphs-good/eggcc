@@ -10,10 +10,8 @@
 
 Extraction extractRegionILP(const EGraph &g, EClassId root);
 
-vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out);
 
-extern bool g_use_gurobi;
-extern int g_ilp_timeout_seconds;
-extern bool g_ilp_minimize_objective;
+vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots);
 
 #endif  // DAG_IN_CONTEXT_TIGER_ILP_H

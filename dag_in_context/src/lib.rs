@@ -565,7 +565,7 @@ fn run_tiger_pipeline(
             .map_err(|err| format!("failed to create extract timing tempfile: {err}"))
             .unwrap();
         let extract_timing_path = file.path().to_owned();
-        tiger_args.push(OsString::from("--extract-region-timings"));
+        tiger_args.push(OsString::from("--report-region-timings"));
         tiger_args.push(extract_timing_path.clone().into_os_string());
         Some((file, extract_timing_path))
     } else {

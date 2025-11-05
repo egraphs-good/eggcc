@@ -1,6 +1,7 @@
 // utilities for egraphin format egraphs
 
 #include<queue>
+#include<cstring>
 
 #include "egraphin.h"
 #include "debug.h"

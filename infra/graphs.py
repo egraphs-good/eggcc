@@ -621,7 +621,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
     make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
-  make_macros(profile, benchmark_suites, f'{output_folder}/nightlymacros.tex')
+  make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
   """
   make_code_size_vs_compile_and_extraction_time(
     profile, 
@@ -642,14 +642,14 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
 if __name__ == '__main__':
   # parse two arguments: the output folder and the profile.json file
-  if len(sys.argv) != 4:
-      print("Usage: python graphs.py <output_folder> <profile.json> <benchmark_suite_folder>")
+  if len(sys.argv) != 5:
+      print("Usage: python graphs.py <nightly_output_folder> <graphs_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
 
   # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
   if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
       print("Skipping graphing: NECESSARY_MODES is true and GRAPH_RUN_MODES is not a subset of treatments")
       sys.exit(0)
-  make_graphs(sys.argv[1], sys.argv[1] + '/graphs', sys.argv[2], sys.argv[3])
+  make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 
   

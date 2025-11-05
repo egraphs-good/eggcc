@@ -232,7 +232,7 @@ def make_region_extract_plot(json, output, plot_ilp):
   plt.savefig(output)
 
 
-def make_extraction_time_histogram(data, output):
+def make_extraction_time_histogram(data, output, cutoff):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -244,14 +244,21 @@ def make_extraction_time_histogram(data, output):
     extract_time = sample.get("extract_time")
     if extract_time is None:
         raise KeyError("Missing extract_time in sample")
-    extract_times.append(extract_time["secs"] + extract_time["nanos"] / 1e9)
+    tiger_time = extract_time["secs"] + extract_time["nanos"] / 1e9
+    if cutoff and tiger_time > cutoff:
+        raise KeyError("Extract time exceeds cutoff")
+    extract_times.append(tiger_time)
     
 
     ilp_time = sample.get("ilp_extract_time")
     if ilp_time is None:
       ilp_timeout_count += 1
     else:
-      ilp_times.append(ilp_time["secs"] + ilp_time["nanos"] / 1e9)
+      ilp_time_converted = ilp_time["secs"] + ilp_time["nanos"] / 1e9 
+      if cutoff and ilp_time_converted > cutoff:
+        ilp_timeout_count += 1
+      else:
+        ilp_times.append(ilp_time_converted)
 
   if not extract_times and not ilp_times:
     print("WARNING: No extraction timing data found; skipping histogram")
@@ -262,7 +269,11 @@ def make_extraction_time_histogram(data, output):
   all_times = extract_times + ilp_times
   bin_count = 50
   hist_min = 0.0
-  hist_max = max(all_times) if all_times else 1.0
+  hist_max = 0
+  if cutoff:
+    hist_max = cutoff
+  else:
+      hist_max = max(all_times)
   if hist_max == hist_min:
     hist_max = hist_min + 1.0
   hist_range = (hist_min, hist_max)
@@ -271,13 +282,12 @@ def make_extraction_time_histogram(data, output):
     plt.hist(
       extract_times,
       bins=bin_count,
-      range=hist_range,
-      alpha=0.6,
       color='blue',
       edgecolor='black',
       label=f'{EGGCC_NAME} Extraction Time',
       rwidth=0.48,
       log=True,
+      range=hist_range,
     )
   if ilp_times:
     plt.hist(
@@ -730,7 +740,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf', None)
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', cutoff=5.0)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
   
   for suite_path in benchmark_suites:

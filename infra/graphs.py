@@ -411,19 +411,23 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average):
 
   plt.figure(figsize=(10, 6))
   plt.bar(sorted_widths, frequencies, color='skyblue', edgecolor='black')
-  plt.xlabel('Statewalk Width')
-  plt.ylabel('Number of Region e-graphs')
-  plt.title('Distribution of Statewalk Width')
+  plt.xlabel(f'Statewalk Width{" Average" if is_average else ""}')
+  plt.ylabel('Number of Regionalized E-Graphs')
+  plt.title(f'Distribution of Statewalk Width{" With Liveness Analysis" if is_liveon else ""}')
+  # log scale y axis
+  plt.yscale('log')
 
-  max_ticks = 25
-  if len(sorted_widths) > max_ticks:
-    step = max(1, len(sorted_widths) // max_ticks)
-    tick_positions = sorted_widths[::step]
-    if sorted_widths[-1] not in tick_positions:
-      tick_positions.append(sorted_widths[-1])
-    plt.xticks(tick_positions, rotation=45, ha='right')
-  else:
-    plt.xticks(sorted_widths)
+  def _format_tick(value, _pos):
+    if value <= 0:
+      return ''
+    if value < 1:
+      return f'{value:.2f}'.rstrip('0').rstrip('.')
+    if value < 10:
+      return f'{value:.1f}'.rstrip('0').rstrip('.')
+    return f'{value:g}'
+
+  ax = plt.gca()
+  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
 
   plt.grid(axis='y', linestyle='--', alpha=0.5)
   plt.tight_layout()

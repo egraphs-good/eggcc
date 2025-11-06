@@ -347,8 +347,34 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     legend_labels.append('ILP Timeouts')
     xlim_right = hist_max + timeout_width
 
-  plt.xlim(hist_min, xlim_right)
-  plt.yscale('log')
+  ax = plt.gca()
+  ax.set_xlim(hist_min, xlim_right)
+  ax.set_yscale('log')
+
+  def _format_tick(value, _pos):
+    if value <= 0:
+      return ''
+    if value < 1:
+      return f'{value:.2f}'.rstrip('0').rstrip('.')
+    if value < 10:
+      return f'{value:.1f}'.rstrip('0').rstrip('.')
+    return f'{value:g}'
+
+  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
+
+  ymin, ymax = ax.get_ylim()
+  if ymin <= 0:
+    ax.set_ylim(bottom=min(1.0, ymax) if ymax > 0 else 1.0)
+    ymin, ymax = ax.get_ylim()
+
+  if ymax > 0:
+    lower_exp = int(np.floor(np.log10(ymin))) if ymin > 0 else 0
+    upper_exp = int(np.ceil(np.log10(ymax)))
+    yticks = [10 ** exp for exp in range(lower_exp, upper_exp + 1)]
+    ax.set_yticks(yticks)
+
+  ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
+  ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
 
   if legend_handles:
     plt.legend(legend_handles, legend_labels)

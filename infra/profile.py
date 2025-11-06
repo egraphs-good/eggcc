@@ -449,19 +449,25 @@ def build_eggcc():
 
 if __name__ == '__main__':
   # expect two arguments
-  if len(os.sys.argv) != 3 and len(os.sys.argv) != 4:
-    print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
+  if len(os.sys.argv) < 3:
+    print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper>")
     exit(1)
+
+  # check for paper flag
+  for arg in os.sys.argv:
+    if arg == "--paper":
+      IS_TESTING_MODE = False
+
+  if IS_TESTING_MODE:
+    print("WARNING: Running in testing mode with reduced samples. Pass the --paper flag for the final paper results.")
 
   # running benchmarks sequentially for more reliable results
   # can set this to true for testing
   isParallelBenchmark = False
-  if len(os.sys.argv) == 4:
-    if os.sys.argv[3] == "--parallel":
+  # detect parallel flag
+  for arg in os.sys.argv:
+    if arg == "--parallel":
       isParallelBenchmark = True
-    else:
-      print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
-      exit(1)
 
   # Create tmp directory for intermediate files
   try:

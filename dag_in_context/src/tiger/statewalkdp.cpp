@@ -170,7 +170,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
             while (q.size()) {
                 EClassId u = q.front();
                 q.pop();
-                if (g.eclasses[u].isEffectful) {
+                if (g.eclasses[u].isEffectful && u != root) {
                     for (size_t j = 0; j < parent_edge_to_effectful[u].size(); ++j) {
                         EClassId v = parent_edge_to_effectful[u][j].first;
                         if (!((liveness[i][v >> 6] >> (v & 63)) & 1)) {

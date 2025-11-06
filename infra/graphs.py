@@ -628,6 +628,62 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   plt.savefig(output)
 
 
+def make_egraph_size_vs_statewalk_width_scatter(data, output, is_liveon, is_average):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+
+  x_values = []
+  y_values = []
+
+  for sample in points:
+    width = sample[width_key]
+    egraph_size = sample.get("egraph_size")
+    x_values.append(egraph_size)
+    y_values.append(width)
+
+  if not x_values:
+    print("WARNING: No data plotted in make_egraph_size_vs_statewalk_width_scatter")
+    return
+
+  plt.figure(figsize=(10, 6))
+  plt.scatter(
+    x_values,
+    y_values,
+    color='purple',
+    alpha=0.7,
+    edgecolors='black',
+    linewidths=0.5,
+    s=60,
+  )
+
+  plt.xlabel('Regionalized E-graph Size')
+  y_label = 'Statewalk Width'
+  if is_average:
+    y_label += ' Average'
+  plt.ylabel(y_label)
+
+  title = 'E-graph Size vs Statewalk Width'
+  if is_liveon:
+    title += ' (With Liveness Analysis)'
+  else:
+    title += ' (No Liveness Analysis)'
+  if is_average:
+    title += ' - Average'
+  else:
+    title += ' - Maximum'
+  plt.title(title)
+
+  plt.grid(alpha=0.3)
+  ax = plt.gca()
+  ax.set_xscale('log')
+  ax.set_yscale('log')
+
+  plt.tight_layout()
+  plt.savefig(output)
+
+
 # Format x-axis labels to be in "k" format
 def format_k(x, pos):
     return f"{int(x / 1000)}k"
@@ -1000,6 +1056,10 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
+  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_with_liveness_max.pdf', is_liveon=True, is_average=False)
+  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_no_liveness_max.pdf', is_liveon=False, is_average=False)
+  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_with_liveness_avg.pdf', is_liveon=True, is_average=True)
+  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_no_liveness_avg.pdf', is_liveon=False, is_average=True)
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

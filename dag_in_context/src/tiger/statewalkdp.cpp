@@ -180,7 +180,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                                 q.push(v);
                             }
                         }
-                    } 
+                    }
                     if ((liveness[i][u >> 6] >> (u & 63)) & 1) {
                         const EClass &c = g.eclasses[u];
                         for (ENodeId j = 0; j < (ENodeId)c.nenodes(); ++j) {
@@ -200,7 +200,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
 
         for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
             const EClass &c = g.eclasses[i];
-            if (c.isEffectful) {
+            if (c.isEffectful && i != root) {
                 for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
                     EClassId v = parent_edge_to_effectful[i][j].first;
                     if (!liveness_delta[i].count(v)) {
@@ -246,7 +246,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         if (stat != nullptr && (best_statewalk != -1 && dp[uid].c == dp[best_statewalk].c)) {
             break;
         }
-        if (dp[uid].c == c) {
+        if (dp[uid].c == c && dp[uid].ec != root) {
             EClassId u = dp[uid].ec;
             for (size_t i = 0; i < parent_edge_to_effectful[u].size(); ++i) {
                 EClassId v = parent_edge_to_effectful[u][i].first;

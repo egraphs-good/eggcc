@@ -45,23 +45,26 @@ vector<ExtractRegionTiming> compute_extract_region_timings(
 
         Extraction ilp_extraction;
         bool ilp_timed_out = false;
+        bool ilp_infeasible = false;
         long long ilp_ns = extract_region_ilp_with_timing(
             regionalized.first,
             regionalized.second.first,
             ilp_extraction,
-            ilp_timed_out);
+            ilp_timed_out,
+            ilp_infeasible);
 
 
         ExtractRegionTiming sample;
         sample.egraph_size = g.eclasses.size();
         sample.tiger_duration_ns = tiger_ns;
-        if (ilp_timed_out) {
+        if (ilp_timed_out || ilp_infeasible) {
             sample.ilp_duration_ns = nullopt;
         } else {
             sample.ilp_duration_ns = ilp_ns;
         }
         sample.ilp_timed_out = ilp_timed_out;
-        // TODO implement statewalk width computation
+        sample.ilp_infeasible = ilp_infeasible;
+
         pair<StatewalkWidthReport, StatewalkWidthReport> res = get_stat_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
         sample.statewalk_width_liveon_max = res.first.max_width;
         sample.statewalk_width_liveon_avg = res.first.avg_width;
@@ -95,6 +98,7 @@ bool write_extract_region_timings_json(
                 out << "null";
             }
             out << ", \"ilp_timed_out\": " << (sample.ilp_timed_out ? "true" : "false")
+                << ", \"ilp_infeasible\": " << (sample.ilp_infeasible ? "true" : "false")
                 << ", \"statewalk_width_liveon_max\": " << sample.statewalk_width_liveon_max
                 << ", \"statewalk_width_liveon_avg\": " << sample.statewalk_width_liveon_avg
                 << ", \"statewalk_width_liveoff_max\": " << sample.statewalk_width_liveoff_max

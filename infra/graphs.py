@@ -141,21 +141,29 @@ def make_region_extract_plot(json, output, plot_ilp):
   eggcc_points = []
   ilp_points = []
   ilp_timeout_points = []
+  ilp_infeasible_points = []
 
   for sample in points:
     extract_time = sample["extract_time"]
     egraph_size = sample["egraph_size"]
     ilp_solve_time = sample["ilp_extract_time"]
+    ilp_infeasible = sample.get("ilp_infeasible", False)
 
     eggcc_points.append((egraph_size, extract_time["secs"] + extract_time["nanos"] / 1e9))
 
-    if ilp_solve_time is None:
+    if ilp_infeasible:
+      if ilp_solve_time is None:
+        ilp_infeasible_points.append((egraph_size, 5 * 60))
+      else:
+        ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
+        ilp_infeasible_points.append((egraph_size, ilp_time))
+    elif ilp_solve_time is None:
       ilp_timeout_points.append((egraph_size, 5 * 60))
     else:
       ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
       ilp_points.append((egraph_size, ilp_time))
 
-  if plot_ilp and not (ilp_points or ilp_timeout_points):
+  if plot_ilp and not (ilp_points or ilp_timeout_points or ilp_infeasible_points):
     print("WARNING: No ILP timing data found; skipping ILP scatter plot")
     return
   if not plot_ilp and not eggcc_points:
@@ -212,6 +220,20 @@ def make_region_extract_plot(json, output, plot_ilp):
         edgecolors='red',
       )
       plotted_any = True
+    if ilp_infeasible_points:
+      infeasible_x, infeasible_y = zip(*ilp_infeasible_points)
+      plt.scatter(
+        infeasible_x,
+        infeasible_y,
+        color='orange',
+        marker='x',
+        label="ILP Infeasible",
+        alpha=alpha,
+        s=psize,
+        linewidths=timeoutLineWidth,
+        edgecolors='orange',
+      )
+      plotted_any = True
 
   if not plotted_any:
     print("WARNING: No data plotted in make_region_extract_plot")
@@ -242,6 +264,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   extract_overflow = 0
   ilp_overflow = 0
   ilp_timeout_count = 0
+  ilp_infeasible_count = 0
 
   for sample in points:
     extract_time = sample.get("extract_time")
@@ -254,7 +277,11 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
       extract_times.append(extract_value)
 
     ilp_time = sample.get("ilp_extract_time")
-    if ilp_time is None:
+    ilp_infeasible = sample.get("ilp_infeasible", False)
+    if ilp_infeasible:
+      ilp_infeasible_count += 1
+      continue
+    if sample["ilp_timed_out"]:
       ilp_timeout_count += 1
     else:
       ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
@@ -263,7 +290,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
       else:
         ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times and ilp_timeout_count == 0 and extract_overflow == 0 and ilp_overflow == 0:
+  if not extract_times and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0 and extract_overflow == 0 and ilp_overflow == 0:
     print("WARNING: No extraction timing data found; skipping histogram")
     return
 
@@ -332,12 +359,13 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   plt.title(f'Distribution of Extraction Times{title_suffix}')
 
   xlim_right = hist_max
-  timeout_width = bin_width * 0.8
+  special_width = bin_width * 0.8
+  special_left = hist_max
   if ilp_timeout_count:
     plt.bar(
-      hist_max,
+      special_left,
       ilp_timeout_count,
-      width=timeout_width,
+      width=special_width,
       color='red',
       edgecolor='black',
       align='edge',
@@ -345,7 +373,22 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     )
     legend_handles.append(Patch(facecolor='red', edgecolor='black', alpha=0.7))
     legend_labels.append('ILP Timeouts')
-    xlim_right = hist_max + timeout_width
+    special_left += special_width
+    xlim_right = special_left
+  if ilp_infeasible_count:
+    plt.bar(
+      special_left,
+      ilp_infeasible_count,
+      width=special_width,
+      color='orange',
+      edgecolor='black',
+      align='edge',
+      alpha=0.7,
+    )
+    legend_handles.append(Patch(facecolor='orange', edgecolor='black', alpha=0.7))
+    legend_labels.append('ILP Infeasible')
+    special_left += special_width
+    xlim_right = special_left
 
   ax = plt.gca()
   ax.set_xlim(hist_min, xlim_right)
@@ -444,13 +487,15 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   y_values = []
   timeout_x = []
   timeout_y = []
+  infeasible_x = []
+  infeasible_y = []
   missing_widths = 0
   non_positive_widths = 0
   missing_egraph_sizes = 0
   non_positive_products = 0
   missing_timings = 0
 
-  TIMEOUT_SECONDS = 5 * 60
+  ILP_TIMEOUT_SECONDS = 5 * 60
 
   for sample in points:
     width = sample.get(width_key)
@@ -474,9 +519,13 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
 
     if plot_ilp:
       ilp_time = sample.get("ilp_extract_time")
-      if ilp_time is None:
+      ilp_infeasible = sample.get("ilp_infeasible", False)
+      if ilp_infeasible:
+        infeasible_x.append(x_magnitude)
+        infeasible_y.append(ILP_TIMEOUT_SECONDS)
+      elif sample["ilp_timed_out"]:
         timeout_x.append(x_magnitude)
-        timeout_y.append(TIMEOUT_SECONDS)
+        timeout_y.append(ILP_TIMEOUT_SECONDS)
       else:
         value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
         x_values.append(x_magnitude)
@@ -527,6 +576,18 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
       color='red',
       marker='x',
       label='ILP Timeout (5 min)',
+      linewidths=2.0,
+      s=100,
+    )
+    plotted_any = True
+
+  if plot_ilp and infeasible_x:
+    plt.scatter(
+      infeasible_x,
+      infeasible_y,
+      color='orange',
+      marker='x',
+      label='ILP Infeasible',
       linewidths=2.0,
       s=100,
     )

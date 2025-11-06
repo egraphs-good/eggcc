@@ -10,7 +10,7 @@
 
 Extraction extractRegionILP(const EGraph &g, EClassId root);
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out, bool &infeasible);
 
 vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots);
 

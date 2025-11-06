@@ -169,14 +169,13 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                 liveness[i].resize((g.neclasses() + 63) >> 6, 0);
                 queue<EClassId> q;
                 q.push(i);
-                liveness[i][i >> 6] |= 1ull << (i & 63);
                 while (q.size()) {
                     EClassId u = q.front();
                     q.pop();
-                    if (g.eclasses[u].isEffectful) {
+                    if (g.eclasses[u].isEffectful && u != root) {
                         for (size_t j = 0; j < parent_edge_to_effectful[u].size(); ++j) {
                             EClassId v = parent_edge_to_effectful[u][j].first;
-                            if (!((liveness[i][v >> 6] >> (v & 63)) & 1)) {
+                            if (!init_extractable[v] && !((liveness[i][v >> 6] >> (v & 63)) & 1)) {
                                 liveness[i][v >> 6] |= 1ull << (v & 63);
                                 q.push(v);
                             }
@@ -188,7 +187,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             const ENode &n = c.enodes[j];
                             for (size_t k = 0; k < n.ch.size(); ++k) {
                                 EClassId v = n.ch[k];
-                                if (!g.eclasses[v].isEffectful && !((liveness[i][v >> 6] >> (v & 63)) & 1)) {
+                                if (!init_extractable[v] && !g.eclasses[v].isEffectful && !((liveness[i][v >> 6] >> (v & 63)) & 1)) {
                                     liveness[i][v >> 6] |= 1ull << (v & 63);
                                     q.push(v);
                                 }

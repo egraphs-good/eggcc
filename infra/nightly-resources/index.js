@@ -247,8 +247,14 @@ async function refreshLatexMacros(tableMacros) {
 }
 
 function addGraphs() {
-  var prevElement = document.getElementById("plots");
-  // for each plot in graphs folder, add button to show plot
+  const container = document.getElementById("plots");
+  if (!container) {
+    console.error("Missing #plots element to attach graphs list");
+    return;
+  }
+
+  container.innerHTML = "";
+
   fetch("graphs.json")
     .then((response) => {
       if (!response.ok) {
@@ -259,34 +265,30 @@ function addGraphs() {
       return response.json();
     })
     .then((data) => {
-      data.forEach((plot) => {
-        const button = document.createElement("button");
-        button.id = plot;
-        button.onclick = function () {
-          toggle(button, `\u25B6 Show ${plot}`, `\u25BC Hide ${plot}`);
-        };
-        button.innerText = `\u25B6 Show ${plot}`;
+      const sortedPlots = data.slice().sort((a, b) => a.localeCompare(b));
 
-        // insert right after plots element
-        prevElement.insertAdjacentElement("afterend", button);
-        prevElement = button;
+      const list = document.createElement("ul");
+      list.classList.add("graph-links");
+      list.style.listStyle = "none";
+      list.style.margin = "0";
+      list.style.paddingLeft = "0";
 
-        // create div for plot
-        const plotDiv = document.createElement("div");
-        plotDiv.classList.add("content");
-        plotDiv.classList.add("collapsed");
-        plotDiv.id = `${plot}-content`;
-        prevElement.insertAdjacentElement("afterend", plotDiv);
-        prevElement = plotDiv;
+      sortedPlots.forEach((plot) => {
+        const item = document.createElement("li");
+        item.classList.add("graph-link-item");
+        item.style.marginBottom = "0.5rem";
 
-        // create link for plot pdf
         const link = document.createElement("a");
         link.href = `paper/${plot}`;
-        link.innerText = `Open ${plot}`;
+        link.innerText = plot;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
-        plotDiv.appendChild(link);
+
+        item.appendChild(link);
+        list.appendChild(item);
       });
+
+      container.appendChild(list);
     })
     .catch((error) => {
       console.error(error);

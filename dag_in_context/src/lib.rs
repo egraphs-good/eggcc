@@ -382,10 +382,10 @@ pub struct ExtractRegionTiming {
     pub extract_time: Duration,
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
-    pub statewalk_width_liveon_max: usize,
-    pub statewalk_width_liveon_avg: usize,
-    pub statewalk_width_liveoff_max: usize,
-    pub statewalk_width_liveoff_avg: usize,
+    pub statewalk_width_liveon_max: u64,
+    pub statewalk_width_liveon_avg: f64,
+    pub statewalk_width_liveoff_max: u64,
+    pub statewalk_width_liveoff_avg: f64,
 }
 
 pub struct EggccTimeStatistics {
@@ -634,9 +634,9 @@ fn run_tiger_pipeline(
             #[serde(default)]
             ilp_timed_out: Option<bool>,
             statewalk_width_liveon_max: u64,
-            statewalk_width_liveon_avg: u64,
+            statewalk_width_liveon_avg: f64,
             statewalk_width_liveoff_max: u64,
-            statewalk_width_liveoff_avg: u64,
+            statewalk_width_liveoff_avg: f64,
         }
 
         let contents = std::fs::read_to_string(extract_timing_path).unwrap_or_else(|err| {
@@ -675,14 +675,10 @@ fn run_tiger_pipeline(
                 extract_time: Duration::from_nanos(row.tiger_duration_ns),
                 ilp_extract_time,
                 ilp_timed_out,
-                statewalk_width_liveon_max: usize::try_from(row.statewalk_width_liveon_max)
-                    .unwrap(),
-                statewalk_width_liveon_avg: usize::try_from(row.statewalk_width_liveon_avg)
-                    .unwrap(),
-                statewalk_width_liveoff_max: usize::try_from(row.statewalk_width_liveoff_max)
-                    .unwrap(),
-                statewalk_width_liveoff_avg: usize::try_from(row.statewalk_width_liveoff_avg)
-                    .unwrap(),
+                statewalk_width_liveon_max: row.statewalk_width_liveon_max,
+                statewalk_width_liveon_avg: row.statewalk_width_liveon_avg,
+                statewalk_width_liveoff_max: row.statewalk_width_liveoff_max,
+                statewalk_width_liveoff_avg: row.statewalk_width_liveoff_avg,
             });
         }
     }

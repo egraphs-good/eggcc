@@ -383,7 +383,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   plt.savefig(output)
 
 
-def make_statewalk_width_histogram(data, output, is_liveon):
+def make_statewalk_width_histogram(data, output, is_liveon, is_average):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -391,7 +391,8 @@ def make_statewalk_width_histogram(data, output, is_liveon):
   missing_widths = 0
 
   for sample in points:
-    width = sample.get("statewalk_width_liveon_max") if is_liveon else sample.get("statewalk_width_liveoff_max")
+    width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_{"avg" if is_average else "max"}"
+    width = sample[width_name]
     if width is None:
       missing_widths += 1
       continue
@@ -793,8 +794,10 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', max_cutoff=5.0)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf', True)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf', True, is_average=False)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf', False, is_average=True)
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

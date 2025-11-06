@@ -434,6 +434,113 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average):
   plt.savefig(output)
 
 
+def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+
+  x_values = []
+  y_values = []
+  timeout_x = []
+  timeout_y = []
+  missing_widths = 0
+  non_positive_widths = 0
+  missing_timings = 0
+
+  TIMEOUT_SECONDS = 5 * 60
+
+  for sample in points:
+    width = sample.get(width_key)
+    if width is None:
+      missing_widths += 1
+      continue
+    if width <= 0:
+      non_positive_widths += 1
+      continue
+
+    if plot_ilp:
+      ilp_time = sample.get("ilp_extract_time")
+      if ilp_time is None:
+        timeout_x.append(width)
+        timeout_y.append(TIMEOUT_SECONDS)
+      else:
+        value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
+        x_values.append(width)
+        y_values.append(value)
+    else:
+      extract_time = sample.get("extract_time")
+      if extract_time is None:
+        missing_timings += 1
+        continue
+      value = extract_time["secs"] + extract_time["nanos"] / 1e9
+      x_values.append(width)
+      y_values.append(value)
+
+  if missing_widths:
+    print(f"WARNING: Skipping {missing_widths} samples with missing {width_key}")
+  if non_positive_widths:
+    print(f"WARNING: Skipping {non_positive_widths} samples with non-positive {width_key}")
+  if missing_timings and not plot_ilp:
+    print(f"WARNING: Skipping {missing_timings} samples with missing extract_time")
+
+  plt.figure(figsize=(10, 6))
+
+  plotted_any = False
+  primary_label = 'ILP Solve Time' if plot_ilp else f'{EGGCC_NAME} Extraction Time'
+  primary_color = 'green' if plot_ilp else 'blue'
+
+  if x_values:
+    plt.scatter(
+      x_values,
+      y_values,
+      color=primary_color,
+      label=primary_label,
+      alpha=0.7,
+      edgecolors='black',
+      linewidths=0.5,
+      s=60,
+    )
+    plotted_any = True
+
+  if plot_ilp and timeout_x:
+    plt.scatter(
+      timeout_x,
+      timeout_y,
+      color='red',
+      marker='x',
+      label='ILP Timeout (5 min)',
+      linewidths=2.0,
+      s=100,
+    )
+    plotted_any = True
+
+  if not plotted_any:
+    print("WARNING: No data plotted in make_statewalk_width_performance_scatter")
+    plt.close()
+    return
+
+  plt.xlabel(f"Statewalk Width{' Average' if is_average else ''}")
+  ylabel = 'ILP Solve Time (Seconds)' if plot_ilp else f'{EGGCC_NAME} Extraction Time (Seconds)'
+  plt.ylabel(ylabel)
+
+  title = 'Statewalk Width vs '
+  title += 'ILP Solve Time' if plot_ilp else f'{EGGCC_NAME} Extraction Time'
+  if is_liveon:
+    title += ' (With Liveness Analysis)'
+  if is_average:
+    title += ' - Average Width'
+  plt.title(title)
+
+  plt.grid(alpha=0.3)
+
+  ax = plt.gca()
+  ax.set_xscale('log')
+
+  plt.tight_layout()
+  plt.savefig(output)
+
+
 # Format x-axis labels to be in "k" format
 def format_k(x, pos):
     return f"{int(x / 1000)}k"
@@ -802,6 +909,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf', False, is_average=True)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False)
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

@@ -20,6 +20,13 @@ nits:
 	cd dag_in_context && cargo clippy --tests -- -D warnings && cargo fmt --check
 
 
+fixnits:
+	npx prettier infra/nightly-resources/*.js --write
+	cargo fmt
+	cd dag_in_context && cargo fmt
+	cargo clippy --fix --allow-dirty
+	cd dag_in_context && cargo clippy --fix --allow-dirty
+
 # build the llvm runtime for bril
 # if you edit the runtime crate, you must re-run this to rebuild rt.bc
 runtime:

@@ -380,11 +380,12 @@ pub struct EggccConfig {
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
     pub extract_time: Duration,
-    #[serde(default)]
     pub ilp_extract_time: Option<Duration>,
-    #[serde(default)]
     pub ilp_timed_out: bool,
-    pub statewalk_width: usize,
+    pub statewalk_width_liveon_max: u64,
+    pub statewalk_width_liveon_avg: f64,
+    pub statewalk_width_liveoff_max: u64,
+    pub statewalk_width_liveoff_avg: f64,
 }
 
 pub struct EggccTimeStatistics {
@@ -632,7 +633,10 @@ fn run_tiger_pipeline(
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
             ilp_timed_out: Option<bool>,
-            statewalk_width: u64,
+            statewalk_width_liveon_max: u64,
+            statewalk_width_liveon_avg: f64,
+            statewalk_width_liveoff_max: u64,
+            statewalk_width_liveoff_avg: f64,
         }
 
         let contents = std::fs::read_to_string(extract_timing_path).unwrap_or_else(|err| {
@@ -666,20 +670,15 @@ fn run_tiger_pipeline(
                 }
             };
 
-            let statewalk_width = usize::try_from(row.statewalk_width).unwrap_or_else(|_| {
-                panic!(
-                    "statewalk_width value {} does not fit in usize on timing row {}",
-                    row.statewalk_width,
-                    idx + 1
-                )
-            });
-
             region_timings.push(ExtractRegionTiming {
                 egraph_size: row.egraph_size,
                 extract_time: Duration::from_nanos(row.tiger_duration_ns),
                 ilp_extract_time,
                 ilp_timed_out,
-                statewalk_width,
+                statewalk_width_liveon_max: row.statewalk_width_liveon_max,
+                statewalk_width_liveon_avg: row.statewalk_width_liveon_avg,
+                statewalk_width_liveoff_max: row.statewalk_width_liveoff_max,
+                statewalk_width_liveoff_avg: row.statewalk_width_liveoff_avg,
             });
         }
     }

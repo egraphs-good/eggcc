@@ -15,8 +15,12 @@ from generate_cfgs import make_cfgs
 
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
-# Timeout (seconds) for eggcc. Timeouts are treated as failures.
-EGGCC_TIMEOUT_SECS = 15 * 60 # 15 minutes
+
+def eggcc_timeout_secs():
+  if IS_TESTING_MODE:
+    return 15 * 60 # 15 minutes
+  else:
+    return 60 * 60 # 60 minutes
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -26,7 +30,7 @@ def num_warmup_samples():
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 1000
+  return 400
 
 
 def average(lst):
@@ -250,11 +254,11 @@ def optimize(benchmark):
 
   timed_out = False
   try:
-    process = run_with_timeout_killing_tree(cmd1, EGGCC_TIMEOUT_SECS)
+    process = run_with_timeout_killing_tree(cmd1, eggcc_timeout_secs())
   except subprocess.TimeoutExpired:
     # Timeouts are failures
-    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds', flush=True)
-    failure_data["error"] = f'Timeout running {cmd1} after {EGGCC_TIMEOUT_SECS} seconds'
+    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {eggcc_timeout_secs()} seconds', flush=True)
+    failure_data["error"] = f'Timeout running {cmd1} after {eggcc_timeout_secs()} seconds'
     return failure_data
 
   if _memory_limit_exceeded(process.returncode):
@@ -445,19 +449,25 @@ def build_eggcc():
 
 if __name__ == '__main__':
   # expect two arguments
-  if len(os.sys.argv) != 3 and len(os.sys.argv) != 4:
-    print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
+  if len(os.sys.argv) < 3:
+    print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper>")
     exit(1)
+
+  # check for paper flag
+  for arg in os.sys.argv:
+    if arg == "--paper":
+      IS_TESTING_MODE = False
+
+  if IS_TESTING_MODE:
+    print("WARNING: Running in testing mode with reduced samples. Pass the --paper flag for the final paper results.")
 
   # running benchmarks sequentially for more reliable results
   # can set this to true for testing
   isParallelBenchmark = False
-  if len(os.sys.argv) == 4:
-    if os.sys.argv[3] == "--parallel":
+  # detect parallel flag
+  for arg in os.sys.argv:
+    if arg == "--parallel":
       isParallelBenchmark = True
-    else:
-      print("Usage: profile.py <output_directory> <bril_directory> <--parallel>")
-      exit(1)
 
   # Create tmp directory for intermediate files
   try:

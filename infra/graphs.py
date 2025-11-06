@@ -347,8 +347,34 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     legend_labels.append('ILP Timeouts')
     xlim_right = hist_max + timeout_width
 
-  plt.xlim(hist_min, xlim_right)
-  plt.yscale('log')
+  ax = plt.gca()
+  ax.set_xlim(hist_min, xlim_right)
+  ax.set_yscale('log')
+
+  def _format_tick(value, _pos):
+    if value <= 0:
+      return ''
+    if value < 1:
+      return f'{value:.2f}'.rstrip('0').rstrip('.')
+    if value < 10:
+      return f'{value:.1f}'.rstrip('0').rstrip('.')
+    return f'{value:g}'
+
+  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
+
+  ymin, ymax = ax.get_ylim()
+  if ymin <= 0:
+    ax.set_ylim(bottom=min(1.0, ymax) if ymax > 0 else 1.0)
+    ymin, ymax = ax.get_ylim()
+
+  if ymax > 0:
+    lower_exp = int(np.floor(np.log10(ymin))) if ymin > 0 else 0
+    upper_exp = int(np.ceil(np.log10(ymax)))
+    yticks = [10 ** exp for exp in range(lower_exp, upper_exp + 1)]
+    ax.set_yticks(yticks)
+
+  ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
+  ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
 
   if legend_handles:
     plt.legend(legend_handles, legend_labels)
@@ -357,7 +383,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   plt.savefig(output)
 
 
-def make_statewalk_width_histogram(data, output):
+def make_statewalk_width_histogram(data, output, is_liveon, is_average):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -365,7 +391,8 @@ def make_statewalk_width_histogram(data, output):
   missing_widths = 0
 
   for sample in points:
-    width = sample.get("statewalk_width")
+    width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_{"avg" if is_average else "max"}"
+    width = sample[width_name]
     if width is None:
       missing_widths += 1
       continue
@@ -767,7 +794,10 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', max_cutoff=5.0)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram.pdf')
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf', True, is_average=False)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)
+  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf', False, is_average=True)
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

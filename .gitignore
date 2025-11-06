@@ -34,3 +34,6 @@ runtime/rt.bc
 runtime/rt.o
 
 .DS_Store
+dag_in_context/src/tiger/getjsoninput.sh
+dag_in_context/src/tiger/bak.cpp
+dag_in_context/src/tiger/main

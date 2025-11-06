@@ -69,3 +69,9 @@ Extraction extract_regionalized_egraph_tiger(const EGraph &g, const EClassId roo
     return e;
 }
 
+pair<StatewalkWidthReport, StatewalkWidthReport> get_stat_regionalized_egraph_tiger(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost) {
+    StatewalkWidthStat liveness, noliveness;
+    statewalkDP(g, root, statewalk_cost, true, &liveness);
+    statewalkDP(g, root, statewalk_cost, false, &noliveness);
+    return make_pair(StatewalkWidthReport(liveness), StatewalkWidthReport(noliveness));
+}

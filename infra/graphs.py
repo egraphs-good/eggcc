@@ -434,7 +434,7 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average):
   plt.savefig(output)
 
 
-def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average):
+def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average, scale_by_egraph_size):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -446,6 +446,8 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   timeout_y = []
   missing_widths = 0
   non_positive_widths = 0
+  missing_egraph_sizes = 0
+  non_positive_products = 0
   missing_timings = 0
 
   TIMEOUT_SECONDS = 5 * 60
@@ -459,14 +461,25 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
       non_positive_widths += 1
       continue
 
+    x_magnitude = width
+    if scale_by_egraph_size:
+      egraph_size = sample.get("egraph_size")
+      if egraph_size is None:
+        missing_egraph_sizes += 1
+        continue
+      if egraph_size <= 0:
+        non_positive_products += 1
+        continue
+      x_magnitude = width * egraph_size
+
     if plot_ilp:
       ilp_time = sample.get("ilp_extract_time")
       if ilp_time is None:
-        timeout_x.append(width)
+        timeout_x.append(x_magnitude)
         timeout_y.append(TIMEOUT_SECONDS)
       else:
         value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
-        x_values.append(width)
+        x_values.append(x_magnitude)
         y_values.append(value)
     else:
       extract_time = sample.get("extract_time")
@@ -474,13 +487,17 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
         missing_timings += 1
         continue
       value = extract_time["secs"] + extract_time["nanos"] / 1e9
-      x_values.append(width)
+      x_values.append(x_magnitude)
       y_values.append(value)
 
   if missing_widths:
     print(f"WARNING: Skipping {missing_widths} samples with missing {width_key}")
   if non_positive_widths:
     print(f"WARNING: Skipping {non_positive_widths} samples with non-positive {width_key}")
+  if missing_egraph_sizes:
+    print(f"WARNING: Skipping {missing_egraph_sizes} samples with missing egraph_size when scaling x-axis")
+  if non_positive_products:
+    print(f"WARNING: Skipping {non_positive_products} samples with non-positive width*egraph_size")
   if missing_timings and not plot_ilp:
     print(f"WARNING: Skipping {missing_timings} samples with missing extract_time")
 
@@ -520,7 +537,14 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
     plt.close()
     return
 
-  plt.xlabel(f"Statewalk Width{' Average' if is_average else ''}")
+  if scale_by_egraph_size:
+    x_label = "(Statewalk Width × E-graph Size)"
+    if is_average:
+      x_label = "(Statewalk Width Average × E-graph Size)"
+  else:
+    x_label = f"Statewalk Width{' Average' if is_average else ''}"
+
+  plt.xlabel(x_label)
   ylabel = 'ILP Solve Time (Seconds)' if plot_ilp else f'{EGGCC_NAME} Extraction Time (Seconds)'
   plt.ylabel(ylabel)
 
@@ -528,8 +552,10 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   title += 'ILP Solve Time' if plot_ilp else f'{EGGCC_NAME} Extraction Time'
   if is_liveon:
     title += ' (With Liveness Analysis)'
-  if is_average:
+  if is_average and not scale_by_egraph_size:
     title += ' - Average Width'
+  if scale_by_egraph_size:
+    title += ' (Width × Size)'
   plt.title(title)
 
   plt.grid(alpha=0.3)
@@ -909,8 +935,10 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf', False, is_average=True)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
@@ -954,4 +982,4 @@ if __name__ == '__main__':
       sys.exit(0)
   make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 
-  
+

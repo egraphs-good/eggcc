@@ -6,6 +6,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import sys
 import os
@@ -255,6 +256,42 @@ def make_region_extract_plot(json, output, plot_ilp):
   plt.savefig(output)
 
 
+def _compute_extraction_histogram_bins(tiger_times, ilp_times, hist_min, hist_max, bin_count):
+  if bin_count < 1:
+    bin_count = 1
+  if hist_max <= hist_min:
+    hist_max = hist_min + 1.0
+
+  bin_edges = np.linspace(hist_min, hist_max, bin_count + 1)
+
+  tiger_counts = np.zeros(bin_count, dtype=int)
+  ilp_counts = np.zeros(bin_count, dtype=int)
+  if tiger_times:
+    tiger_counts, _ = np.histogram(tiger_times, bins=bin_edges)
+  if ilp_times:
+    ilp_counts, _ = np.histogram(ilp_times, bins=bin_edges)
+
+  bin_width = bin_edges[1] - bin_edges[0] if len(bin_edges) > 1 else 1.0
+  tiger_width = bin_width * 0.45
+  ilp_width = bin_width * 0.45
+
+  tiger_lefts = bin_edges[:-1]
+  ilp_lefts = bin_edges[:-1] + (bin_width - ilp_width)
+
+  return {
+    "bin_edges": bin_edges,
+    "tiger_counts": tiger_counts,
+    "ilp_counts": ilp_counts,
+    "bin_width": bin_width,
+    "tiger_width": tiger_width,
+    "ilp_width": ilp_width,
+    "tiger_lefts": tiger_lefts,
+    "ilp_lefts": ilp_lefts,
+    "hist_min": hist_min,
+    "hist_max": hist_max,
+  }
+
+
 def make_extraction_time_histogram(data, output, max_cutoff=None):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
@@ -303,25 +340,20 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     hist_max = max(all_times)
   else:
     hist_max = 1.0
-  if hist_max == hist_min:
-    hist_max = hist_min + 1.0
 
-  bin_edges = np.linspace(hist_min, hist_max, bin_count + 1)
-  eggcc_counts = np.zeros(bin_count, dtype=int)
-  ilp_counts = np.zeros(bin_count, dtype=int)
-  if extract_times:
-    eggcc_counts, _ = np.histogram(extract_times, bins=bin_edges)
-  if ilp_times:
-    ilp_counts, _ = np.histogram(ilp_times, bins=bin_edges)
-
-  bin_width = bin_edges[1] - bin_edges[0] if len(bin_edges) > 1 else 1.0
-  eggcc_width = bin_width * 0.45
-  ilp_width = bin_width * 0.45
+  histogram = _compute_extraction_histogram_bins(extract_times, ilp_times, hist_min, hist_max, bin_count)
+  eggcc_counts = histogram["tiger_counts"]
+  ilp_counts = histogram["ilp_counts"]
+  eggcc_width = histogram["tiger_width"]
+  ilp_width = histogram["ilp_width"]
+  eggcc_lefts = histogram["tiger_lefts"]
+  ilp_lefts = histogram["ilp_lefts"]
+  bin_width = histogram["bin_width"]
+  hist_max = histogram["hist_max"]
 
   legend_handles = []
   legend_labels = []
 
-  eggcc_lefts = bin_edges[:-1]
   eggcc_mask = eggcc_counts > 0
   if eggcc_mask.any():
     plt.bar(
@@ -336,7 +368,6 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
     legend_handles.append(Patch(facecolor='blue', edgecolor='black', alpha=0.7))
     legend_labels.append(f'{EGGCC_NAME} Extraction Time')
 
-  ilp_lefts = bin_edges[:-1] + (bin_width - ilp_width)
   ilp_mask = ilp_counts > 0
   if ilp_mask.any():
     plt.bar(
@@ -416,6 +447,71 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
 
   ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
   ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
+
+  if extract_times:
+    tiger_max_time = max(extract_times)
+    if tiger_max_time > 0:
+      axins = inset_axes(ax, width="40%", height="40%", loc='upper right')
+
+      inset_bin_count = max(bin_count * 2, 20)
+      inset_hist = _compute_extraction_histogram_bins(
+        [t for t in extract_times if t <= tiger_max_time],
+        [t for t in ilp_times if t <= tiger_max_time],
+        hist_min,
+        tiger_max_time,
+        inset_bin_count,
+      )
+
+      inset_tiger_counts = inset_hist["tiger_counts"]
+      inset_ilp_counts = inset_hist["ilp_counts"]
+      inset_tiger_lefts = inset_hist["tiger_lefts"]
+      inset_ilp_lefts = inset_hist["ilp_lefts"]
+      inset_tiger_width = inset_hist["tiger_width"]
+      inset_ilp_width = inset_hist["ilp_width"]
+
+      inset_tiger_mask = inset_tiger_counts > 0
+      inset_ilp_mask = inset_ilp_counts > 0
+
+      if inset_tiger_mask.any():
+        axins.bar(
+          inset_tiger_lefts[inset_tiger_mask],
+          inset_tiger_counts[inset_tiger_mask],
+          width=inset_tiger_width,
+          align='edge',
+          color='blue',
+          edgecolor='black',
+          alpha=0.7,
+          zorder=2,
+        )
+      if inset_ilp_mask.any():
+        axins.bar(
+          inset_ilp_lefts[inset_ilp_mask],
+          inset_ilp_counts[inset_ilp_mask],
+          width=inset_ilp_width,
+          align='edge',
+          color='green',
+          edgecolor='black',
+          alpha=0.7,
+          zorder=2,
+        )
+
+      axins.set_xlim(hist_min, tiger_max_time)
+      axins.set_yscale('log')
+      axins.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
+      axins.tick_params(axis='both', labelsize=8)
+
+      _, inset_ymax = axins.get_ylim()
+      positive_counts = []
+      if inset_tiger_mask.any():
+        positive_counts.append(inset_tiger_counts[inset_tiger_mask].min())
+      if inset_ilp_mask.any():
+        positive_counts.append(inset_ilp_counts[inset_ilp_mask].min())
+      positive_counts = [c for c in positive_counts if c > 0]
+      if positive_counts:
+        lower_bound = min(1.0, min(positive_counts))
+        axins.set_ylim(bottom=lower_bound, top=inset_ymax)
+
+      axins.set_title('Zoom: Tiger Range', fontsize=9)
 
   if legend_handles:
     plt.legend(legend_handles, legend_labels)

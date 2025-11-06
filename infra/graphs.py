@@ -6,6 +6,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
+from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import sys
@@ -332,7 +333,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   plt.figure(figsize=(10, 6))
 
   all_times = extract_times + ilp_times
-  bin_count = max(10, int(np.sqrt(len(all_times) if all_times else 1)))
+  bin_count = 20
   hist_min = 0.0
   if max_cutoff is not None:
     hist_max = max_cutoff
@@ -423,28 +424,18 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   ax.set_xlim(hist_min, xlim_right)
   ax.set_yscale('log')
 
-  def _format_tick(value, _pos):
-    if value <= 0:
-      return ''
-    if value < 1:
-      return f'{value:.2f}'.rstrip('0').rstrip('.')
-    if value < 10:
-      return f'{value:.1f}'.rstrip('0').rstrip('.')
-    return f'{value:g}'
+  max_count = 0
+  if eggcc_counts.size:
+    max_count = max(max_count, int(eggcc_counts.max()))
+  if ilp_counts.size:
+    max_count = max(max_count, int(ilp_counts.max()))
+  max_count = max(max_count, int(ilp_timeout_count), int(ilp_infeasible_count))
+  if max_count == 0:
+    max_count = 1
 
-  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
-
-  ymin, ymax = ax.get_ylim()
-  if ymin <= 0:
-    ax.set_ylim(bottom=min(1.0, ymax) if ymax > 0 else 1.0)
-    ymin, ymax = ax.get_ylim()
-
-  if ymax > 0:
-    lower_exp = int(np.floor(np.log10(ymin))) if ymin > 0 else 0
-    upper_exp = int(np.ceil(np.log10(ymax)))
-    yticks = [10 ** exp for exp in range(lower_exp, upper_exp + 1)]
-    ax.set_yticks(yticks)
-
+  ax.set_ylim(0, max_count * 1.1)
+  ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True, prune=None))
+  ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
   ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
   ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
 
@@ -497,21 +488,34 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
 
       axins.set_xlim(hist_min, tiger_max_time)
       axins.set_yscale('log')
-      axins.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
+      inset_max_count = 0
+      if inset_tiger_mask.any():
+        inset_max_count = max(inset_max_count, int(inset_tiger_counts[inset_tiger_mask].max()))
+      if inset_ilp_mask.any():
+        inset_max_count = max(inset_max_count, int(inset_ilp_counts[inset_ilp_mask].max()))
+      if inset_max_count == 0:
+        inset_max_count = 1
+      axins.set_ylim(0, inset_max_count * 1.1)
+      axins.yaxis.set_major_locator(mticker.MaxNLocator(integer=True, prune=None))
+      axins.yaxis.set_minor_locator(mticker.AutoMinorLocator())
       axins.tick_params(axis='both', labelsize=8)
 
-      _, inset_ymax = axins.get_ylim()
-      positive_counts = []
-      if inset_tiger_mask.any():
-        positive_counts.append(inset_tiger_counts[inset_tiger_mask].min())
-      if inset_ilp_mask.any():
-        positive_counts.append(inset_ilp_counts[inset_ilp_mask].min())
-      positive_counts = [c for c in positive_counts if c > 0]
-      if positive_counts:
-        lower_bound = min(1.0, min(positive_counts))
-        axins.set_ylim(bottom=lower_bound, top=inset_ymax)
-
       axins.set_title('Zoom: Tiger Range', fontsize=9)
+
+      main_ymin, main_ymax = ax.get_ylim()
+      rect = Rectangle(
+        (hist_min, main_ymin),
+        max(tiger_max_time - hist_min, 0),
+        main_ymax - main_ymin,
+        linewidth=1.2,
+        edgecolor='black',
+        facecolor='none',
+        linestyle='--',
+        zorder=5,
+      )
+      ax.add_patch(rect)
+
+      ax.indicate_inset_zoom(axins, edgecolor='black', alpha=0.9, linewidth=1.2)
 
   if legend_handles:
     plt.legend(legend_handles, legend_labels)

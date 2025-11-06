@@ -333,7 +333,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   plt.figure(figsize=(10, 6))
 
   all_times = extract_times + ilp_times
-  bin_count = 20
+  bin_count = 30
   hist_min = 0.0
   if max_cutoff is not None:
     hist_max = max_cutoff
@@ -505,7 +505,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
       main_ymin, main_ymax = ax.get_ylim()
       rect = Rectangle(
         (hist_min, main_ymin),
-        max(tiger_max_time - hist_min, 0),
+        12,
         main_ymax - main_ymin,
         linewidth=1.2,
         edgecolor='black',

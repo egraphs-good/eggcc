@@ -267,16 +267,14 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   ilp_infeasible_count = 0
 
   for sample in points:
-    extract_time = sample.get("extract_time")
-    if extract_time is None:
-        raise KeyError("Missing extract_time in sample")
+    extract_time = sample["extract_time"]
     extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
     if max_cutoff is not None and extract_value > max_cutoff:
       extract_overflow += 1
     else:
       extract_times.append(extract_value)
 
-    ilp_time = sample.get("ilp_extract_time")
+    ilp_time = sample["ilp_extract_time"]
     ilp_infeasible = sample.get("ilp_infeasible", False)
     if ilp_infeasible:
       ilp_infeasible_count += 1
@@ -498,7 +496,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   ILP_TIMEOUT_SECONDS = 5 * 60
 
   for sample in points:
-    width = sample.get(width_key)
+    width = sample[width_key]
     if width is None:
       missing_widths += 1
       continue
@@ -508,7 +506,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
 
     x_magnitude = width
     if scale_by_egraph_size:
-      egraph_size = sample.get("egraph_size")
+      egraph_size = sample["egraph_size"]
       if egraph_size is None:
         missing_egraph_sizes += 1
         continue
@@ -518,8 +516,8 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
       x_magnitude = width * egraph_size
 
     if plot_ilp:
-      ilp_time = sample.get("ilp_extract_time")
-      ilp_infeasible = sample.get("ilp_infeasible", False)
+      ilp_time = sample["ilp_extract_time"]
+      ilp_infeasible = sample.get("ilp_infeasible", False) # TODO replace with indexing so we error if not present
       if ilp_infeasible:
         infeasible_x.append(x_magnitude)
         infeasible_y.append(ILP_TIMEOUT_SECONDS)
@@ -531,7 +529,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
         x_values.append(x_magnitude)
         y_values.append(value)
     else:
-      extract_time = sample.get("extract_time")
+      extract_time = sample["extract_time"]
       if extract_time is None:
         missing_timings += 1
         continue
@@ -545,8 +543,6 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
     print(f"WARNING: Skipping {non_positive_widths} samples with non-positive {width_key}")
   if missing_egraph_sizes:
     print(f"WARNING: Skipping {missing_egraph_sizes} samples with missing egraph_size when scaling x-axis")
-  if non_positive_products:
-    print(f"WARNING: Skipping {non_positive_products} samples with non-positive width*egraph_size")
   if missing_timings and not plot_ilp:
     print(f"WARNING: Skipping {missing_timings} samples with missing extract_time")
 
@@ -628,57 +624,186 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   plt.savefig(output)
 
 
-def make_egraph_size_vs_statewalk_width_scatter(data, output, is_liveon, is_average):
+def make_egraph_size_vs_statewalk_width_heatmap(
+  data,
+  output,
+  is_liveon,
+  is_average,
+  min_width=None,
+  max_width=None,
+  runtime_source="tiger",
+):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
   width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
 
-  x_values = []
-  y_values = []
+  sizes = []
+  widths = []
+  runtimes = []
+  missing_runtimes = 0
+  skipped_above_max_width = 0
+  timeout_sizes = []
+  timeout_widths = []
+  infeasible_sizes = []
+  infeasible_widths = []
 
   for sample in points:
-    width = sample[width_key]
-    egraph_size = sample.get("egraph_size")
-    x_values.append(egraph_size)
-    y_values.append(width)
+    width = sample.get(width_key)
+    if width is None:
+      continue
+    if min_width is not None and width <= min_width:
+      continue
+    if max_width is not None and width > max_width:
+      skipped_above_max_width += 1
+      continue
 
-  if not x_values:
-    print("WARNING: No data plotted in make_egraph_size_vs_statewalk_width_scatter")
+    egraph_size = sample.get("egraph_size")
+
+    if runtime_source == "ilp":
+      if sample.get("ilp_infeasible", False):
+        if egraph_size is not None:
+          infeasible_sizes.append(egraph_size)
+          infeasible_widths.append(width)
+        continue
+      if sample.get("ilp_timed_out", False):
+        if egraph_size is not None:
+          timeout_sizes.append(egraph_size)
+          timeout_widths.append(width)
+        continue
+      ilp_time = sample.get("ilp_extract_time")
+      if ilp_time is None:
+        missing_runtimes += 1
+        continue
+      runtime_secs = ilp_time["secs"] + ilp_time["nanos"] / 1e9
+    else:
+      extract_time = sample.get("extract_time")
+      if extract_time is None:
+        missing_runtimes += 1
+        continue
+      runtime_secs = extract_time["secs"] + extract_time["nanos"] / 1e9
+
+    if runtime_secs <= 0:
+      continue
+
+    sizes.append(egraph_size)
+    widths.append(width)
+    runtimes.append(runtime_secs)
+
+  if missing_runtimes:
+    label = 'ILP solve time' if runtime_source == "ilp" else 'extract_time'
+    print(f"WARNING: Skipping {missing_runtimes} samples with missing {label}")
+
+  if not sizes:
+    print("WARNING: No data plotted in make_egraph_size_vs_statewalk_width_heatmap")
+    return
+
+  sizes = np.array(sizes)
+  widths = np.array(widths)
+  runtimes = np.array(runtimes)
+
+  num_bins = 30
+
+  def _edges(values):
+    vmin = values.min()
+    vmax = values.max()
+    if vmin == vmax:
+      delta = max(1.0, abs(vmin) * 0.1)
+      return np.array([vmin, vmin + delta])
+    return np.linspace(vmin, vmax, num_bins + 1)
+
+  size_edges = _edges(sizes)
+  width_edges = _edges(widths)
+
+  sum_heat, _, _ = np.histogram2d(sizes, widths, bins=[size_edges, width_edges], weights=runtimes)
+  count_heat, _, _ = np.histogram2d(sizes, widths, bins=[size_edges, width_edges])
+
+  with np.errstate(invalid='ignore', divide='ignore'):
+    avg_heat = np.divide(sum_heat, count_heat, where=count_heat > 0)
+  avg_heat[count_heat == 0] = np.nan
+
+  valid = avg_heat[np.isfinite(avg_heat) & (avg_heat > 0)]
+  if valid.size == 0:
+    print("WARNING: No valid runtime data for heatmap")
     return
 
   plt.figure(figsize=(10, 6))
-  plt.scatter(
-    x_values,
-    y_values,
-    color='purple',
-    alpha=0.7,
+  cmap = plt.get_cmap('inferno').copy()
+  cmap.set_bad(color='lightgray')
+
+  mesh = plt.pcolormesh(size_edges, width_edges, avg_heat.T, cmap=cmap, shading='auto')
+  cbar = plt.colorbar(mesh)
+  if runtime_source == "ilp":
+    cbar.set_label('ILP Solve Time (Seconds)')
+  else:
+    cbar.set_label(f'{EGGCC_NAME} Extraction Time (Seconds)')
+
+  legend_handles = []
+  legend_labels = []
+
+  solved_points = plt.scatter(
+    sizes,
+    widths,
+    color='white',
     edgecolors='black',
-    linewidths=0.5,
-    s=60,
+    linewidths=0.2,
+    s=20,
+    alpha=0.6,
+    zorder=3,
+    label='Solved Points' if runtime_source == "ilp" else None,
   )
+
+  if runtime_source == "ilp" and sizes.size:
+    legend_handles.append(solved_points)
+    legend_labels.append('Solved Points')
+
+  if runtime_source == "ilp" and timeout_sizes:
+    timeout_scatter = plt.scatter(
+      timeout_sizes,
+      timeout_widths,
+      marker='x',
+      color='red',
+      linewidths=1.5,
+      s=60,
+      label='ILP Timeout',
+      zorder=4,
+    )
+    legend_handles.append(timeout_scatter)
+    legend_labels.append('ILP Timeout')
+
+  if runtime_source == "ilp" and infeasible_sizes:
+    infeasible_scatter = plt.scatter(
+      infeasible_sizes,
+      infeasible_widths,
+      marker='x',
+      color='orange',
+      linewidths=1.5,
+      s=60,
+      label='ILP Infeasible',
+      zorder=4,
+    )
+    legend_handles.append(infeasible_scatter)
+    legend_labels.append('ILP Infeasible')
+
+  if legend_handles:
+    plt.legend(legend_handles, legend_labels, loc='upper right')
 
   plt.xlabel('Regionalized E-graph Size')
   y_label = 'Statewalk Width'
-  if is_average:
-    y_label += ' Average'
+  y_label += ' Average' if is_average else ' Maximum'
+  y_label += ' (With Liveness)' if is_liveon else ' (No Liveness)'
   plt.ylabel(y_label)
 
-  title = 'E-graph Size vs Statewalk Width'
-  if is_liveon:
-    title += ' (With Liveness Analysis)'
+  if runtime_source == "ilp":
+    title = 'ILP Runtime Heatmap by E-graph Size and Statewalk Width'
   else:
-    title += ' (No Liveness Analysis)'
-  if is_average:
-    title += ' - Average'
-  else:
-    title += ' - Maximum'
+    title = 'Tiger Runtime Heatmap by E-graph Size and Statewalk Width'
+  title += ' (Average Width)' if is_average else ''
+  title += ' with Liveness' if is_liveon else ' without Liveness'
+  if max_width is not None:
+    title += f' (≤ Width {max_width})'
+    plt.ylim(bottom=0, top=max_width)
   plt.title(title)
-
-  plt.grid(alpha=0.3)
-  ax = plt.gca()
-  ax.set_xscale('log')
-  ax.set_yscale('log')
 
   plt.tight_layout()
   plt.savefig(output)
@@ -1056,10 +1181,38 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
-  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_with_liveness_max.pdf', is_liveon=True, is_average=False)
-  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_no_liveness_max.pdf', is_liveon=False, is_average=False)
-  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_with_liveness_avg.pdf', is_liveon=True, is_average=True)
-  make_egraph_size_vs_statewalk_width_scatter(profile, f'{graphs_folder}/egraph_size_vs_statewalk_width_no_liveness_avg.pdf', is_liveon=False, is_average=True)
+  make_egraph_size_vs_statewalk_width_heatmap(
+    profile,
+    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width.pdf',
+    is_liveon=False,
+    is_average=False,
+    min_width=1,
+  )
+  make_egraph_size_vs_statewalk_width_heatmap(
+    profile,
+    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width.pdf',
+    is_liveon=False,
+    is_average=False,
+    min_width=1,
+    runtime_source="ilp",
+  )
+  make_egraph_size_vs_statewalk_width_heatmap(
+    profile,
+    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width_max100.pdf',
+    is_liveon=False,
+    is_average=False,
+    min_width=1,
+    max_width=100,
+  )
+  make_egraph_size_vs_statewalk_width_heatmap(
+    profile,
+    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width_max100.pdf',
+    is_liveon=False,
+    is_average=False,
+    min_width=1,
+    max_width=100,
+    runtime_source="ilp",
+  )
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)

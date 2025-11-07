@@ -23,9 +23,7 @@ void compute_tiger_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                            EClassId root,
                            const vector<vector<Cost>> &rstatewalk_cost) {
   auto tiger_start = Clock::now();
-  Extraction tiger_extraction =
-      extract_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
-  (void)tiger_extraction;
+  extract_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
   auto tiger_end = Clock::now();
 
   sample.tiger_duration_ns =

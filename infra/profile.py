@@ -10,6 +10,7 @@ import subprocess
 import resource
 
 import concurrent.futures
+import time
 from generate_cfgs import make_cfgs
 
 
@@ -213,6 +214,7 @@ class Benchmark:
     self.index = index
     # total number of benchmarks being run
     self.total = total
+    self.is_last_before_ilp = False
 
 def benchmark_profile_dir(name):
   return f'{TMP_DIR}/{name}'
@@ -228,6 +230,8 @@ def setup_benchmark(name):
 # eggcc compile time, and llvm compile time
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}', flush=True)
+  if benchmark.is_last_before_ilp:
+    print('Waiting for all other benchmarks to complete before ILP comparison...')
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
   eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
@@ -461,6 +465,7 @@ def build_eggcc():
     exit(1)
 
 if __name__ == '__main__':
+  start_time = time.perf_counter()
   # expect two arguments
   if len(os.sys.argv) < 3:
     print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper>")
@@ -538,6 +543,7 @@ if __name__ == '__main__':
   # separate to_run into ILP_COMPARISON and others
   ilp_comparison = [b for b in to_run if b.treatment == "eggcc-tiger-ILP-COMPARISON"]
   others = [b for b in to_run if b.treatment != "eggcc-tiger-ILP-COMPARISON"]
+  others[-1].is_last_before_ilp = True
 
   run_benchmarks_parallel(others, parallelism, compile_data)
   run_benchmarks_parallel(ilp_comparison, ilp_parallelism, compile_data)
@@ -597,4 +603,7 @@ if __name__ == '__main__':
 
   # remove the tmp directory
   os.system(f"rm -rf {TMP_DIR}")
+
+  elapsed = time.perf_counter() - start_time
+  print(f"profile.py completed in {elapsed:.2f} seconds", flush=True)
 

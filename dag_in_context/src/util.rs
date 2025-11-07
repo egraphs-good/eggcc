@@ -171,8 +171,7 @@ where
         let mut buf = Vec::new();
         let mut reader = io::BufReader::new(stdout_pipe);
         reader.read_to_end(&mut buf)?;
-        String::from_utf8(buf)
-            .map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))
+        String::from_utf8(buf).map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))
     });
 
     let stderr_handle = std::thread::spawn(move || -> std::io::Result<String> {
@@ -216,6 +215,8 @@ where
     if status.success() {
         Ok(stdout)
     } else {
-        Err(std::io::Error::other(CommandFailure::new(status, stdout, stderr)))
+        Err(std::io::Error::other(CommandFailure::new(
+            status, stdout, stderr,
+        )))
     }
 }

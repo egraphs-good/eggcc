@@ -665,7 +665,7 @@ fn run_tiger_pipeline(
             let ilp_extract_time = if ilp_timed_out {
                 None
             } else if ilp_infeasible {
-                row.ilp_duration_ns.map(Duration::from_nanos)
+                None
             } else {
                 match row.ilp_duration_ns {
                     Some(nanos) => Some(Duration::from_nanos(nanos)),

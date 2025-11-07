@@ -131,19 +131,21 @@ compute_extract_region_timings(const EGraph &g,
 
   std::atomic<size_t> next_index{0};
 
+  cerr << "Running ILP timing on regions, one dot per region:";
   auto worker = [&]() {
     while (true) {
       size_t idx = next_index.fetch_add(1, std::memory_order_relaxed);
       if (idx >= prepared_regions.size()) {
         break;
       }
-      cerr << "ILP timing on region " << idx + 1 << " / "
-           << prepared_regions.size() << "\n";
+      cerr << ".";
+      cerr.flush();
       const PreparedRegion &prepared = prepared_regions[idx];
       ExtractRegionTiming &sample = timings[prepared.index];
       compute_ilp_metrics(sample, prepared.egraph, prepared.root);
     }
   };
+  cerr << "\n";
 
   vector<std::thread> threads;
   threads.reserve(worker_count);

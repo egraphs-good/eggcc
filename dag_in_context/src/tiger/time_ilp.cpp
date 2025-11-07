@@ -122,8 +122,16 @@ compute_extract_region_timings(const EGraph &g,
   unsigned int hardware_threads = std::thread::hardware_concurrency();
   unsigned int usable_threads = hardware_threads == 0 ? 1 : hardware_threads;
   if (usable_threads > 30) {
-    usable_threads = max(usable_threads - 4, 1u);
+    // leave one core free
+    usable_threads = max(usable_threads - 1, 1u);
   }
+
+  // divide by 4 because we spin up 4 benchmarks at once in profile.py
+  if (usable_threads >= 7) {
+    usable_threads /= 4;
+  }
+
+  
   size_t worker_count = min<size_t>(usable_threads, prepared_regions.size());
   if (worker_count == 0) {
     worker_count = 1;

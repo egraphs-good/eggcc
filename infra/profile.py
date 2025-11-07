@@ -439,6 +439,20 @@ def all_benchmarks(path):
 
   return glob(f'{path}/**/*.bril', recursive=True) + glob(f'{path}/**/*.rs', recursive=True)
 
+def run_benchmarks_parallel(benchmarks, parallelism, compile_data_out):
+  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
+    futures = {executor.submit(optimize, benchmark) for benchmark in benchmarks}
+    for future in concurrent.futures.as_completed(futures):
+      try:
+        res = future.result()
+        path = res["path"]
+        res.pop("path")
+        compile_data_out[path] = res
+      except Exception as e:
+        print(f"Shutting down executor due to error: {e}")
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise e
+
 def build_eggcc():
   print("Building eggcc")
   buildres = os.system("cargo build --release")
@@ -511,38 +525,23 @@ if __name__ == '__main__':
     setup_benchmark(benchmark_name)
   
 
+  # map from path to data (the path includes treatment, benchmark name)
   compile_data = {}
   # get the number of cores on this machine 
   parallelism = (os.cpu_count() - 1)
   # for large machines leave a few cores free
   if parallelism > 30:
     parallelism -= 4
+  ilp_parallelism = 4 if os.cpu_count() >= 8 else 1
 
 
   # separate to_run into ILP_COMPARISON and others
   ilp_comparison = [b for b in to_run if b.treatment == "eggcc-tiger-ILP-COMPARISON"]
   others = [b for b in to_run if b.treatment != "eggcc-tiger-ILP-COMPARISON"]
 
-  # create a thread pool for running optimization
-  with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-    futures = {executor.submit(optimize, benchmark) for benchmark in others}
-    for future in concurrent.futures.as_completed(futures):
-      try:
-        res = future.result()
-        path = res["path"]
-        res.pop("path")
-        compile_data[path] = res
-      except Exception as e:
-        print(f"Shutting down executor due to error: {e}")
-        executor.shutdown(wait=False, cancel_futures=True)
-        raise e
-  # run ILP_COMPARISON sequentially because it does it's own parallelism
-  for benchmark in ilp_comparison:
-    res = optimize(benchmark)
-    path = res["path"]
-    res.pop("path")
-    compile_data[path] = res
-
+  run_benchmarks_parallel(others, parallelism, compile_data)
+  run_benchmarks_parallel(ilp_comparison, ilp_parallelism, compile_data)
+  
   # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
   failed_paths = set()
   successful = {}

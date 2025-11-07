@@ -7,11 +7,13 @@
 
 #include "egraphin.h"
 
+// ilp_duration_ns is invalid when ilp_timed_out or ilp_infeasible is true
 struct ExtractRegionTiming {
     size_t egraph_size;
     long long tiger_duration_ns;
     std::optional<long long> ilp_duration_ns;
     bool ilp_timed_out;
+    bool ilp_infeasible;
     size_t statewalk_width_liveon_max;
     double statewalk_width_liveon_avg;
     size_t statewalk_width_liveoff_max;

@@ -382,6 +382,7 @@ pub struct ExtractRegionTiming {
     pub extract_time: Duration,
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
+    pub ilp_infeasible: bool,
     pub statewalk_width_liveon_max: u64,
     pub statewalk_width_liveon_avg: f64,
     pub statewalk_width_liveoff_max: u64,
@@ -633,6 +634,8 @@ fn run_tiger_pipeline(
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
             ilp_timed_out: Option<bool>,
+            #[serde(default)]
+            ilp_infeasible: Option<bool>,
             statewalk_width_liveon_max: u64,
             statewalk_width_liveon_avg: f64,
             statewalk_width_liveoff_max: u64,
@@ -658,15 +661,18 @@ fn run_tiger_pipeline(
 
         for (idx, row) in rows.into_iter().enumerate() {
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
-            let ilp_extract_time = match (row.ilp_duration_ns, ilp_timed_out) {
-                (Some(nanos), false) => Some(Duration::from_nanos(nanos)),
-                (Some(_), true) => None,
-                (None, true) => None,
-                (None, false) => {
-                    panic!(
-                        "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
-                        idx + 1
-                    );
+            let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
+            let ilp_extract_time = if ilp_timed_out || ilp_infeasible {
+                None
+            } else {
+                match row.ilp_duration_ns {
+                    Some(nanos) => Some(Duration::from_nanos(nanos)),
+                    None => {
+                        panic!(
+                            "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
+                            idx + 1
+                        );
+                    }
                 }
             };
 
@@ -675,6 +681,7 @@ fn run_tiger_pipeline(
                 extract_time: Duration::from_nanos(row.tiger_duration_ns),
                 ilp_extract_time,
                 ilp_timed_out,
+                ilp_infeasible,
                 statewalk_width_liveon_max: row.statewalk_width_liveon_max,
                 statewalk_width_liveon_avg: row.statewalk_width_liveon_avg,
                 statewalk_width_liveoff_max: row.statewalk_width_liveoff_max,

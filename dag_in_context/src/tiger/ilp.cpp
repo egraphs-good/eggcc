@@ -446,12 +446,13 @@ static ExtractionENodeId build_extraction_node(
 
 } // namespace
 
-Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &timed_out)  {
+Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &timed_out, bool &infeasible)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
 		exit(1);
 	};
 	timed_out = false;
+	infeasible = false;
 
 	pair<EClassId, ENodeId> arg = findArg(g);
 	EClassId initc = arg.first;
@@ -774,39 +775,13 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		fail(msg);
 	};
 	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_config.use_gurobi, fail_with_log);
-	const unordered_map<string, double> &values = solver_solution.values;
-	bool infeasible = solver_solution.infeasible;
-	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
-	if (infeasible) {
+ 	const unordered_map<string, double> &values = solver_solution.values;
+	if (solver_solution.infeasible) {
 		cout << "infeasible ILP problem" << endl;
-/*
-		// try the old extraction method for debugging
-		StateWalk sw = UnguidedFindStateWalk(g, initc, initn, root, nsubregion).state_walk;
-		cerr << "state walk found" << endl;
-
-		// does this state walk use a node multiple times?
-		auto encode_node = [](EClassId cls, ENodeId node) -> long long {
-			return (static_cast<long long>(cls) << 32) |
-			       static_cast<unsigned long long>(static_cast<unsigned int>(node));
-		};
-		unordered_set<long long> used_nodes;
-		for (const auto &p : sw) {
-			if (used_nodes.count(encode_node(p.first, p.second))) {
-				cerr << "state walk reuses node " << p.second << endl;
-
-				// print out the eclass of the reused node
-				cerr << "in eclass " << enode_to_eclass(g, p.second) << " which has enodes:" << endl;
-				print_eclass(cerr, g, enode_to_eclass(g, p.second));
-				exit(1);
-			}
-			used_nodes.insert(encode_node(p.first, p.second));
-		}
-
-		regionExtractionWithStateWalk(g, root, sw);
-		cerr << "ILP extraction failed due to infeasibility, but a state walk was found." << endl;
-*/
-		fail(solver_name + " reported infeasibility");
+		infeasible = true;
+		return Extraction();
 	}
+	unordered_map<string, bool> value_map = build_binary_value_map(pickNode, choices, values);
 
 	vector<vector<int> > pickSelected(g.eclasses.size());
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -820,15 +795,12 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	}
 	bool saw_root_assignment = false;
 	if (!g.eclasses[root].enodes.empty()) {
-		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
 			bool root_selected = require_binary_value(value_map, pickNode[root][n], fail);
 			double root_value = root_selected ? 1.0 : 0.0;
 			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}
-			cerr << "  " << pickNode[root][n] << " = " << root_value
-			     << " (" << (pickSelected[root][n] ? "selected" : "not selected") << ")\n";
 		}
 	}
 	if (!saw_root_assignment) {
@@ -1209,16 +1181,17 @@ pair<EClassId, ENodeId> findArg(const EGraph &g) {
 
 typedef int RegionId;
 
-static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, bool &timed_out) {
+static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, bool &timed_out, bool &infeasible) {
 	auto start = std::chrono::steady_clock::now();
 	timed_out = false;
-	Extraction extraction = extractRegionILPInner(g, root, timed_out);
+	infeasible = false;
+	Extraction extraction = extractRegionILPInner(g, root, timed_out, infeasible);
 	auto elapsed = std::chrono::steady_clock::now() - start;
 	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
 }
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out) {
-	auto result = run_ilp_extractor(g, root, timed_out);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out, bool &infeasible) {
+	auto result = run_ilp_extractor(g, root, timed_out, infeasible);
 	out = std::move(result.first);
 	return result.second.count();
 }
@@ -1227,9 +1200,14 @@ long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extract
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
 Extraction extractRegionILP(const EGraph &g, const EClassId root) {
 	bool ilp_timed_out = false;
-	auto ilp_result = run_ilp_extractor(g, root, ilp_timed_out);
+	bool ilp_infeasible = false;
+	auto ilp_result = run_ilp_extractor(g, root, ilp_timed_out, ilp_infeasible);
 	if (ilp_timed_out) {
 		cout << "TIMEOUT" << endl;
+		std::exit(1);
+	}
+	if (ilp_infeasible) {
+		cerr << "ILP solver reported infeasibility" << endl;
 		std::exit(1);
 	}
 	return ilp_result.first;
@@ -1244,7 +1222,6 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	pair<EGraph, SubEGraphMap> res = createRegionEGraph(g, region_root);
 	EGraph &gr = res.first;
 	SubEGraphMap &rmap = res.second;
-	cerr << "Region root : " << region_root << "  Region egraph size : " << g.eclasses.size() << " Top region egraph size : " << gr.eclasses.size() << endl;
 	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
 	Extraction er = extractRegionILP(gr, root);
 	Extraction ner(er.size());

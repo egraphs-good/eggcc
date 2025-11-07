@@ -20,7 +20,7 @@ def eggcc_timeout_secs():
   if IS_TESTING_MODE:
     return 15 * 60 # 15 minutes
   else:
-    return 60 * 60 # 60 minutes
+    return 1 * 60 * 60 # 1 hour (ILP can take a long time, timing out on lots of regions after 5 min)
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
@@ -44,7 +44,6 @@ TO_ABLATE = "" # change to a ruleset to ablate
 UNSAFE_TREATMENTS = False
 treatments = [
   "rvsdg-round-trip-to-executable",
-  #"cranelift-O3", currently disabled since it doesn't support measuring cycles yet
   "llvm-O0-O0",
   "llvm-O1-O0",
   "llvm-O2-O0",
@@ -60,7 +59,8 @@ treatments = [
   "eggcc-tiger-ILP-NOMIN-O0-O0",
   "eggcc-tiger-ILP-WITHCTX-O0-O0",
   "eggcc-WITHCTX-O0-O0",
-  "eggcc-tiger-ILP-COMPARISON", # run both tiger and ILP on the same egraphs
+  # run both tiger and ILP on the same egraphs, keep this last in the list
+  "eggcc-tiger-ILP-COMPARISON", 
 ]
 
 example_subset_treatments = [
@@ -379,7 +379,6 @@ def bench(benchmark):
         warmup_cycles.append(take_sample(cmd, benchmark))
 
       num_to_run = num_samples()
-      print(f'Running {num_to_run} samples for {benchmark.name} with {benchmark.treatment}', flush=True)
 
       while True:
         resulting_num_cycles.append(take_sample(cmd, benchmark))
@@ -500,16 +499,10 @@ if __name__ == '__main__':
     paths[name] = profile
 
   to_run = []
-  index = 0
+  index = 1
   total = len(profiles) * len(treatments)
-  for benchmark_path in profiles:
-    for treatment in treatments:
-
-      # EVIL HACK: skip ILP mode for raytrace benchmark
-      # since it uses too much memory
-      if benchmark_path.endswith("raytrace.rs") and treatment == "eggcc-ILP-O0-O0":
-        print("Skipping raytrace.rs with eggcc-ILP-O0-O0", flush=True)
-        continue
+  for treatment in treatments:
+    for benchmark_path in profiles:
       to_run.append(Benchmark(benchmark_path, treatment, index, total))
       index += 1
 
@@ -526,9 +519,13 @@ if __name__ == '__main__':
     parallelism -= 4
 
 
+  # separate to_run into ILP_COMPARISON and others
+  ilp_comparison = [b for b in to_run if b.treatment == "eggcc-tiger-ILP-COMPARISON"]
+  others = [b for b in to_run if b.treatment != "eggcc-tiger-ILP-COMPARISON"]
+
   # create a thread pool for running optimization
   with concurrent.futures.ThreadPoolExecutor(max_workers = parallelism) as executor:
-    futures = {executor.submit(optimize, benchmark) for benchmark in to_run}
+    futures = {executor.submit(optimize, benchmark) for benchmark in others}
     for future in concurrent.futures.as_completed(futures):
       try:
         res = future.result()
@@ -539,6 +536,12 @@ if __name__ == '__main__':
         print(f"Shutting down executor due to error: {e}")
         executor.shutdown(wait=False, cancel_futures=True)
         raise e
+  # run ILP_COMPARISON sequentially because it does it's own parallelism
+  for benchmark in ilp_comparison:
+    res = optimize(benchmark)
+    path = res["path"]
+    res.pop("path")
+    compile_data[path] = res
 
   # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
   failed_paths = set()

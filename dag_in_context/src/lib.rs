@@ -662,9 +662,7 @@ fn run_tiger_pipeline(
         for (idx, row) in rows.into_iter().enumerate() {
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
             let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
-            let ilp_extract_time = if ilp_timed_out {
-                None
-            } else if ilp_infeasible {
+            let ilp_extract_time = if ilp_timed_out || ilp_infeasible {
                 None
             } else {
                 match row.ilp_duration_ns {

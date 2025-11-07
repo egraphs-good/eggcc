@@ -2,7 +2,7 @@ use std::{
     error::Error,
     ffi::OsStr,
     fmt,
-    io::{Seek, SeekFrom, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
     process::{Command, ExitStatus, Stdio},
 };
 
@@ -14,9 +14,6 @@ use std::os::unix::process::CommandExt;
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
-
-#[cfg(unix)]
-use std::io;
 
 use tempfile::tempfile;
 
@@ -160,11 +157,53 @@ where
         }
     }
 
-    let output = command.output()?;
+    let mut child = command.spawn()?;
+    let stdout_pipe = child
+        .stdout
+        .take()
+        .ok_or_else(|| std::io::Error::other("failed to capture stdout"))?;
+    let stderr_pipe = child
+        .stderr
+        .take()
+        .ok_or_else(|| std::io::Error::other("failed to capture stderr"))?;
+
+    let stdout_handle = std::thread::spawn(move || -> std::io::Result<String> {
+        let mut buf = Vec::new();
+        let mut reader = io::BufReader::new(stdout_pipe);
+        reader.read_to_end(&mut buf)?;
+        String::from_utf8(buf)
+            .map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))
+    });
+
+    let stderr_handle = std::thread::spawn(move || -> std::io::Result<String> {
+        let mut buf = Vec::new();
+        let mut reader = io::BufReader::new(stderr_pipe);
+        let mut chunk = [0u8; 4096];
+        let mut stderr_writer = io::stderr();
+        loop {
+            let n = reader.read(&mut chunk)?;
+            if n == 0 {
+                break;
+            }
+            buf.extend_from_slice(&chunk[..n]);
+            stderr_writer.write_all(&chunk[..n])?;
+            stderr_writer.flush()?;
+        }
+        Ok(String::from_utf8_lossy(&buf).into_owned())
+    });
+
+    let status = child.wait()?;
+
+    let stdout = stdout_handle
+        .join()
+        .map_err(|_| std::io::Error::other("failed to join stdout reader"))??;
+    let stderr = stderr_handle
+        .join()
+        .map_err(|_| std::io::Error::other("failed to join stderr reader"))??;
 
     #[cfg(unix)]
     if let Some(limit_bytes) = memory_limit_bytes {
-        if let Some(signal) = output.status.signal() {
+        if let Some(signal) = status.signal() {
             if matches!(signal, libc::SIGKILL | libc::SIGABRT) {
                 return Err(std::io::Error::other(MemoryLimitExceeded::new(
                     limit_bytes,
@@ -174,17 +213,9 @@ where
         }
     }
 
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|e| std::io::Error::other(format!("utf8 error: {e}")))?;
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-
-    if output.status.success() {
+    if status.success() {
         Ok(stdout)
     } else {
-        Err(std::io::Error::other(CommandFailure::new(
-            output.status,
-            stdout,
-            stderr,
-        )))
+        Err(std::io::Error::other(CommandFailure::new(status, stdout, stderr)))
     }
 }

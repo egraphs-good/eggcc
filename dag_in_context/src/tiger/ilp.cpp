@@ -795,15 +795,12 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	}
 	bool saw_root_assignment = false;
 	if (!g.eclasses[root].enodes.empty()) {
-		cerr << "ILP root diagnostics (class " << root << "):\n";
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
 			bool root_selected = require_binary_value(value_map, pickNode[root][n], fail);
 			double root_value = root_selected ? 1.0 : 0.0;
 			if (values.count(pickNode[root][n])) {
 				saw_root_assignment = true;
 			}
-			cerr << "  " << pickNode[root][n] << " = " << root_value
-			     << " (" << (pickSelected[root][n] ? "selected" : "not selected") << ")\n";
 		}
 	}
 	if (!saw_root_assignment) {
@@ -1225,7 +1222,6 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	pair<EGraph, SubEGraphMap> res = createRegionEGraph(g, region_root);
 	EGraph &gr = res.first;
 	SubEGraphMap &rmap = res.second;
-	cerr << "Region root : " << region_root << "  Region egraph size : " << g.eclasses.size() << " Top region egraph size : " << gr.eclasses.size() << endl;
 	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
 	Extraction er = extractRegionILP(gr, root);
 	Extraction ner(er.size());

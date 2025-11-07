@@ -293,24 +293,19 @@ def _compute_extraction_histogram_bins(tiger_times, ilp_times, hist_min, hist_ma
   }
 
 
-def make_extraction_time_histogram(data, output, max_cutoff=None):
+def make_extraction_time_histogram(data, output):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
   extract_times = []
   ilp_times = []
-  extract_overflow = 0
-  ilp_overflow = 0
   ilp_timeout_count = 0
   ilp_infeasible_count = 0
 
   for sample in points:
     extract_time = sample["extract_time"]
     extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
-    if max_cutoff is not None and extract_value > max_cutoff:
-      extract_overflow += 1
-    else:
-      extract_times.append(extract_value)
+    extract_times.append(extract_value)
 
     ilp_time = sample["ilp_extract_time"]
     ilp_infeasible = sample.get("ilp_infeasible", False)
@@ -321,12 +316,9 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
       ilp_timeout_count += 1
     else:
       ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
-      if max_cutoff is not None and ilp_value > max_cutoff:
-        ilp_overflow += 1
-      else:
-        ilp_times.append(ilp_value)
+      ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0 and extract_overflow == 0 and ilp_overflow == 0:
+  if not extract_times and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0:
     print("WARNING: No extraction timing data found; skipping histogram")
     return
 
@@ -335,9 +327,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   all_times = extract_times + ilp_times
   bin_count = 30
   hist_min = 0.0
-  if max_cutoff is not None:
-    hist_max = max_cutoff
-  elif all_times:
+  if all_times:
     hist_max = max(all_times)
   else:
     hist_max = 1.0
@@ -385,8 +375,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
 
   plt.xlabel('Time (Seconds)')
   plt.ylabel('Number of Regions')
-  title_suffix = '' if max_cutoff is None else f' (≤ {max_cutoff}s)'
-  plt.title(f'Distribution of Extraction Times{title_suffix}')
+  plt.title(f'Distribution of Extraction Times')
 
   xlim_right = hist_max
   special_width = bin_width * 0.8
@@ -440,16 +429,16 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
   ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
 
   if extract_times:
-    tiger_max_time = max(extract_times)
-    if tiger_max_time > 0:
+    zoom_max_time = max(extract_times) * 10
+    if zoom_max_time > 0:
       axins = inset_axes(ax, width="40%", height="40%", loc='upper right')
 
       inset_bin_count = max(bin_count * 2, 20)
       inset_hist = _compute_extraction_histogram_bins(
-        [t for t in extract_times if t <= tiger_max_time],
-        [t for t in ilp_times if t <= tiger_max_time],
+        [t for t in extract_times if t <= zoom_max_time],
+        [t for t in ilp_times if t <= zoom_max_time],
         hist_min,
-        tiger_max_time,
+        zoom_max_time,
         inset_bin_count,
       )
 
@@ -486,7 +475,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
           zorder=2,
         )
 
-      axins.set_xlim(hist_min, tiger_max_time)
+      axins.set_xlim(hist_min, zoom_max_time)
       axins.set_yscale('log')
       inset_max_count = 0
       if inset_tiger_mask.any():
@@ -505,7 +494,7 @@ def make_extraction_time_histogram(data, output, max_cutoff=None):
       main_ymin, main_ymax = ax.get_ylim()
       rect = Rectangle(
         (hist_min, main_ymin),
-        12,
+        zoom_max_time - hist_min,
         main_ymax - main_ymin,
         linewidth=1.2,
         edgecolor='black',
@@ -1272,7 +1261,6 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram_0to5sec.pdf', max_cutoff=5.0)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf', True, is_average=False)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
   make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)

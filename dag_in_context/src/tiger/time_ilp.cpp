@@ -50,7 +50,7 @@ void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
   sample.ilp_timed_out = ilp_timed_out;
   sample.ilp_infeasible = ilp_infeasible;
   if (ilp_timed_out || ilp_infeasible) {
-    sample.ilp_duration_ns = nullopt;
+    sample.ilp_duration_ns = 0;
   } else {
     sample.ilp_duration_ns = ilp_ns;
   }

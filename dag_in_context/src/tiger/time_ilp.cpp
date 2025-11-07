@@ -13,9 +13,7 @@
 #include "regionalize.h"
 #include "tiger.h"
 
-using namespace std;
 
-namespace {
 using Clock = chrono::steady_clock;
 
 
@@ -55,26 +53,6 @@ void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
     sample.ilp_duration_ns = ilp_ns;
   }
 }
-
-ExtractRegionTiming
-measure_region_timing(const EGraph &g, EClassId region_root,
-                      const vector<vector<Cost>> &statewalk_cost) {
-  const auto regionalized = construct_regionalized_egraph(g, region_root);
-
-  const EGraph &gr = regionalized.first;
-  const EClassId root = regionalized.second.first;
-  const EGraphMapping &gr2g = regionalized.second.second;
-  const vector<vector<Cost>> rstatewalk_cost =
-      project_statewalk_cost(gr2g, statewalk_cost);
-
-  ExtractRegionTiming sample;
-  sample.egraph_size = g.eclasses.size();
-  compute_tiger_metrics(sample, gr, root, rstatewalk_cost);
-  compute_ilp_metrics(sample, gr, root);
-
-  return sample;
-}
-} // namespace
 
 vector<ExtractRegionTiming>
 compute_extract_region_timings(const EGraph &g,

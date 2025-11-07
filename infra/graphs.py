@@ -6,8 +6,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
-from matplotlib.patches import Rectangle
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import sys
 import os
@@ -61,6 +60,8 @@ SHAPE_MAP = {
   "eggcc-ablation-O3-O0": "o",
   "eggcc-ablation-O3-O3": "o",
 }
+
+EXTRACTION_INSET_BOUNDS = (0.4, 0.3, 0.38 * 1.5, 0.35 * 1.5) # x y width height
 
 BENCHMARK_SPACE = 1.0 / len(GRAPH_RUN_MODES)
 CIRCLE_SIZE = 15
@@ -378,7 +379,7 @@ def make_extraction_time_histogram(data, output):
   plt.title(f'Distribution of Extraction Times')
 
   xlim_right = hist_max
-  special_width = bin_width * 0.8
+  special_width = bin_width * 0.4
   special_left = hist_max
   if ilp_timeout_count:
     plt.bar(
@@ -429,9 +430,9 @@ def make_extraction_time_histogram(data, output):
   ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
 
   if extract_times:
-    zoom_max_time = max(extract_times) * 10
+    zoom_max_time = max(extract_times) * 1.1
     if zoom_max_time > 0:
-      axins = inset_axes(ax, width="40%", height="40%", loc='upper right')
+      axins = ax.inset_axes(list(EXTRACTION_INSET_BOUNDS))
 
       inset_bin_count = max(bin_count * 2, 20)
       inset_hist = _compute_extraction_histogram_bins(
@@ -489,22 +490,21 @@ def make_extraction_time_histogram(data, output):
       axins.yaxis.set_minor_locator(mticker.AutoMinorLocator())
       axins.tick_params(axis='both', labelsize=8)
 
-      axins.set_title('Zoom: Tiger Range', fontsize=9)
+      axins.set_title(f'Zoomed (0-{zoom_max_time:.2f} sec)', fontsize=9)
 
-      main_ymin, main_ymax = ax.get_ylim()
-      rect = Rectangle(
-        (hist_min, main_ymin),
-        zoom_max_time - hist_min,
-        main_ymax - main_ymin,
+      connectors = mark_inset(
+        ax,
+        axins,
+        loc1=1,
+        loc2=4,
+        fc='none',
+        ec='black',
         linewidth=1.2,
-        edgecolor='black',
-        facecolor='none',
-        linestyle='--',
-        zorder=5,
       )
-      ax.add_patch(rect)
-
-      ax.indicate_inset_zoom(axins, edgecolor='black', alpha=0.9, linewidth=1.2)
+      for connector in connectors:
+        connector.set_color('black')
+        connector.set_alpha(0.9)
+        connector.set_linewidth(1.2)
 
   if legend_handles:
     plt.legend(legend_handles, legend_labels)

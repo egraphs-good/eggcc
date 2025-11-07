@@ -100,6 +100,18 @@ def get_row(data, benchmark_name, run_method):
       return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+# TODO make raise keyerror once we fix the error with ILP
+# TODO really don't merge this unless we fix
+def is_ilp_timeout(data, benchmark_name, run_method):
+  if run_method != "eggcc-ILP-O0-O0":
+    return False
+  for row in data:
+    if row.get('benchmark', '') == benchmark_name and row['runMethod'] == run_method:
+      return row['timedOut']
+
+  raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
+
+
 def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
 
@@ -1024,18 +1036,25 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     min_color = None
 
     for runmode in treatments:
-      yval = normalized(profile, benchmark, runmode)
+      if not is_ilp_timeout(profile, benchmark, runmode):
+        yval = normalized(profile, benchmark, runmode)
+        if yval < miny:
+          min_color = COLOR_MAP[runmode]
+          miny = yval
+        maxy = max(maxy, yval)
 
-      if yval < miny:
-        min_color = COLOR_MAP[runmode]
-        miny = yval
-      maxy = max(maxy, yval)
-
-    # draw a line between the two points
+    # draw a line between the points
     ax.plot([current_pos, current_pos], [miny, maxy], color=min_color, linestyle='--', linewidth=1, zorder=2)
 
     i = 0
     for runmode in treatments:
+      if is_ilp_timeout(profile, benchmark, runmode):
+        # for timeouts, add x marks to the top
+        jitter_amt = 0.05
+        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="red")
+        i += 1
+        continue
+      
       yval = normalized(profile, benchmark, runmode)
 
       # for outliers, add x marks to the top
@@ -1322,7 +1341,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       xanchor = 0.4
       yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

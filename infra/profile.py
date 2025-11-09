@@ -21,7 +21,7 @@ def eggcc_timeout_secs():
   if IS_TESTING_MODE:
     return 15 * 60 # 15 minutes
   else:
-    return 1 * 60 * 60 # 1 hour (ILP can take a long time, timing out on lots of regions after 5 min)
+    return 6 * 60 * 60 # 6 hours (ILP can take a long time, timing out on lots of regions after 5 min)
 
 def num_warmup_samples():
   if IS_TESTING_MODE:

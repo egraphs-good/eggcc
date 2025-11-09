@@ -777,7 +777,6 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_config.use_gurobi, fail_with_log);
  	const unordered_map<string, double> &values = solver_solution.values;
 	if (solver_solution.infeasible) {
-		cout << "infeasible ILP problem" << endl;
 		infeasible = true;
 		return Extraction();
 	}

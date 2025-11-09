@@ -60,6 +60,8 @@ SHAPE_MAP = {
   "eggcc-ablation-O0-O0": "o",
   "eggcc-ablation-O3-O0": "o",
   "eggcc-ablation-O3-O3": "o",
+  "eggcc-tiger-O0-O0": "o",
+  'eggcc-tiger-ILP-O0-O0': "o",
 }
 
 EXTRACTION_INSET_BOUNDS = (0.4, 0.3, 0.38 * 1.5, 0.35 * 1.5) # x y width height
@@ -100,17 +102,23 @@ def get_row(data, benchmark_name, run_method):
       return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
-# TODO make raise keyerror once we fix the error with ILP
-# TODO really don't merge this unless we fix
 def is_ilp_timeout(data, benchmark_name, run_method):
-  if run_method != "eggcc-ILP-O0-O0":
+  if run_method != "eggcc-tiger-ILP-O0-O0":
     return False
   for row in data:
-    if row.get('benchmark', '') == benchmark_name and row['runMethod'] == run_method:
-      return row['timedOut']
+    if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
+      return row['ILPTimeOut']
 
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+
+def is_ilp_infeasible(data, benchmark_name, run_method):
+  if run_method != "eggcc-tiger-ILP-O0-O0":
+    return False
+  for row in data:
+    if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
+      return row["failed"] and ("ILP solver reported infeasibility" in row["error"])
+  raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
 def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
@@ -424,6 +432,20 @@ def make_extraction_time_histogram(data, output):
     xlim_right = special_left
 
   ax = plt.gca()
+
+  def _format_histogram_tick(value, _pos):
+    if value <= 0:
+      return ''
+    if value < 1:
+      return f'{value:.2f}'.rstrip('0').rstrip('.')
+    if value < 10:
+      return f'{value:.1f}'.rstrip('0').rstrip('.')
+    if value < 1000:
+      return f'{value:g}'
+    return f'{int(value):,}'
+
+  hist_tick_formatter = mticker.FuncFormatter(_format_histogram_tick)
+
   ax.set_xlim(hist_min, xlim_right)
   ax.set_yscale('log')
 
@@ -438,6 +460,7 @@ def make_extraction_time_histogram(data, output):
 
   ax.set_ylim(0, max_count * 1.1)
   ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True, prune=None))
+  ax.yaxis.set_major_formatter(hist_tick_formatter)
   ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
   ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
   ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
@@ -491,6 +514,7 @@ def make_extraction_time_histogram(data, output):
 
       axins.set_xlim(hist_min, zoom_max_time)
       axins.set_yscale('log')
+      axins.yaxis.set_major_formatter(hist_tick_formatter)
       inset_max_count = 0
       if inset_tiger_mask.any():
         inset_max_count = max(inset_max_count, int(inset_tiger_counts[inset_tiger_mask].max()))
@@ -526,12 +550,13 @@ def make_extraction_time_histogram(data, output):
   plt.savefig(output)
 
 
-def make_statewalk_width_histogram(data, output, is_liveon, is_average):
+def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_width=None):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
   widths = []
   missing_widths = 0
+  filtered_above_threshold = 0
 
   for sample in points:
     width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_{"avg" if is_average else "max"}"
@@ -539,10 +564,17 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average):
     if width is None:
       missing_widths += 1
       continue
+    if max_width is not None and width > max_width:
+      filtered_above_threshold += 1
+      continue
     widths.append(width)
 
   if missing_widths:
     print(f"WARNING: Skipping {missing_widths} timing samples with missing statewalk_width")
+  if filtered_above_threshold:
+    print(
+      f"WARNING: Skipping {filtered_above_threshold} samples with statewalk_width > {max_width:g}"
+    )
 
   if not widths:
     print("WARNING: No statewalk width data found; skipping histogram")
@@ -556,7 +588,10 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average):
   plt.bar(sorted_widths, frequencies, color='skyblue', edgecolor='black')
   plt.xlabel(f'Statewalk Width{" Average" if is_average else ""}')
   plt.ylabel('Number of Regionalized E-Graphs')
-  plt.title(f'Distribution of Statewalk Width{" With Liveness Analysis" if is_liveon else ""}')
+  title = f'Distribution of Statewalk Width{" With Liveness Analysis" if is_liveon else ""}'
+  if max_width is not None:
+    title += f' (≤ {max_width:g})'
+  plt.title(title)
   # log scale y axis
   plt.yscale('log')
 
@@ -1036,7 +1071,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     min_color = None
 
     for runmode in treatments:
-      if not is_ilp_timeout(profile, benchmark, runmode):
+      if (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
         yval = normalized(profile, benchmark, runmode)
         if yval < miny:
           min_color = COLOR_MAP[runmode]
@@ -1052,6 +1087,13 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
         # for timeouts, add x marks to the top
         jitter_amt = 0.05
         ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="red")
+        i += 1
+        continue
+
+      if is_ilp_infeasible(profile, benchmark, runmode):
+        # for infeasibles, add x marks to the top
+        jitter_amt = 0.05
+        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="orange")
         i += 1
         continue
       
@@ -1283,10 +1325,35 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf', True, is_average=False)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf', False, is_average=False)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf', True, is_average=True)
-  make_statewalk_width_histogram(profile, f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf', False, is_average=True)
+  statewalk_histogram_max_width = None
+  make_statewalk_width_histogram(
+    profile,
+    f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf',
+    True,
+    is_average=False,
+    max_width=statewalk_histogram_max_width,
+  )
+  make_statewalk_width_histogram(
+    profile,
+    f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf',
+    False,
+    is_average=False,
+    max_width=statewalk_histogram_max_width,
+  )
+  make_statewalk_width_histogram(
+    profile,
+    f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf',
+    True,
+    is_average=True,
+    max_width=statewalk_histogram_max_width,
+  )
+  make_statewalk_width_histogram(
+    profile,
+    f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf',
+    False,
+    is_average=True,
+    max_width=statewalk_histogram_max_width,
+  )
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)

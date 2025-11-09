@@ -552,7 +552,9 @@ if __name__ == '__main__':
   # for large machines leave a few cores free
   if parallelism > 30:
     parallelism -= 4
-  ilp_parallelism = 4 if os.cpu_count() >= 8 else 1
+  # Use 10 threads for ILP comparison, and each ILP benchmark will use cup_count() / 11 threads
+  # WARNING: if you edit this, edit the number of threads used in time_ilp.cpp
+  ilp_parallelism = 10 if os.cpu_count() >= 20 else 1
 
 
   # separate to_run into ILP_COMPARISON and others

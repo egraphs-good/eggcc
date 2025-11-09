@@ -348,6 +348,18 @@ pub enum Schedule {
     Sequential,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum IlpSolver {
+    Gurobi,
+    Cbc,
+}
+
+impl Default for IlpSolver {
+    fn default() -> Self {
+        IlpSolver::Gurobi
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
     pub schedule: Schedule,
@@ -372,6 +384,7 @@ pub struct EggccConfig {
     pub use_context: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
+    pub ilp_solver: IlpSolver,
     /// When set, dump the serialized e-graphs sent to tiger into this directory.
     pub egraph_dump_dir: Option<PathBuf>,
 }
@@ -438,6 +451,7 @@ impl Default for EggccConfig {
             time_ilp: false,
             use_context: true,
             ilp_minimize_objective: true,
+            ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,
         }
     }
@@ -561,6 +575,12 @@ fn run_tiger_pipeline(
             tiger_args.push(OsString::from("--ilp-no-minimize"));
         }
     }
+
+    tiger_args.push(OsString::from("--ilp-solver"));
+    tiger_args.push(match eggcc_config.ilp_solver {
+        IlpSolver::Gurobi => OsString::from("gurobi"),
+        IlpSolver::Cbc => OsString::from("cbc"),
+    });
 
     let extract_timing_file = if eggcc_config.time_ilp {
         tiger_args.push(OsString::from("--time-ilp"));

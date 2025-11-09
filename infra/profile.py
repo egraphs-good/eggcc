@@ -19,7 +19,7 @@ IS_TESTING_MODE = True
 
 def eggcc_timeout_secs():
   if IS_TESTING_MODE:
-    return 15 * 60 # 15 minutes
+    return 10 * 60 # 10 minutes
   else:
     return 6 * 60 * 60 # 6 hours (ILP can take a long time, timing out on lots of regions after 5 min)
 
@@ -57,6 +57,7 @@ treatments = [
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
   "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-CBC-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",
   "eggcc-tiger-ILP-WITHCTX-O0-O0",
   "eggcc-WITHCTX-O0-O0",
@@ -195,6 +196,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-CBC-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-NOMIN-O0-O0":

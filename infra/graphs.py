@@ -41,6 +41,7 @@ COLOR_MAP = {
   "eggcc-tiger-O0-O0": "cyan",
   "eggcc-tiger-WL-O0-O0": "magenta",
   "eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-ILP-CBC-O0-O0": "olive",
   "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
   "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
 }
@@ -1120,6 +1121,8 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Tiger-WL-O0-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
     return 'EQCC-Tiger-ILP-O0-O0'
+  if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
+    return 'EQCC-Tiger-ILP-CBC-O0-O0'
   if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
     return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':

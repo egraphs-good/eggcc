@@ -557,6 +557,9 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_widt
   widths = []
   missing_widths = 0
   filtered_above_threshold = 0
+  max_width_label = None
+  if max_width is not None:
+    max_width_label = f"{int(max_width):,}" if float(max_width).is_integer() else f"{max_width:g}"
 
   for sample in points:
     width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_{"avg" if is_average else "max"}"
@@ -571,9 +574,9 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_widt
 
   if missing_widths:
     print(f"WARNING: Skipping {missing_widths} timing samples with missing statewalk_width")
-  if filtered_above_threshold:
+  if filtered_above_threshold and max_width_label is not None:
     print(
-      f"WARNING: Skipping {filtered_above_threshold} samples with statewalk_width > {max_width:g}"
+      f"WARNING: Skipping {filtered_above_threshold} samples with statewalk_width > {max_width_label}"
     )
 
   if not widths:
@@ -589,8 +592,8 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_widt
   plt.xlabel(f'Statewalk Width{" Average" if is_average else ""}')
   plt.ylabel('Number of Regionalized E-Graphs')
   title = f'Distribution of Statewalk Width{" With Liveness Analysis" if is_liveon else ""}'
-  if max_width is not None:
-    title += f' (≤ {max_width:g})'
+  if max_width_label is not None:
+    title += f' (≤ {max_width_label})'
   plt.title(title)
   # log scale y axis
   plt.yscale('log')
@@ -610,6 +613,71 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_widt
   plt.grid(axis='y', linestyle='--', alpha=0.5)
   plt.tight_layout()
   plt.savefig(output)
+
+
+def print_top_statewalk_width_samples(
+  data,
+  treatment,
+  is_liveon,
+  is_average,
+  limit=10,
+  max_width=None,
+):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+
+  max_width_label = None
+  if max_width is not None:
+    max_width_label = f"{int(max_width):,}" if float(max_width).is_integer() else f"{max_width:g}"
+
+  samples = []
+
+  for benchmark in benchmarks:
+    try:
+      timings = get_extract_region_timings(treatment, data, benchmark)
+    except KeyError:
+      continue
+    if timings is False:
+      continue
+    for sample in timings:
+      width = sample.get(width_key)
+      if width is None:
+        continue
+      if max_width is not None and width > max_width:
+        continue
+      sample_treatment = sample.get('treatment', treatment)
+      samples.append((width, benchmark, sample_treatment))
+
+  if not samples:
+    print(f"WARNING: No statewalk width data found for {treatment} ({width_key})")
+    return
+
+  samples.sort(key=lambda entry: entry[0], reverse=True)
+  if limit is None or limit <= 0:
+    limit = 10
+  limit = min(limit, len(samples))
+
+  descriptor_parts = [
+    'live-on' if is_liveon else 'live-off',
+    'average' if is_average else 'maximum',
+  ]
+  descriptor = ' '.join(descriptor_parts)
+  filter_suffix = f" (≤ {max_width_label})" if max_width_label is not None else ''
+
+  print(f"Top {limit} statewalk widths ({descriptor}) for treatment {treatment}{filter_suffix}:")
+
+  def _format_width(value):
+    if isinstance(value, (int, np.integer)):
+      return f"{int(value):,}"
+    if isinstance(value, float):
+      if value.is_integer():
+        return f"{int(value):,}"
+      return f"{value:.4g}"
+    return str(value)
+
+  for idx, (width, benchmark, sample_treatment) in enumerate(samples[:limit], start=1):
+    width_display = _format_width(width)
+    print(f"  {idx}. {benchmark} ({sample_treatment}) – {width_display}")
 
 
 def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average, scale_by_egraph_size):
@@ -1326,6 +1394,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
   statewalk_histogram_max_width = None
+  statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
   make_statewalk_width_histogram(
     profile,
     f'{graphs_folder}/statewalk_width_histogram_with_liveness_analysis.pdf',
@@ -1333,27 +1402,14 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
-  make_statewalk_width_histogram(
+  print_top_statewalk_width_samples(
     profile,
-    f'{graphs_folder}/statewalk_width_histogram_no_liveness_analysis.pdf',
-    False,
+    statewalk_histogram_treatment,
+    is_liveon=False,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
-  make_statewalk_width_histogram(
-    profile,
-    f'{graphs_folder}/statewalk_width_average_histogram_with_liveness_analysis.pdf',
-    True,
-    is_average=True,
-    max_width=statewalk_histogram_max_width,
-  )
-  make_statewalk_width_histogram(
-    profile,
-    f'{graphs_folder}/statewalk_width_average_histogram_no_liveness_analysis.pdf',
-    False,
-    is_average=True,
-    max_width=statewalk_histogram_max_width,
-  )
+
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)

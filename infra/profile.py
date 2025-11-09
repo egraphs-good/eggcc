@@ -91,6 +91,12 @@ EGGCC_BINARY = "target/release/eggcc"
 MEMORY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024 
 MEMORY_LIMIT_HUMAN = "16 GiB"
 
+ILP_TREATMENT_MARKER = "ILP"
+
+
+def _should_enforce_memory_limit(treatment: str) -> bool:
+  return not ILP_TREATMENT_MARKER in treatment
+
 
 def _set_memory_limits():
   limits_to_set = [getattr(resource, name, None) for name in ("RLIMIT_AS", "RLIMIT_DATA")]
@@ -129,8 +135,8 @@ def _terminate_process_tree(proc):
     proc.wait()
 
 
-def run_with_timeout_killing_tree(cmd, timeout_secs):
-  preexec = _set_memory_limits
+def run_with_timeout_killing_tree(cmd, timeout_secs, *, apply_memory_limits=True):
+  preexec = _set_memory_limits if apply_memory_limits else None
   with subprocess.Popen(
       cmd,
       shell=True,
@@ -231,7 +237,7 @@ def setup_benchmark(name):
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}', flush=True)
   if benchmark.is_last_before_ilp:
-    print('Waiting for all other benchmarks to complete before ILP comparison...')
+    print('Waiting for all other benchmarks to complete before ILP comparison...', flush=True)
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
   eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
@@ -256,9 +262,13 @@ def optimize(benchmark):
       "error": '',
     }
 
-  timed_out = False
+  enforce_memory_limit = _should_enforce_memory_limit(benchmark.treatment)
   try:
-    process = run_with_timeout_killing_tree(cmd1, eggcc_timeout_secs())
+    process = run_with_timeout_killing_tree(
+      cmd1,
+      eggcc_timeout_secs(),
+      apply_memory_limits=enforce_memory_limit,
+    )
   except subprocess.TimeoutExpired:
     # Timeouts are failures
     print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {eggcc_timeout_secs()} seconds', flush=True)
@@ -289,7 +299,9 @@ def optimize(benchmark):
     f.write(process.stdout)
 
   # Second command intentionally has no timeout (can run longer than first phase)
-  preexec = _set_memory_limits if os.name != "nt" else None
+  preexec = None
+  if os.name != "nt" and enforce_memory_limit:
+    preexec = _set_memory_limits
   process2 = subprocess.run(
     cmd2,
     shell=True,

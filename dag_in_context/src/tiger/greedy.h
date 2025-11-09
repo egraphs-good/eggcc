@@ -7,7 +7,11 @@ using Cost = unsigned long long;
 
 const Cost INF = ~0ull;
 
-// vector<Cost> greedy_extract_estimate_all_eclasses_cost(const EGraph &g);
+vector<Cost> greedy_extract_estimate_all_eclasses_cost(const EGraph &g);
+
+Cost get_enode_cost(const ENode &n);
+
+Cost get_statewalk_enode_cost(const vector<Cost> &eclass_cost, const ENode &n);
 
 vector<vector<Cost> > project_statewalk_cost(const EGraphMapping &gr2g, const vector<vector<Cost> > &statewalk_cost);
 

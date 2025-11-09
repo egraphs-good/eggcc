@@ -743,7 +743,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	bool solver_timed_out = false;
-	int timeout = g_config.use_gurobi ? g_config.ilp_timeout_gurobi : g_config.ilp_timeout_seconds;
+	int timeout = g_config.ilp_timeout_seconds;
 	int ret = run_command_with_timeout(cmd, timeout, solver_timed_out);
 	if (solver_timed_out) {
 		timed_out = true;

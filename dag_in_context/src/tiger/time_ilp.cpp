@@ -37,13 +37,15 @@ void compute_tiger_metrics(ExtractRegionTiming &sample, const EGraph &gr,
 }
 
 void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
-                         EClassId root) {
+                         EClassId root,
+                         const vector<vector<Cost>> &rstatewalk_cost) {
   Extraction ilp_extraction;
   bool ilp_timed_out = false;
   bool ilp_infeasible = false;
   long long ilp_ns;
-  ilp_ns = extract_region_ilp_with_timing(gr, root, ilp_extraction,
-                                            ilp_timed_out, ilp_infeasible);
+  ilp_ns = extract_region_ilp_with_timing(gr, root, rstatewalk_cost,
+                                          ilp_extraction, ilp_timed_out,
+                                          ilp_infeasible);
 
   sample.ilp_timed_out = ilp_timed_out;
   sample.ilp_infeasible = ilp_infeasible;
@@ -126,7 +128,8 @@ compute_extract_region_timings(const EGraph &g,
       cerr.flush();
       const PreparedRegion &prepared = prepared_regions[idx];
       ExtractRegionTiming &sample = timings[prepared.index];
-      compute_ilp_metrics(sample, prepared.egraph, prepared.root);
+  compute_ilp_metrics(sample, prepared.egraph, prepared.root,
+          prepared.statewalk_cost);
     }
   };
   cerr << "\n";

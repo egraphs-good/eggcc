@@ -261,7 +261,7 @@ def optimize(benchmark):
       "llvmCompileTimeSecs": False,
       "extractRegionTimings": False,
       "failed": True,
-      "ILPTimeOut": False,
+      ILPRegionTimeOut: False,
       "error": '',
     }
 
@@ -289,7 +289,7 @@ def optimize(benchmark):
 
   # check for an ILP timeout in the output
   if "TIMEOUT" in process.stdout:
-    failure_data["ILPTimeOut"] = True
+    failure_data[ILPRegionTimeOut] = True
     failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 
@@ -354,7 +354,7 @@ def optimize(benchmark):
     "llvmCompileTimeSecs": llvm_compile_time,
     "extractRegionTimings": extract_region_timings,
     "failed": False,
-    "ILPTimeOut": False,
+    ILPRegionTimeOut: False,
   }
   return res
 

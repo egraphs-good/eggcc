@@ -96,7 +96,7 @@ def is_ilp_timeout(data, benchmark_name, run_method):
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
-      return row['ILPTimeOut']
+      return row['ILPRegionTimeOut']
 
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 

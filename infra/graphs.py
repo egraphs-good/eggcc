@@ -16,6 +16,7 @@ from graph_helpers import *
 from statewalk_graphs import *
 from extract_time_graph import *
 from ilp_encoding_graph import *
+from macros import *
 
 
 # a graph of how the ilp solver time changes
@@ -661,20 +662,6 @@ def to_paper_names_treatment(treatment):
   raise KeyError(f"Unknown treatment {treatment}")
 
 
-
-# given a profile.json, list of suite paths, and an output file
-def make_macros(profile, benchmark_suites, output_file):
-  with open(output_file, 'a') as out:
-    # report number of benchmarks in each benchmark suite
-    for suite in benchmark_suites:
-      suite_name = os.path.basename(suite)
-      benchmarks = benchmarks_in_folder(suite)
-      macro_name = f"Num{suite_name}Benchmarks"
-      out.write(format_latex_macro(macro_name, len(benchmarks)))
-    
-    # report the number of benchmarks in the profile
-    benchmarks = dedup([b.get('benchmark') for b in profile])
-    out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
   
 

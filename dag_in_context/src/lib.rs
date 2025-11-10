@@ -399,7 +399,7 @@ pub struct ExtractRegionTiming {
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
-    pub ilp_edge_variable_count: u64,
+    pub ilp_encoding_num_vars: u64,
     pub statewalk_width_liveon_satelliteon_max: u64,
     pub statewalk_width_liveon_satelliteon_avg: f64,
     pub statewalk_width_liveon_satelliteoff_max: u64,
@@ -667,7 +667,7 @@ fn run_tiger_pipeline(
             ilp_timed_out: Option<bool>,
             #[serde(default)]
             ilp_infeasible: Option<bool>,
-            ilp_edge_variable_count: u64,
+            ilp_encoding_num_vars: u64,
             statewalk_width_liveon_satelliteon_max: u64,
             statewalk_width_liveon_satelliteon_avg: f64,
             statewalk_width_liveon_satelliteoff_max: u64,
@@ -729,7 +729,7 @@ fn run_tiger_pipeline(
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,
-                ilp_edge_variable_count: row.ilp_edge_variable_count,
+                ilp_encoding_num_vars: row.ilp_encoding_num_vars,
                 statewalk_width_liveon_satelliteon_max: row.statewalk_width_liveon_satelliteon_max,
                 statewalk_width_liveon_satelliteon_avg: row.statewalk_width_liveon_satelliteon_avg,
                 statewalk_width_liveon_satelliteoff_max: row

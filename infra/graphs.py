@@ -786,10 +786,10 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     use_log_x=False,
     use_exp_y=True,
   )
-  make_ilp_encoding_scatter(
-    profile,
-    f'{graphs_folder}/ilp_encoding_vs_egraph_size.pdf',
-  )
+  #make_ilp_encoding_scatter(
+  #  profile,
+  #  f'{graphs_folder}/ilp_encoding_vs_egraph_size.pdf',
+  #)
   statewalk_histogram_max_width = None
   statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
 

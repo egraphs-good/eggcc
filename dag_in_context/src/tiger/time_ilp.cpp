@@ -68,15 +68,15 @@ void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
   bool ilp_timed_out = false;
   bool ilp_infeasible = false;
   long long ilp_ns;
-  size_t ilp_edge_variable_count = 0;
+  size_t ilp_encoding_num_vars = 0;
   ilp_ns = extract_region_ilp_with_timing(gr, root, rstatewalk_cost,
                                           ilp_extraction, ilp_timed_out,
                                           ilp_infeasible,
-                                          ilp_edge_variable_count);
+                                          ilp_encoding_num_vars);
 
   sample.ilp_timed_out = ilp_timed_out;
   sample.ilp_infeasible = ilp_infeasible;
-  sample.ilp_edge_variable_count = ilp_edge_variable_count;
+  sample.ilp_encoding_num_vars = ilp_encoding_num_vars;
   if (ilp_timed_out || ilp_infeasible) {
     sample.ilp_duration_ns = 0;
   } else {
@@ -201,8 +201,8 @@ bool write_extract_region_timings_json(
           << (sample.ilp_timed_out ? "true" : "false")
           << ", \"ilp_infeasible\": "
           << (sample.ilp_infeasible ? "true" : "false")
-          << ", \"ilp_edge_variable_count\": "
-          << sample.ilp_edge_variable_count
+      << ", \"ilp_encoding_num_vars\": "
+      << sample.ilp_encoding_num_vars
           << ", \"statewalk_width_liveon_satelliteon_max\": "
           << sample.statewalk_width_liveon_satelliteon_max
           << ", \"statewalk_width_liveon_satelliteon_avg\": "

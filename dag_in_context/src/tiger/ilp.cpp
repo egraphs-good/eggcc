@@ -447,7 +447,7 @@ static ExtractionENodeId build_extraction_node(
 
 } // namespace
 
-Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *edge_variable_count)  {
+Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *ilp_encoding_num_vars)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
 		exit(1);
@@ -500,6 +500,9 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		orderVar[c].resize(g.eclasses[c].enodes.size());
 	}
 
+	size_t pick_variable_count = 0;
+	size_t order_variable_count = 0;
+
 	// All choice variables (a partiacular edge between an enode at a child index and another enode)
 	vector<ChoiceVar> choices;
 	// initialize choices, pickNode, pickCost, choiceIndex, childParents
@@ -507,6 +510,8 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			pickNode[c][n] = string("p_") + to_string(c) + "_" + to_string(n);
 			orderVar[c][n] = string("o_") + to_string(c) + "_" + to_string(n);
+			++pick_variable_count;
+			++order_variable_count;
 			const ENode &en = g.eclasses[c].enodes[n];
 			Cost node_cost = get_enode_cost(en);
 			if (g.eclasses[c].isEffectful) {
@@ -665,8 +670,8 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 			}
 		}
 	}
-	if (edge_variable_count != nullptr) {
-		*edge_variable_count = choices.size();
+	if (ilp_encoding_num_vars != nullptr) {
+		*ilp_encoding_num_vars = choices.size() + pick_variable_count + order_variable_count;
 	}
 	
 	// If you choose a child edge, you must pick the enode it points to.
@@ -1196,17 +1201,17 @@ pair<EClassId, ENodeId> findArg(const EGraph &g) {
 
 typedef int RegionId;
 
-static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *edge_variable_count) {
+static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *ilp_encoding_num_vars) {
 	auto start = std::chrono::steady_clock::now();
 	timed_out = false;
 	infeasible = false;
-	Extraction extraction = extractRegionILPInner(g, root, rstatewalk_cost, timed_out, infeasible, edge_variable_count);
+	Extraction extraction = extractRegionILPInner(g, root, rstatewalk_cost, timed_out, infeasible, ilp_encoding_num_vars);
 	auto elapsed = std::chrono::steady_clock::now() - start;
 	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
 }
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible, size_t &edge_variable_count) {
-	auto result = run_ilp_extractor(g, root, rstatewalk_cost, timed_out, infeasible, &edge_variable_count);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible, size_t &ilp_encoding_num_vars) {
+	auto result = run_ilp_extractor(g, root, rstatewalk_cost, timed_out, infeasible, &ilp_encoding_num_vars);
 	out = std::move(result.first);
 	return result.second.count();
 }
@@ -1216,8 +1221,7 @@ long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const v
 Extraction extractRegionILP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost) {
 	bool ilp_timed_out = false;
 	bool ilp_infeasible = false;
-	size_t edge_variable_count = 0;
-	auto ilp_result = run_ilp_extractor(g, root, rstatewalk_cost, ilp_timed_out, ilp_infeasible, &edge_variable_count);
+	auto ilp_result = run_ilp_extractor(g, root, rstatewalk_cost, ilp_timed_out, ilp_infeasible, nullptr);
 	if (ilp_timed_out) {
 		cout << "TIMEOUT" << endl;
 		std::exit(1);

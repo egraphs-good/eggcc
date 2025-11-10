@@ -26,12 +26,12 @@ def eggcc_timeout_secs():
 def num_warmup_samples():
   if IS_TESTING_MODE:
     return 2
-  return 50
+  return 10
   
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 400
+  return 200
 
 
 def average(lst):

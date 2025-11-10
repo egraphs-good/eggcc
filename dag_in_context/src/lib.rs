@@ -392,7 +392,6 @@ pub struct EggccConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
-    pub extract_time: Duration,
     pub extract_time_liveon_satelliteon: Duration,
     pub extract_time_liveon_satelliteoff: Duration,
     pub extract_time_liveoff_satelliteon: Duration,
@@ -658,7 +657,6 @@ fn run_tiger_pipeline(
         #[derive(Deserialize)]
         struct TimingRow {
             egraph_size: usize,
-            tiger_duration_ns: u64,
             tiger_duration_liveon_satelliteon_ns: u64,
             tiger_duration_liveon_satelliteoff_ns: u64,
             tiger_duration_liveoff_satelliteon_ns: u64,
@@ -716,7 +714,6 @@ fn run_tiger_pipeline(
 
             region_timings.push(ExtractRegionTiming {
                 egraph_size: row.egraph_size,
-                extract_time: Duration::from_nanos(row.tiger_duration_ns),
                 extract_time_liveon_satelliteon: Duration::from_nanos(
                     row.tiger_duration_liveon_satelliteon_ns,
                 ),

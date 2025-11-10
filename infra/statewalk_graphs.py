@@ -20,7 +20,7 @@ def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_widt
     max_width_label = f"{int(max_width):,}" if float(max_width).is_integer() else f"{max_width:g}"
 
   for sample in points:
-    width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_{"avg" if is_average else "max"}"
+    width_name = f"statewalk_width_{"liveon" if is_liveon else "liveoff"}_satelliteoff_{"avg" if is_average else "max"}"
     width = sample[width_name]
     if width is None:
       missing_widths += 1
@@ -82,7 +82,7 @@ def print_top_statewalk_width_samples(
   max_width=None,
 ):
   benchmarks = dedup([b.get('benchmark') for b in data])
-  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_satelliteoff_{'avg' if is_average else 'max'}"
 
   max_width_label = None
   if max_width is not None:
@@ -138,7 +138,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
-  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_satelliteoff_{'avg' if is_average else 'max'}"
 
   x_values = []
   y_values = []
@@ -186,7 +186,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
         x_values.append(x_magnitude)
         y_values.append(value)
     else:
-      extract_time = sample["extract_time"]
+      extract_time = sample["extract_time_liveon_satelliteon"]
       if extract_time is None:
         missing_timings += 1
         continue
@@ -293,7 +293,7 @@ def make_egraph_size_vs_statewalk_width_heatmap(
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
-  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_{'avg' if is_average else 'max'}"
+  width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_satelliteoff_{'avg' if is_average else 'max'}"
 
   sizes = []
   widths = []
@@ -334,7 +334,7 @@ def make_egraph_size_vs_statewalk_width_heatmap(
         continue
       runtime_secs = ilp_time["secs"] + ilp_time["nanos"] / 1e9
     else:
-      extract_time = sample.get("extract_time")
+      extract_time = sample.get("extract_time_liveon_satelliteon")
       if extract_time is None:
         missing_runtimes += 1
         continue

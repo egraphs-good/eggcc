@@ -15,6 +15,7 @@ import profile
 from graph_helpers import *
 from statewalk_graphs import *
 from extract_time_graph import *
+from ilp_encoding_graph import *
 
 
 # a graph of how the ilp solver time changes
@@ -30,7 +31,7 @@ def make_region_extract_plot(json, output, plot_ilp):
   ilp_infeasible_points = []
 
   for sample in points:
-    extract_time = sample["extract_time"]
+    extract_time = sample["extract_time_liveon_satelliteon"]
     egraph_size = sample["egraph_size"]
     ilp_solve_time = sample["ilp_extract_time"]
     ilp_infeasible = sample.get("ilp_infeasible", False)
@@ -187,7 +188,7 @@ def make_extraction_time_histogram(data, output):
   ilp_infeasible_count = 0
 
   for sample in points:
-    extract_time = sample["extract_time"]
+    extract_time = sample["extract_time_liveon_satelliteon"]
     extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
     extract_times.append(extract_value)
 
@@ -772,17 +773,22 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
-  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction_time_cdf.pdf', use_log_x=True)
+  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction_time_cdf.pdf', use_log_x=True, use_exp_y=False)
   make_extraction_time_cdf(
     profile,
     f'{graphs_folder}/extraction_time_cdf_linear.pdf',
     use_log_x=False,
+    use_exp_y=False,
   )
   make_extraction_time_cdf(
     profile,
     f'{graphs_folder}/extraction_time_cdf_exp_y.pdf',
     use_log_x=False,
     use_exp_y=True,
+  )
+  make_ilp_encoding_scatter(
+    profile,
+    f'{graphs_folder}/ilp_encoding_vs_egraph_size.pdf',
   )
   statewalk_histogram_max_width = None
   statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"

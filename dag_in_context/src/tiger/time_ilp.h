@@ -10,7 +10,6 @@
 // ilp_duration_ns is invalid when ilp_timed_out or ilp_infeasible is true
 struct ExtractRegionTiming {
     size_t egraph_size;
-    long long tiger_duration_ns;
     long long tiger_duration_liveon_satelliteon_ns;
     long long tiger_duration_liveon_satelliteoff_ns;
     long long tiger_duration_liveoff_satelliteon_ns;

@@ -8,20 +8,32 @@ import numpy as np
 from graph_helpers import *
 
 
-def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
+def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
-  extract_times = []
+  treatment_configs = [
+    ("extract_time_liveon_satelliteon", f"{EGGCC_NAME} Extraction (live on, satellite on)", 'tab:blue'),
+    #("extract_time_liveon_satelliteoff", f"{EGGCC_NAME} Extraction (live on, satellite off)", 'tab:cyan'),
+    #("extract_time_liveoff_satelliteon", f"{EGGCC_NAME} Extraction (live off, satellite on)", 'tab:purple'),
+    #("extract_time_liveoff_satelliteoff", f"{EGGCC_NAME} Extraction (live off, satellite off)", 'tab:brown'),
+  ]
+  extract_times_by_treatment = {field: [] for field, _, _ in treatment_configs}
   ilp_times = []
   ilp_timeout_count = 0
   ilp_infeasible_count = 0
 
   for sample in points:
-    extract_time = sample["extract_time"]
-    if extract_time is not None:
-      extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
-      extract_times.append(extract_value)
+    for field, _label, _color in treatment_configs:
+      extract_time = sample.get(field)
+      if not extract_time:
+        continue
+      secs = extract_time.get("secs")
+      nanos = extract_time.get("nanos")
+      if secs is None or nanos is None:
+        continue
+      extract_value = float(secs) + float(nanos) / 1e9
+      extract_times_by_treatment[field].append(extract_value)
 
     ilp_infeasible = sample.get("ilp_infeasible", False)
     if ilp_infeasible:
@@ -39,7 +51,8 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
     ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0:
+  have_extract_data = any(extract_times_by_treatment.values())
+  if not have_extract_data and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0:
     print("WARNING: No extraction timing data found; skipping CDF plot")
     return
 
@@ -82,10 +95,13 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     max_time = max(max_time, latest_time)
     min_time = earliest_time if min_time is None else min(min_time, earliest_time)
 
-  extract_total = len(extract_times)
   ilp_total = len(ilp_times) + ilp_timeout_count + ilp_infeasible_count
 
-  _plot_cdf(extract_times, extract_total, f'{EGGCC_NAME} Extraction Time', 'blue')
+  for field, label, color in treatment_configs:
+    times = extract_times_by_treatment[field]
+    if not times:
+      continue
+    _plot_cdf(times, len(times), label, color)
   _plot_cdf(ilp_times, ilp_total, 'ILP Solve Time', 'green')
 
   total_ilp_entries = float(ilp_total) if ilp_total > 0 else 1.0
@@ -273,7 +289,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
   # set y min to 90 percent
   if use_exp_y:
     ax.set_ylim(bottom=90.0)
-
+  ax.set_ylim(top=100.0)
   ax.legend(loc='lower right')
 
   plt.tight_layout()

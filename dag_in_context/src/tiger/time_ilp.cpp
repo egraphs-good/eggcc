@@ -34,7 +34,6 @@ void compute_tiger_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                            const vector<vector<Cost>> &rstatewalk_cost) {
   sample.tiger_duration_liveon_satelliteon_ns =
     measure_tiger_duration(gr, root, rstatewalk_cost, true, true);
-  sample.tiger_duration_ns = sample.tiger_duration_liveon_satelliteon_ns;
   sample.tiger_duration_liveon_satelliteoff_ns =
     measure_tiger_duration(gr, root, rstatewalk_cost, true, false);
   sample.tiger_duration_liveoff_satelliteon_ns =
@@ -184,7 +183,6 @@ bool write_extract_region_timings_json(
       const auto &sample = timings[i];
       out << (i == 0 ? "\n" : ",\n");
     out << "    {\"egraph_size\": " << sample.egraph_size
-      << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
       << ", \"tiger_duration_liveon_satelliteon_ns\": "
       << sample.tiger_duration_liveon_satelliteon_ns
       << ", \"tiger_duration_liveon_satelliteoff_ns\": "

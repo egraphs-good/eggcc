@@ -348,14 +348,12 @@ pub enum Schedule {
     Sequential,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum, Default)]
 pub enum IlpSolver {
     #[default]
     Gurobi,
     Cbc,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
@@ -396,6 +394,12 @@ pub struct ExtractRegionTiming {
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
+    #[serde(default)]
+    pub cbc_ilp_extract_time: Option<Duration>,
+    #[serde(default)]
+    pub cbc_ilp_timed_out: bool,
+    #[serde(default)]
+    pub cbc_ilp_infeasible: bool,
     pub ilp_encoding_num_vars: u64,
     pub statewalk_width_liveon_satelliteon_max: u64,
     pub statewalk_width_liveon_satelliteon_avg: f64,
@@ -664,6 +668,12 @@ fn run_tiger_pipeline(
             ilp_timed_out: Option<bool>,
             #[serde(default)]
             ilp_infeasible: Option<bool>,
+            #[serde(default)]
+            cbc_ilp_duration_ns: Option<u64>,
+            #[serde(default)]
+            cbc_ilp_timed_out: Option<bool>,
+            #[serde(default)]
+            cbc_ilp_infeasible: Option<bool>,
             ilp_encoding_num_vars: u64,
             statewalk_width_liveon_satelliteon_max: u64,
             statewalk_width_liveon_satelliteon_avg: f64,
@@ -695,18 +705,24 @@ fn run_tiger_pipeline(
         for (idx, row) in rows.into_iter().enumerate() {
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
             let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
-            let ilp_extract_time = if ilp_timed_out || ilp_infeasible {
-                None
-            } else {
-                match row.ilp_duration_ns {
-                    Some(nanos) => Some(Duration::from_nanos(nanos)),
-                    None => {
-                        panic!(
-                            "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
-                            idx + 1
-                        );
-                    }
+            let ilp_extract_time = match (ilp_timed_out, row.ilp_duration_ns) {
+                (true, _) => None,
+                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (false, None) => {
+                    panic!(
+                        "Missing ilp_duration_ns for non-timeout extract-region timing on row {} (infeasible={})",
+                        idx + 1,
+                        ilp_infeasible
+                    );
                 }
+            };
+
+            let cbc_ilp_timed_out = row.cbc_ilp_timed_out.unwrap_or(false);
+            let cbc_ilp_infeasible = row.cbc_ilp_infeasible.unwrap_or(false);
+            let cbc_ilp_extract_time = match (cbc_ilp_timed_out, row.cbc_ilp_duration_ns) {
+                (true, _) => None,
+                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (false, None) => None,
             };
 
             region_timings.push(ExtractRegionTiming {
@@ -726,6 +742,9 @@ fn run_tiger_pipeline(
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,
+                cbc_ilp_extract_time,
+                cbc_ilp_timed_out,
+                cbc_ilp_infeasible,
                 ilp_encoding_num_vars: row.ilp_encoding_num_vars,
                 statewalk_width_liveon_satelliteon_max: row.statewalk_width_liveon_satelliteon_max,
                 statewalk_width_liveon_satelliteon_avg: row.statewalk_width_liveon_satelliteon_avg,

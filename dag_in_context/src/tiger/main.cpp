@@ -21,6 +21,7 @@ Extractor flags:
 
 int main(int argc, char *argv[]) {
     bool requested_ilp_no_minimize = false;
+    bool use_gurobi_solver = true;
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--report-region-timings") == 0) {
             assert(i + 1 < argc);
@@ -36,9 +37,9 @@ int main(int argc, char *argv[]) {
             assert(i + 1 < argc);
             const char *solver = argv[i + 1];
             if (strcmp(solver, "gurobi") == 0) {
-                g_config.use_gurobi = true;
+                use_gurobi_solver = true;
             } else if (strcmp(solver, "cbc") == 0) {
-                g_config.use_gurobi = false;
+                use_gurobi_solver = false;
             } else {
                 std::fprintf(stderr, "Unknown ILP solver '%s'. Expected 'gurobi' or 'cbc'.\n", solver);
                 return 1;
@@ -64,13 +65,13 @@ int main(int argc, char *argv[]) {
 
     vector<Extraction> extractions;
     if (g_config.ilp_mode) {
-        extractions = extractAllILP(g, roots);
+        extractions = extractAllILP(g, roots, use_gurobi_solver);
     } else {
         extractions = extract_all_fun_roots_tiger(g, roots);
     }
 
     if (g_config.time_ilp) {
-        vector<ExtractRegionTiming> timings = compute_extract_region_timings(g, roots);
+        vector<ExtractRegionTiming> timings = compute_extract_region_timings(g, roots, use_gurobi_solver);
         if (!write_extract_region_timings_json(timings, g_config.extract_region_timings_path)) {
             std::fprintf(stderr, "failed to write extract-region timings to %s\n", g_config.extract_region_timings_path.c_str());
             return 1;

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <fstream>
+#include <optional>
 #include <thread>
 #include <unordered_set>
 #include <iostream>
@@ -61,32 +62,62 @@ void compute_tiger_metrics(ExtractRegionTiming &sample, const EGraph &gr,
     res.liveoff_satelliteoff.avg_width;
 }
 
+namespace {
+struct SolverMetrics {
+  std::optional<long long> duration_ns;
+  bool timed_out;
+  bool infeasible;
+  size_t encoding_vars;
+};
+
+SolverMetrics run_solver_for_metrics(const EGraph &gr, EClassId root,
+                                     const vector<vector<Cost>> &rstatewalk_cost,
+                                     bool use_gurobi) {
+  Extraction extraction;
+  bool timed_out = false;
+  bool infeasible = false;
+  size_t encoding_vars = 0;
+  long long ns = extract_region_ilp_with_timing(gr, root, rstatewalk_cost,
+                                                extraction, timed_out,
+                                                infeasible, encoding_vars,
+                                                use_gurobi);
+  std::optional<long long> duration;
+  if (!timed_out) {
+    duration = ns;
+  }
+  return SolverMetrics{duration, timed_out, infeasible, encoding_vars};
+}
+}
+
 void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                          EClassId root,
-                         const vector<vector<Cost>> &rstatewalk_cost) {
-  Extraction ilp_extraction;
-  bool ilp_timed_out = false;
-  bool ilp_infeasible = false;
-  long long ilp_ns;
-  size_t ilp_encoding_num_vars = 0;
-  ilp_ns = extract_region_ilp_with_timing(gr, root, rstatewalk_cost,
-                                          ilp_extraction, ilp_timed_out,
-                                          ilp_infeasible,
-                                          ilp_encoding_num_vars);
+                         const vector<vector<Cost>> &rstatewalk_cost,
+                         bool primary_use_gurobi) {
+  SolverMetrics primary_metrics =
+      run_solver_for_metrics(gr, root, rstatewalk_cost, primary_use_gurobi);
+  sample.ilp_timed_out = primary_metrics.timed_out;
+  sample.ilp_infeasible = primary_metrics.infeasible;
+  sample.ilp_encoding_num_vars = primary_metrics.encoding_vars;
+  sample.ilp_duration_ns = primary_metrics.duration_ns;
 
-  sample.ilp_timed_out = ilp_timed_out;
-  sample.ilp_infeasible = ilp_infeasible;
-  sample.ilp_encoding_num_vars = ilp_encoding_num_vars;
-  if (ilp_timed_out || ilp_infeasible) {
-    sample.ilp_duration_ns = 0;
+  if (!primary_use_gurobi) {
+    // primary results already correspond to CBC; reuse them for the CBC fields.
+    sample.cbc_ilp_duration_ns = primary_metrics.duration_ns;
+    sample.cbc_ilp_timed_out = primary_metrics.timed_out;
+    sample.cbc_ilp_infeasible = primary_metrics.infeasible;
   } else {
-    sample.ilp_duration_ns = ilp_ns;
+  SolverMetrics cbc_metrics =
+    run_solver_for_metrics(gr, root, rstatewalk_cost, false);
+    sample.cbc_ilp_duration_ns = cbc_metrics.duration_ns;
+    sample.cbc_ilp_timed_out = cbc_metrics.timed_out;
+    sample.cbc_ilp_infeasible = cbc_metrics.infeasible;
   }
 }
 
 vector<ExtractRegionTiming>
 compute_extract_region_timings(const EGraph &g,
-                               const vector<EClassId> &fun_roots) {
+                               const vector<EClassId> &fun_roots,
+                               bool primary_use_gurobi) {
   vector<EClassId> region_roots = find_all_region_roots(g, fun_roots);
 
   vector<vector<Cost>> statewalk_cost = compute_statewalk_cost(g);
@@ -153,7 +184,7 @@ compute_extract_region_timings(const EGraph &g,
       const PreparedRegion &prepared = prepared_regions[idx];
       ExtractRegionTiming &sample = timings[prepared.index];
   compute_ilp_metrics(sample, prepared.egraph, prepared.root,
-          prepared.statewalk_cost);
+          prepared.statewalk_cost, primary_use_gurobi);
     }
   };
   cerr << "\n";
@@ -201,6 +232,16 @@ bool write_extract_region_timings_json(
           << (sample.ilp_timed_out ? "true" : "false")
           << ", \"ilp_infeasible\": "
           << (sample.ilp_infeasible ? "true" : "false")
+          << ", \"cbc_ilp_duration_ns\": ";
+      if (sample.cbc_ilp_duration_ns.has_value()) {
+        out << sample.cbc_ilp_duration_ns.value();
+      } else {
+        out << "null";
+      }
+      out << ", \"cbc_ilp_timed_out\": "
+          << (sample.cbc_ilp_timed_out ? "true" : "false")
+          << ", \"cbc_ilp_infeasible\": "
+          << (sample.cbc_ilp_infeasible ? "true" : "false")
       << ", \"ilp_encoding_num_vars\": "
       << sample.ilp_encoding_num_vars
           << ", \"statewalk_width_liveon_satelliteon_max\": "

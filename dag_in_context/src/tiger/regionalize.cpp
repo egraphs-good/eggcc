@@ -113,7 +113,7 @@ ExtractionENodeId extract_region_tiger(const EGraph &g, const EClassId root, Ext
         const EGraph &gr = res.first;
         const EClassId nroot = res.second.first;
         const EGraphMapping &gr2g = res.second.second;
-        Extraction tmpe = extract_regionalized_egraph_tiger(gr, nroot, project_statewalk_cost(gr2g, statewalk_cost));
+    Extraction tmpe = extract_regionalized_egraph_tiger(gr, nroot, project_statewalk_cost(gr2g, statewalk_cost), true, true);
         region_extraction_cache[rid].first = project_extraction(gr2g, tmpe);
     }
 

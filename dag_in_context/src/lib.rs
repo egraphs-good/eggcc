@@ -393,13 +393,21 @@ pub struct EggccConfig {
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
     pub extract_time: Duration,
+    pub extract_time_liveon_satelliteon: Duration,
+    pub extract_time_liveon_satelliteoff: Duration,
+    pub extract_time_liveoff_satelliteon: Duration,
+    pub extract_time_liveoff_satelliteoff: Duration,
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
-    pub statewalk_width_liveon_max: u64,
-    pub statewalk_width_liveon_avg: f64,
-    pub statewalk_width_liveoff_max: u64,
-    pub statewalk_width_liveoff_avg: f64,
+    pub statewalk_width_liveon_satelliteon_max: u64,
+    pub statewalk_width_liveon_satelliteon_avg: f64,
+    pub statewalk_width_liveon_satelliteoff_max: u64,
+    pub statewalk_width_liveon_satelliteoff_avg: f64,
+    pub statewalk_width_liveoff_satelliteon_max: u64,
+    pub statewalk_width_liveoff_satelliteon_avg: f64,
+    pub statewalk_width_liveoff_satelliteoff_max: u64,
+    pub statewalk_width_liveoff_satelliteoff_avg: f64,
 }
 
 pub struct EggccTimeStatistics {
@@ -650,16 +658,24 @@ fn run_tiger_pipeline(
         struct TimingRow {
             egraph_size: usize,
             tiger_duration_ns: u64,
+            tiger_duration_liveon_satelliteon_ns: u64,
+            tiger_duration_liveon_satelliteoff_ns: u64,
+            tiger_duration_liveoff_satelliteon_ns: u64,
+            tiger_duration_liveoff_satelliteoff_ns: u64,
             #[serde(default)]
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
             ilp_timed_out: Option<bool>,
             #[serde(default)]
             ilp_infeasible: Option<bool>,
-            statewalk_width_liveon_max: u64,
-            statewalk_width_liveon_avg: f64,
-            statewalk_width_liveoff_max: u64,
-            statewalk_width_liveoff_avg: f64,
+            statewalk_width_liveon_satelliteon_max: u64,
+            statewalk_width_liveon_satelliteon_avg: f64,
+            statewalk_width_liveon_satelliteoff_max: u64,
+            statewalk_width_liveon_satelliteoff_avg: f64,
+            statewalk_width_liveoff_satelliteon_max: u64,
+            statewalk_width_liveoff_satelliteon_avg: f64,
+            statewalk_width_liveoff_satelliteoff_max: u64,
+            statewalk_width_liveoff_satelliteoff_avg: f64,
         }
 
         let contents = std::fs::read_to_string(extract_timing_path).unwrap_or_else(|err| {
@@ -699,13 +715,35 @@ fn run_tiger_pipeline(
             region_timings.push(ExtractRegionTiming {
                 egraph_size: row.egraph_size,
                 extract_time: Duration::from_nanos(row.tiger_duration_ns),
+                extract_time_liveon_satelliteon: Duration::from_nanos(
+                    row.tiger_duration_liveon_satelliteon_ns,
+                ),
+                extract_time_liveon_satelliteoff: Duration::from_nanos(
+                    row.tiger_duration_liveon_satelliteoff_ns,
+                ),
+                extract_time_liveoff_satelliteon: Duration::from_nanos(
+                    row.tiger_duration_liveoff_satelliteon_ns,
+                ),
+                extract_time_liveoff_satelliteoff: Duration::from_nanos(
+                    row.tiger_duration_liveoff_satelliteoff_ns,
+                ),
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,
-                statewalk_width_liveon_max: row.statewalk_width_liveon_max,
-                statewalk_width_liveon_avg: row.statewalk_width_liveon_avg,
-                statewalk_width_liveoff_max: row.statewalk_width_liveoff_max,
-                statewalk_width_liveoff_avg: row.statewalk_width_liveoff_avg,
+                statewalk_width_liveon_satelliteon_max: row.statewalk_width_liveon_satelliteon_max,
+                statewalk_width_liveon_satelliteon_avg: row.statewalk_width_liveon_satelliteon_avg,
+                statewalk_width_liveon_satelliteoff_max: row
+                    .statewalk_width_liveon_satelliteoff_max,
+                statewalk_width_liveon_satelliteoff_avg: row
+                    .statewalk_width_liveon_satelliteoff_avg,
+                statewalk_width_liveoff_satelliteon_max: row
+                    .statewalk_width_liveoff_satelliteon_max,
+                statewalk_width_liveoff_satelliteon_avg: row
+                    .statewalk_width_liveoff_satelliteon_avg,
+                statewalk_width_liveoff_satelliteoff_max: row
+                    .statewalk_width_liveoff_satelliteoff_max,
+                statewalk_width_liveoff_satelliteoff_avg: row
+                    .statewalk_width_liveoff_satelliteoff_avg,
             });
         }
     }

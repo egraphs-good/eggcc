@@ -53,8 +53,11 @@ pair<EGraph, EGraphMapping> rebuild_egraph_statewalk(const EGraph &g, const Stat
     return make_pair(gp, gp2g);
 }
 
-Extraction extract_regionalized_egraph_tiger(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost) {
-    Statewalk sw = statewalkDP(g, root, statewalk_cost);
+Extraction extract_regionalized_egraph_tiger(const EGraph &g, const EClassId root,
+                                             const vector<vector<Cost> > &statewalk_cost,
+                                             bool use_liveness,
+                                             bool use_satellite_opt) {
+    Statewalk sw = statewalkDP(g, root, statewalk_cost, use_liveness, use_satellite_opt, nullptr);
 
     pair<EGraph, EGraphMapping> res = rebuild_egraph_statewalk(g, sw);
     const EGraph &gp = res.first;
@@ -69,9 +72,19 @@ Extraction extract_regionalized_egraph_tiger(const EGraph &g, const EClassId roo
     return e;
 }
 
-pair<StatewalkWidthReport, StatewalkWidthReport> get_stat_regionalized_egraph_tiger(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost) {
-    StatewalkWidthStat liveness, noliveness;
-    statewalkDP(g, root, statewalk_cost, true, &liveness);
-    statewalkDP(g, root, statewalk_cost, false, &noliveness);
-    return make_pair(StatewalkWidthReport(liveness), StatewalkWidthReport(noliveness));
+StatewalkWidthReports get_stat_regionalized_egraph_tiger(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost) {
+    StatewalkWidthStat liveness_satelliteon;
+    StatewalkWidthStat liveness_satelliteoff;
+    StatewalkWidthStat noliveness_satelliteon;
+    StatewalkWidthStat noliveness_satelliteoff;
+
+    statewalkDP(g, root, statewalk_cost, true, true, &liveness_satelliteon);
+    statewalkDP(g, root, statewalk_cost, true, false, &liveness_satelliteoff);
+    statewalkDP(g, root, statewalk_cost, false, true, &noliveness_satelliteon);
+    statewalkDP(g, root, statewalk_cost, false, false, &noliveness_satelliteoff);
+
+    return StatewalkWidthReports(StatewalkWidthReport(liveness_satelliteon),
+                                 StatewalkWidthReport(liveness_satelliteoff),
+                                 StatewalkWidthReport(noliveness_satelliteon),
+                                 StatewalkWidthReport(noliveness_satelliteoff));
 }

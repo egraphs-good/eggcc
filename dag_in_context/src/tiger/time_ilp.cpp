@@ -16,24 +16,50 @@
 
 using Clock = chrono::steady_clock;
 
+static long long measure_tiger_duration(const EGraph &gr, EClassId root,
+                    const vector<vector<Cost>> &rstatewalk_cost,
+                    bool use_liveness,
+                    bool use_satellite_opt) {
+  auto tiger_start = Clock::now();
+  extract_regionalized_egraph_tiger(gr, root, rstatewalk_cost, use_liveness,
+                  use_satellite_opt);
+  auto tiger_end = Clock::now();
+  return chrono::duration_cast<chrono::nanoseconds>(tiger_end - tiger_start)
+    .count();
+}
+
 
 void compute_tiger_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                            EClassId root,
                            const vector<vector<Cost>> &rstatewalk_cost) {
-  auto tiger_start = Clock::now();
-  extract_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
-  auto tiger_end = Clock::now();
+  sample.tiger_duration_liveon_satelliteon_ns =
+    measure_tiger_duration(gr, root, rstatewalk_cost, true, true);
+  sample.tiger_duration_ns = sample.tiger_duration_liveon_satelliteon_ns;
+  sample.tiger_duration_liveon_satelliteoff_ns =
+    measure_tiger_duration(gr, root, rstatewalk_cost, true, false);
+  sample.tiger_duration_liveoff_satelliteon_ns =
+    measure_tiger_duration(gr, root, rstatewalk_cost, false, true);
+  sample.tiger_duration_liveoff_satelliteoff_ns =
+    measure_tiger_duration(gr, root, rstatewalk_cost, false, false);
 
-  sample.tiger_duration_ns =
-      chrono::duration_cast<chrono::nanoseconds>(tiger_end - tiger_start)
-          .count();
-
-  pair<StatewalkWidthReport, StatewalkWidthReport> res =
-      get_stat_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
-  sample.statewalk_width_liveon_max = res.first.max_width;
-  sample.statewalk_width_liveon_avg = res.first.avg_width;
-  sample.statewalk_width_liveoff_max = res.second.max_width;
-  sample.statewalk_width_liveoff_avg = res.second.avg_width;
+  StatewalkWidthReports res =
+    get_stat_regionalized_egraph_tiger(gr, root, rstatewalk_cost);
+  sample.statewalk_width_liveon_satelliteon_max =
+    res.liveon_satelliteon.max_width;
+  sample.statewalk_width_liveon_satelliteon_avg =
+    res.liveon_satelliteon.avg_width;
+  sample.statewalk_width_liveon_satelliteoff_max =
+    res.liveon_satelliteoff.max_width;
+  sample.statewalk_width_liveon_satelliteoff_avg =
+    res.liveon_satelliteoff.avg_width;
+  sample.statewalk_width_liveoff_satelliteon_max =
+    res.liveoff_satelliteon.max_width;
+  sample.statewalk_width_liveoff_satelliteon_avg =
+    res.liveoff_satelliteon.avg_width;
+  sample.statewalk_width_liveoff_satelliteoff_max =
+    res.liveoff_satelliteoff.max_width;
+  sample.statewalk_width_liveoff_satelliteoff_avg =
+    res.liveoff_satelliteoff.avg_width;
 }
 
 void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
@@ -154,8 +180,16 @@ bool write_extract_region_timings_json(
     for (size_t i = 0; i < timings.size(); ++i) {
       const auto &sample = timings[i];
       out << (i == 0 ? "\n" : ",\n");
-      out << "    {\"egraph_size\": " << sample.egraph_size
-          << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
+    out << "    {\"egraph_size\": " << sample.egraph_size
+      << ", \"tiger_duration_ns\": " << sample.tiger_duration_ns
+      << ", \"tiger_duration_liveon_satelliteon_ns\": "
+      << sample.tiger_duration_liveon_satelliteon_ns
+      << ", \"tiger_duration_liveon_satelliteoff_ns\": "
+      << sample.tiger_duration_liveon_satelliteoff_ns
+      << ", \"tiger_duration_liveoff_satelliteon_ns\": "
+      << sample.tiger_duration_liveoff_satelliteon_ns
+      << ", \"tiger_duration_liveoff_satelliteoff_ns\": "
+      << sample.tiger_duration_liveoff_satelliteoff_ns
           << ", \"ilp_duration_ns\": ";
       if (sample.ilp_duration_ns.has_value()) {
         out << sample.ilp_duration_ns.value();
@@ -166,14 +200,22 @@ bool write_extract_region_timings_json(
           << (sample.ilp_timed_out ? "true" : "false")
           << ", \"ilp_infeasible\": "
           << (sample.ilp_infeasible ? "true" : "false")
-          << ", \"statewalk_width_liveon_max\": "
-          << sample.statewalk_width_liveon_max
-          << ", \"statewalk_width_liveon_avg\": "
-          << sample.statewalk_width_liveon_avg
-          << ", \"statewalk_width_liveoff_max\": "
-          << sample.statewalk_width_liveoff_max
-          << ", \"statewalk_width_liveoff_avg\": "
-          << sample.statewalk_width_liveoff_avg << "}";
+          << ", \"statewalk_width_liveon_satelliteon_max\": "
+          << sample.statewalk_width_liveon_satelliteon_max
+          << ", \"statewalk_width_liveon_satelliteon_avg\": "
+          << sample.statewalk_width_liveon_satelliteon_avg
+          << ", \"statewalk_width_liveon_satelliteoff_max\": "
+          << sample.statewalk_width_liveon_satelliteoff_max
+          << ", \"statewalk_width_liveon_satelliteoff_avg\": "
+          << sample.statewalk_width_liveon_satelliteoff_avg
+          << ", \"statewalk_width_liveoff_satelliteon_max\": "
+          << sample.statewalk_width_liveoff_satelliteon_max
+          << ", \"statewalk_width_liveoff_satelliteon_avg\": "
+          << sample.statewalk_width_liveoff_satelliteon_avg
+          << ", \"statewalk_width_liveoff_satelliteoff_max\": "
+          << sample.statewalk_width_liveoff_satelliteoff_max
+          << ", \"statewalk_width_liveoff_satelliteoff_avg\": "
+          << sample.statewalk_width_liveoff_satelliteoff_avg << "}";
     }
     out << "\n  ";
   }

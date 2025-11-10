@@ -11,13 +11,21 @@
 struct ExtractRegionTiming {
     size_t egraph_size;
     long long tiger_duration_ns;
+    long long tiger_duration_liveon_satelliteon_ns;
+    long long tiger_duration_liveon_satelliteoff_ns;
+    long long tiger_duration_liveoff_satelliteon_ns;
+    long long tiger_duration_liveoff_satelliteoff_ns;
     std::optional<long long> ilp_duration_ns;
     bool ilp_timed_out;
     bool ilp_infeasible;
-    size_t statewalk_width_liveon_max;
-    double statewalk_width_liveon_avg;
-    size_t statewalk_width_liveoff_max;
-    double statewalk_width_liveoff_avg;
+    size_t statewalk_width_liveon_satelliteon_max;
+    double statewalk_width_liveon_satelliteon_avg;
+    size_t statewalk_width_liveon_satelliteoff_max;
+    double statewalk_width_liveon_satelliteoff_avg;
+    size_t statewalk_width_liveoff_satelliteon_max;
+    double statewalk_width_liveoff_satelliteon_avg;
+    size_t statewalk_width_liveoff_satelliteoff_max;
+    double statewalk_width_liveoff_satelliteoff_avg;
 };
 
 std::vector<ExtractRegionTiming> compute_extract_region_timings(

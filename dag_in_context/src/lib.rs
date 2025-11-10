@@ -349,16 +349,13 @@ pub enum Schedule {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+#[derive(Default)]
 pub enum IlpSolver {
+    #[default]
     Gurobi,
     Cbc,
 }
 
-impl Default for IlpSolver {
-    fn default() -> Self {
-        IlpSolver::Gurobi
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {

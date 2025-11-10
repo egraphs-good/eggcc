@@ -225,6 +225,8 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
 
     // AC - satellite eclasses
     vector<EClassId> satellite_pa(g.neclasses(), UNEXTRACTABLE_ECLASS);
+    vector<int> satellite_chcnt(g.neclasses(), 0);
+    const int SATELLITE_BAR = 6;
     if (use_satellite_opt) {
         for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
             const EClass &c = g.eclasses[i];
@@ -264,14 +266,14 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                 }
             }
         }
-    }
-    vector<int> satellite_chcnt(g.neclasses(), 0);
-    for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
-        if (satellite_pa[i] != UNEXTRACTABLE_ECLASS) {
-            ++satellite_chcnt[satellite_pa[i]];
+        
+        for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
+            if (satellite_pa[i] != UNEXTRACTABLE_ECLASS) {
+                ++satellite_chcnt[satellite_pa[i]];
+            }
         }
     }
-    const int SATELLITE_BAR = 6;
+    
 
     // main DP data structures
 

@@ -1,5 +1,5 @@
 use clap::Parser;
-use dag_in_context::{EggccConfig, Schedule};
+use dag_in_context::{EggccConfig, IlpSolver, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
@@ -97,6 +97,9 @@ struct Args {
     /// Disable the objective minimization when running the tiger ILP extractor.
     #[clap(long)]
     ilp_no_minimize: bool,
+    /// Choose which ILP solver to use when running the tiger extractor.
+    #[clap(long, value_enum, default_value_t = IlpSolver::Gurobi)]
+    ilp_solver: IlpSolver,
 }
 
 fn main() {
@@ -156,6 +159,7 @@ fn main() {
             time_ilp: args.time_ilp,
             use_context: args.with_context,
             ilp_minimize_objective: !args.ilp_no_minimize,
+            ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,
         },
     };

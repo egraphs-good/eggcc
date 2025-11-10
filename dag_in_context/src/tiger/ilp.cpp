@@ -1,5 +1,6 @@
 #include "ilp.h"
 #include "main.h"
+#include "greedy.h"
 
 #include <cassert>
 #include <chrono>
@@ -446,7 +447,7 @@ static ExtractionENodeId build_extraction_node(
 
 } // namespace
 
-Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &timed_out, bool &infeasible)  {
+Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *ilp_encoding_num_vars)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
 		exit(1);
@@ -499,6 +500,9 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		orderVar[c].resize(g.eclasses[c].enodes.size());
 	}
 
+	size_t pick_variable_count = 0;
+	size_t order_variable_count = 0;
+
 	// All choice variables (a partiacular edge between an enode at a child index and another enode)
 	vector<ChoiceVar> choices;
 	// initialize choices, pickNode, pickCost, choiceIndex, childParents
@@ -506,12 +510,21 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 			pickNode[c][n] = string("p_") + to_string(c) + "_" + to_string(n);
 			orderVar[c][n] = string("o_") + to_string(c) + "_" + to_string(n);
-			long long add = 0;
-//			if (c < (EClassId)nsubregion.size() && n < (ENodeId)nsubregion[c].size()) {
-//				add = nsubregion[c][n];
-//			}
-			pickCost[c][n] = 1 + 1000LL * add;
+			++pick_variable_count;
+			++order_variable_count;
 			const ENode &en = g.eclasses[c].enodes[n];
+			Cost node_cost = get_enode_cost(en);
+			if (g.eclasses[c].isEffectful) {
+				if (static_cast<size_t>(c) >= rstatewalk_cost.size()) {
+					fail(string("statewalk cost missing for effectful eclass ") + to_string(c));
+				}
+				if (static_cast<size_t>(n) >= rstatewalk_cost[c].size()) {
+					fail(string("statewalk cost missing for effectful enode ") + to_string(c) + ":" + to_string(n));
+				}
+				node_cost = rstatewalk_cost[c][n];
+			}
+			const Cost bounded_cost = min(node_cost, static_cast<Cost>(LLONG_MAX));
+			pickCost[c][n] = static_cast<long long>(bounded_cost);
 			choiceIndex[c][n].resize(en.ch.size());
 			for (int child_idx = 0; child_idx < (int)en.ch.size(); ++child_idx) {
 				EClassId child_class = en.ch[child_idx];
@@ -594,13 +607,20 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	lp << "Minimize\n";
 	if (g_config.ilp_minimize_objective) {
 		lp << " obj:";
+		int term_count = 0;
 		for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 			for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 				if (!firstTerm) {
-					lp << " +";
+					lp << " + ";
+				} else {
+					lp << " ";
+					firstTerm = false;
 				}
-				firstTerm = false;
-				lp << " " << pickCost[c][n] << " " << pickNode[c][n];
+				lp << pickCost[c][n] << " " << pickNode[c][n];
+				++term_count;
+				if (term_count % 50 == 0) {
+					lp << "\n";
+				}
 			}
 		}
 		if (firstTerm) {
@@ -649,6 +669,9 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 				lp << " - " << pickNode[c][n] << " >= 0\n";
 			}
 		}
+	}
+	if (ilp_encoding_num_vars != nullptr) {
+		*ilp_encoding_num_vars = choices.size() + pick_variable_count + order_variable_count;
 	}
 	
 	// If you choose a child edge, you must pick the enode it points to.
@@ -735,7 +758,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	bool solver_timed_out = false;
-	int timeout = g_config.use_gurobi ? g_config.ilp_timeout_gurobi : g_config.ilp_timeout_seconds;
+	int timeout = g_config.ilp_timeout_seconds;
 	int ret = run_command_with_timeout(cmd, timeout, solver_timed_out);
 	if (solver_timed_out) {
 		timed_out = true;
@@ -777,7 +800,6 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, bool &tim
 	SolverSolution solver_solution = parse_solver_solution(sol_path, solver_log, solver_name, g_config.use_gurobi, fail_with_log);
  	const unordered_map<string, double> &values = solver_solution.values;
 	if (solver_solution.infeasible) {
-		cout << "infeasible ILP problem" << endl;
 		infeasible = true;
 		return Extraction();
 	}
@@ -895,8 +917,6 @@ bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e) 
 	// unique choice not required 
 	return true;
 }
-
-typedef int Cost;
 
 struct SubEGraphMap {
 	vector<EClassId> eclassmp;
@@ -1181,27 +1201,27 @@ pair<EClassId, ENodeId> findArg(const EGraph &g) {
 
 typedef int RegionId;
 
-static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, bool &timed_out, bool &infeasible) {
+static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *ilp_encoding_num_vars) {
 	auto start = std::chrono::steady_clock::now();
 	timed_out = false;
 	infeasible = false;
-	Extraction extraction = extractRegionILPInner(g, root, timed_out, infeasible);
+	Extraction extraction = extractRegionILPInner(g, root, rstatewalk_cost, timed_out, infeasible, ilp_encoding_num_vars);
 	auto elapsed = std::chrono::steady_clock::now() - start;
 	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
 }
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out, bool &infeasible) {
-	auto result = run_ilp_extractor(g, root, timed_out, infeasible);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible, size_t &ilp_encoding_num_vars) {
+	auto result = run_ilp_extractor(g, root, rstatewalk_cost, timed_out, infeasible, &ilp_encoding_num_vars);
 	out = std::move(result.first);
 	return result.second.count();
 }
 
 // the main function for getting a linear extraction from a region
 // this uses ILP in ilp mode or the unguided statewalk search in the normal mode
-Extraction extractRegionILP(const EGraph &g, const EClassId root) {
+Extraction extractRegionILP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost) {
 	bool ilp_timed_out = false;
 	bool ilp_infeasible = false;
-	auto ilp_result = run_ilp_extractor(g, root, ilp_timed_out, ilp_infeasible);
+	auto ilp_result = run_ilp_extractor(g, root, rstatewalk_cost, ilp_timed_out, ilp_infeasible, nullptr);
 	if (ilp_timed_out) {
 		cout << "TIMEOUT" << endl;
 		std::exit(1);
@@ -1213,7 +1233,13 @@ Extraction extractRegionILP(const EGraph &g, const EClassId root) {
 	return ilp_result.first;
 }
 
-ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> &region_roots, const vector<RegionId> &region_root_id, vector<ExtractionENodeId> &extracted_roots, Extraction &e, const RegionId &cur_region) {
+ExtractionENodeId reconstructExtraction(const EGraph &g,
+						 const vector<EClassId> &region_roots,
+						 const vector<RegionId> &region_root_id,
+						 vector<ExtractionENodeId> &extracted_roots,
+						 Extraction &e,
+						 const RegionId &cur_region,
+						 const vector<vector<Cost> > &statewalk_cost) {
 	if (extracted_roots[cur_region] != -1) {
 		return extracted_roots[cur_region];
 	}
@@ -1223,7 +1249,11 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 	EGraph &gr = res.first;
 	SubEGraphMap &rmap = res.second;
 	EClassId root = get_inv_entry_or_fail(rmap.inv, region_root, "getting region root mapping");
-	Extraction er = extractRegionILP(gr, root);
+	EGraphMapping region_to_global;
+	region_to_global.eclassidmp = rmap.eclassmp;
+	region_to_global.enodeidmp = rmap.enode_map;
+	vector<vector<Cost> > rstatewalk_cost = project_statewalk_cost(region_to_global, statewalk_cost);
+	Extraction er = extractRegionILP(gr, root, rstatewalk_cost);
 	Extraction ner(er.size());
 	for (int i = 0; i < (int)er.size(); ++i) {
 		ExtractionENode &en = er[i], &nen = ner[i];
@@ -1238,7 +1268,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 			EClassId orichc = g.eclasses[oric].enodes[orin].ch[j];
 			if (g.eclasses[orichc].isEffectful) {
 				if (subregionchild) {
-					nen.ch.push_back(reconstructExtraction(g, region_roots, region_root_id, extracted_roots, e, region_root_id[orichc]));
+					nen.ch.push_back(reconstructExtraction(g, region_roots, region_root_id, extracted_roots, e, region_root_id[orichc], statewalk_cost));
 				} else {
 					subregionchild = true;
 					nen.ch.push_back(en.ch[k++]);
@@ -1271,6 +1301,7 @@ ExtractionENodeId reconstructExtraction(const EGraph &g, const vector<EClassId> 
 }
 
 vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots) {
+	vector<vector<Cost> > statewalk_cost = compute_statewalk_cost(g);
 	vector<Extraction> ret;
 	for (int _ = 0; _ < (int)fun_roots.size(); ++_) {
 		EClassId fun_root = fun_roots[_];
@@ -1300,7 +1331,7 @@ vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots) {
 		}
 		vector<ExtractionENodeId> extracted_roots(region_roots.size(), -1);
 		Extraction e;
-		reconstructExtraction(g, region_roots, region_root_id, extracted_roots, e, region_root_id[fun_root]);
+		reconstructExtraction(g, region_roots, region_root_id, extracted_roots, e, region_root_id[fun_root], statewalk_cost);
 		assert(linearExtraction(g, fun_root, e));
 		ret.push_back(e);
 	}

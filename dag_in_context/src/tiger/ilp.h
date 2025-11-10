@@ -7,10 +7,11 @@
 #include <vector>
 
 #include "egraphin.h"
+#include "greedy.h"
 
-Extraction extractRegionILP(const EGraph &g, EClassId root);
+Extraction extractRegionILP(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost);
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, Extraction &out, bool &timed_out, bool &infeasible);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible, size_t &ilp_encoding_num_vars);
 
 vector<Extraction> extractAllILP(EGraph g, vector<EClassId> fun_roots);
 

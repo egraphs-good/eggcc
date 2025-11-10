@@ -778,6 +778,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     f'{graphs_folder}/extraction_time_cdf_linear.pdf',
     use_log_x=False,
   )
+  make_extraction_time_cdf(
+    profile,
+    f'{graphs_folder}/extraction_time_cdf_exp_y.pdf',
+    use_log_x=False,
+    use_exp_y=True,
+  )
   statewalk_histogram_max_width = None
   statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
 

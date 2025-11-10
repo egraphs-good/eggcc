@@ -8,7 +8,7 @@ import numpy as np
 from graph_helpers import *
 
 
-def make_extraction_time_cdf(data, output, use_log_x):
+def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -37,7 +37,7 @@ def make_extraction_time_cdf(data, output, use_log_x):
     ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
     ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times:
+  if not extract_times and not ilp_times and ilp_timeout_count == 0:
     print("WARNING: No extraction timing data found; skipping CDF plot")
     return
 
@@ -47,10 +47,10 @@ def make_extraction_time_cdf(data, output, use_log_x):
   plotted_any = False
   max_time = 0.0
   min_time = None
-  max_count = 0
+  max_percent = 100.0
 
-  def _plot_cdf(times, label, color):
-    nonlocal plotted_any, max_time, min_time, max_count
+  def _plot_cdf(times, total_count, label, color):
+    nonlocal plotted_any, max_time, min_time, max_percent
     if not times:
       return
     raw_values = np.array(times, dtype=float)
@@ -67,21 +67,30 @@ def make_extraction_time_cdf(data, output, use_log_x):
         return
 
     sorted_times = np.sort(raw_values)
-    counts = np.arange(1, len(sorted_times) + 1, dtype=float)
-    ax.step(sorted_times, counts, where='post', label=label, color=color, linewidth=2)
+    total = float(total_count if total_count is not None else len(sorted_times))
+    if total <= 0:
+      return
+    ranks = np.arange(1, len(sorted_times) + 1, dtype=float)
+    percents = ranks / total * 100.0
+    plotted_values = percents
     plotted_any = True
+    ax.step(sorted_times, plotted_values, where='post', label=label, color=color, linewidth=2)
     latest_time = float(sorted_times[-1])
     earliest_time = float(sorted_times[0])
     max_time = max(max_time, latest_time)
     min_time = earliest_time if min_time is None else min(min_time, earliest_time)
-    max_count = max(max_count, int(counts[-1]))
 
-  _plot_cdf(extract_times, f'{EGGCC_NAME} Extraction Time', 'blue')
-  _plot_cdf(ilp_times, 'ILP Solve Time', 'green')
+  extract_total = len(extract_times)
+  ilp_total = len(ilp_times) + ilp_timeout_count
+
+  _plot_cdf(extract_times, extract_total, f'{EGGCC_NAME} Extraction Time', 'blue')
+  _plot_cdf(ilp_times, ilp_total, 'ILP Solve Time', 'green')
 
   if ilp_timeout_count:
     current_count = len(ilp_times)
     final_count = current_count + ilp_timeout_count
+    if final_count <= 0:
+      final_count = ilp_timeout_count
     tail_end_time = float(ILP_TIMEOUT_SECONDS)
     tail_start_time = float(np.max(ilp_times)) if ilp_times else tail_end_time
     if tail_start_time > tail_end_time:
@@ -96,8 +105,13 @@ def make_extraction_time_cdf(data, output, use_log_x):
       tail_plot_end = tail_end_time + delta
 
     tail_times = np.array([tail_start_time, tail_end_time, tail_plot_end], dtype=float)
-    tail_counts = np.array([current_count, final_count, final_count], dtype=float)
-    ax.step(tail_times, tail_counts, where='post', color='red', linewidth=2, label='ILP Timeouts')
+    total = float(final_count)
+    if total <= 0:
+      total = float(ilp_timeout_count)
+    current_percent = (current_count / total) * 100.0 if total else 0.0
+    final_percent = 100.0
+    tail_percents = np.array([current_percent, final_percent, final_percent], dtype=float)
+    ax.step(tail_times, tail_percents, where='post', color='red', linewidth=2, label='ILP Timeouts')
 
     plotted_any = True
 
@@ -109,7 +123,7 @@ def make_extraction_time_cdf(data, output, use_log_x):
       else:
         min_time = min(min_time, tail_min_time)
     max_time = max(max_time, float(np.max(tail_times)))
-    max_count = max(max_count, final_count)
+    max_percent = max(max_percent, final_percent)
 
   if not plotted_any:
     print("WARNING: No data plotted in make_extraction_time_cdf")
@@ -117,7 +131,7 @@ def make_extraction_time_cdf(data, output, use_log_x):
     return
 
   ax.set_xlabel('Time (Seconds)')
-  ax.set_ylabel('Number of Benchmarks')
+  ax.set_ylabel('Percent of Benchmarks')
   ax.set_title('CDF of Extraction Times')
 
   if max_time <= 0:
@@ -142,9 +156,34 @@ def make_extraction_time_cdf(data, output, use_log_x):
     ax.set_xscale('linear')
     ax.set_xlim(left=left, right=right)
 
-  if max_count == 0:
-    max_count = 1
-  ax.set_ylim(0.0, max_count * 1.05)
+  if use_exp_y:
+    def _exp_forward(values):
+      arr = np.asarray(values, dtype=float)
+      clipped = np.clip(arr, 0.0, max_percent)
+      transformed = np.log1p(clipped)
+      return transformed
+
+    def _exp_inverse(values):
+      arr = np.asarray(values, dtype=float)
+      clipped = np.clip(arr, 0.0, max_percent)
+      norm = np.expm1(clipped)
+      return np.clip(norm, 0.0, max_percent)
+
+    ax.set_yscale('function', functions=( _exp_inverse, _exp_forward))
+    ax.set_ylim(0.0, max_percent)
+    tick_candidates = [0.0, 10.0, 25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.5, 99.9, 100.0]
+    ticks = sorted({t for t in tick_candidates if t <= max_percent + 1e-6})
+    if max_percent not in ticks:
+      ticks.append(max_percent)
+    ax.yaxis.set_major_locator(mticker.FixedLocator(ticks))
+    ax.yaxis.set_minor_locator(mticker.NullLocator())
+  else:
+    lower_bound = 0.0
+    upper_bound = min(max_percent * 1.05, 105.0)
+    if upper_bound <= lower_bound:
+      upper_bound = lower_bound + 1.0
+    ax.set_yscale('linear')
+    ax.set_ylim(lower_bound, upper_bound)
 
   ax.grid(axis='both', linestyle='--', alpha=0.4)
 
@@ -169,22 +208,24 @@ def make_extraction_time_cdf(data, output, use_log_x):
     ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda value, _pos: f"{value:g}"))
 
-  ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True, prune=None))
-  ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
+  if not use_exp_y:
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=10, prune=None))
+    ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
 
-  def _format_count_tick(value, _pos):
+  def _format_percent_tick(value, _pos):
     if value < 0:
       return ''
+    if value >= 99.995:
+      return '100%'
     if abs(value - round(value)) < 1e-6:
-      return f"{int(round(value)):,}"
-    return f"{value:.2f}"
+      return f"{int(round(value))}%"
+    if value >= 10.0:
+      return f"{value:.1f}%"
+    return f"{value:.2f}%"
 
-  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_count_tick))
+  ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_percent_tick))
 
   ax.legend(loc='lower right')
 
   plt.tight_layout()
   plt.savefig(output)
-
-
-

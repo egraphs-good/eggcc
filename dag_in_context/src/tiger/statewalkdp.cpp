@@ -34,7 +34,7 @@ struct BitsetExtraInfo {
 };
 
 Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost, const bool use_liveness, const bool use_satellite_opt, StatewalkWidthStat *const stat) {
-    // find arg
+     // find arg
     DEBUG_ASSERT(arg_check_regionalized_egraph(g));
     EClassId argc = UNEXTRACTABLE_ECLASS;
     ENodeId argn = UNEXTRACTABLE_ECLASS;
@@ -225,7 +225,6 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
 
     // AC - satellite eclasses
     vector<EClassId> satellite_pa(g.neclasses(), UNEXTRACTABLE_ECLASS);
-    vector<int> satellite_chcnt(g.neclasses(), 0);
     if (use_satellite_opt) {
         for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
             const EClass &c = g.eclasses[i];
@@ -241,46 +240,35 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             break;
                         }
                     }
-                }
-                if (cp == UNEXTRACTABLE_ECLASS) {
-                    candidate = UNEXTRACTABLE_ECLASS;
-                    break;
-                } else if (candidate == UNEXTRACTABLE_ECLASS) {
-                    candidate = cp;
-                } else if (candidate != cp) {
-                    candidate = UNEXTRACTABLE_ECLASS;
-                    break;
-                }
-            }
-            if (candidate != UNEXTRACTABLE_ECLASS) {
-                if (parent_edge_to_effectful[i].size() == 0) {
-                    candidate = UNEXTRACTABLE_ECLASS;
-                } else {
-                    for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
-                        if (parent_edge_to_effectful[i][j].first != candidate) {
-                            candidate = UNEXTRACTABLE_ECLASS;
-                            break;
-                        }
+                    if (cp == UNEXTRACTABLE_ECLASS) {
+                        candidate = UNEXTRACTABLE_ECLASS;
+                        break;
+                    } else if (candidate == UNEXTRACTABLE_ECLASS) {
+                        candidate = cp;
+                    } else if (candidate != cp) {
+                        candidate = UNEXTRACTABLE_ECLASS;
+                        break;
                     }
                 }
                 if (candidate != UNEXTRACTABLE_ECLASS) {
                     if (parent_edge_to_effectful[i].size() == 0) {
                         candidate = UNEXTRACTABLE_ECLASS;
-                        break;
-                    }
-                    for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
-                        if (parent_edge_to_effectful[i][j].first != candidate) {
-                            candidate = UNEXTRACTABLE_ECLASS;
-                            break;
+                    } else {
+                        for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
+                            if (parent_edge_to_effectful[i][j].first != candidate) {
+                                candidate = UNEXTRACTABLE_ECLASS;
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
-        for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
-            if (satellite_pa[i] != UNEXTRACTABLE_ECLASS) {
-                ++satellite_chcnt[satellite_pa[i]];
-            }
+    }
+    vector<int> satellite_chcnt(g.neclasses(), 0);
+    for (EClassId i = 0; i < (EClassId)g.neclasses(); ++i) {
+        if (satellite_pa[i] != UNEXTRACTABLE_ECLASS) {
+            ++satellite_chcnt[satellite_pa[i]];
         }
     }
     const int SATELLITE_BAR = 6;
@@ -310,13 +298,13 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
         }
         if (dp[uid].c == c && dp[uid].ec != root) {
             EClassId u = dp[uid].ec;
-            bool allow_satellite_opt = use_satellite_opt && satellite_chcnt[dp[uid].ec] > SATELLITE_BAR;
+            bool enable_satellite_opt = satellite_chcnt[dp[uid].ec] > SATELLITE_BAR;
             bool satellite_updated = false;
             for (size_t i = 0; i < parent_edge_to_effectful[u].size(); ++i) {
                 EClassId v = parent_edge_to_effectful[u][i].first;
                 ENodeId vn = parent_edge_to_effectful[u][i].second;
                 bool is_satellite_update = (satellite_pa[v] == dp[uid].ec);
-                if (allow_satellite_opt && is_satellite_update && satellite_updated) {
+                if (enable_satellite_opt && is_satellite_update && satellite_updated) {
                     continue;
                 }
                 // test for validity
@@ -407,7 +395,7 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
                             nhash = ninfo.masked_hash;
                         }
                     }
-                    if (allow_satellite_opt && is_satellite_update) {
+                    if (enable_satellite_opt && is_satellite_update) {
                         if (nhash == info.masked_hash) {
                             continue;
                         } else {

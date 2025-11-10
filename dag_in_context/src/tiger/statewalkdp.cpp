@@ -252,12 +252,12 @@ Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<
             if (candidate != UNEXTRACTABLE_ECLASS) {
                 if (parent_edge_to_effectful[i].size() == 0) {
                     candidate = UNEXTRACTABLE_ECLASS;
-                    break;
-                }
-                for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
-                    if (parent_edge_to_effectful[i][j].first != candidate) {
-                        candidate = UNEXTRACTABLE_ECLASS;
-                        break;
+                } else {
+                    for (size_t j = 0; j < parent_edge_to_effectful[i].size(); ++j) {
+                        if (parent_edge_to_effectful[i][j].first != candidate) {
+                            candidate = UNEXTRACTABLE_ECLASS;
+                            break;
+                        }
                     }
                 }
             }

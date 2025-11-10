@@ -550,6 +550,81 @@ def make_extraction_time_histogram(data, output):
   plt.savefig(output)
 
 
+def make_extraction_time_cdf(data, output):
+  benchmarks = dedup([b.get('benchmark') for b in data])
+  points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
+
+  extract_times = []
+  ilp_times = []
+
+  for sample in points:
+    extract_time = sample["extract_time"]
+    if extract_time is not None:
+      extract_value = extract_time["secs"] + extract_time["nanos"] / 1e9
+      extract_times.append(extract_value)
+
+    ilp_infeasible = sample.get("ilp_infeasible", False)
+    if ilp_infeasible or sample["ilp_timed_out"]:
+      continue
+
+    ilp_time = sample["ilp_extract_time"]
+    if ilp_time is None:
+      continue
+
+    ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
+    ilp_times.append(ilp_value)
+
+  if not extract_times and not ilp_times:
+    print("WARNING: No extraction timing data found; skipping CDF plot")
+    return
+
+  plt.figure(figsize=(10, 6))
+
+  ax = plt.gca()
+  plotted_any = False
+  max_time = 0.0
+
+  def _plot_cdf(times, label, color):
+    nonlocal plotted_any, max_time
+    if not times:
+      return
+    sorted_times = np.sort(np.array(times, dtype=float))
+    counts = np.arange(1, len(sorted_times) + 1) / len(sorted_times)
+    ax.step(sorted_times, counts, where='post', label=label, color=color, linewidth=2)
+    plotted_any = True
+    max_time = max(max_time, float(sorted_times[-1]))
+
+  _plot_cdf(extract_times, f'{EGGCC_NAME} Extraction Time', 'blue')
+  _plot_cdf(ilp_times, 'ILP Solve Time', 'green')
+
+  if not plotted_any:
+    print("WARNING: No data plotted in make_extraction_time_cdf")
+    plt.close()
+    return
+
+  ax.set_xlabel('Time (Seconds)')
+  ax.set_ylabel('CDF')
+  ax.set_title('CDF of Extraction Times')
+
+  if max_time <= 0:
+    max_time = 1.0
+  ax.set_xlim(left=0.0, right=max_time * 1.05)
+  ax.set_ylim(0.0, 1.0)
+
+  ax.grid(axis='both', linestyle='--', alpha=0.4)
+
+  ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=12, prune=None, min_n_ticks=6))
+  ax.xaxis.set_minor_locator(mticker.AutoMinorLocator())
+  ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=False, nbins=10, prune=None, min_n_ticks=5))
+  ax.yaxis.set_minor_locator(mticker.AutoMinorLocator())
+  ax.yaxis.set_major_formatter(mticker.PercentFormatter(1.0))
+
+  ax.legend(loc='lower right')
+
+  plt.tight_layout()
+  plt.savefig(output)
+
+
 def make_statewalk_width_histogram(data, output, is_liveon, is_average, max_width=None):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
@@ -633,20 +708,16 @@ def print_top_statewalk_width_samples(
   samples = []
 
   for benchmark in benchmarks:
-    try:
-      timings = get_extract_region_timings(treatment, data, benchmark)
-    except KeyError:
-      continue
+    timings = get_extract_region_timings(treatment, data, benchmark)
     if timings is False:
       continue
     for sample in timings:
-      width = sample.get(width_key)
+      width = sample[width_key]
       if width is None:
         continue
       if max_width is not None and width > max_width:
         continue
-      sample_treatment = sample.get('treatment', treatment)
-      samples.append((width, benchmark, sample_treatment))
+      samples.append((width, benchmark, treatment))
 
   if not samples:
     print(f"WARNING: No statewalk width data found for {treatment} ({width_key})")
@@ -1393,6 +1464,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
   make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
   make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
+  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction_time_cdf.pdf')
   statewalk_histogram_max_width = None
   statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
   make_statewalk_width_histogram(
@@ -1464,7 +1536,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       xanchor = 0.4
       yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/{suite}_bar_chart.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized_binary_perf_chart_{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

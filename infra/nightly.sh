@@ -16,8 +16,11 @@ set -o pipefail
 
 export PATH=~/.cargo/bin:$PATH
 
-rustup update
-cargo install tokei
+# locally, skip rustup and tokei install
+if [ "$LOCAL" == "" ]; then
+  rustup update
+  cargo install tokei
+fi
 
 # determine physical directory of this script
 src="${BASH_SOURCE[0]}"

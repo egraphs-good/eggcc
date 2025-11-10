@@ -10,8 +10,7 @@ struct Config {
     bool ilp_mode = false;
     bool ilp_minimize_objective = true;
     bool use_gurobi = true;
-    int ilp_timeout_seconds = 10;
-    int ilp_timeout_gurobi = 5 * 60;
+    int ilp_timeout_seconds = 5 * 60; // 5 minutes
     bool time_ilp = false;
 };
 

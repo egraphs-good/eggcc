@@ -19,19 +19,19 @@ IS_TESTING_MODE = True
 
 def eggcc_timeout_secs():
   if IS_TESTING_MODE:
-    return 15 * 60 # 15 minutes
+    return 10 * 60 # 10 minutes
   else:
-    return 1 * 60 * 60 # 1 hour (ILP can take a long time, timing out on lots of regions after 5 min)
+    return 6 * 60 * 60 # 6 hours (ILP can take a long time, timing out on lots of regions after 5 min)
 
 def num_warmup_samples():
   if IS_TESTING_MODE:
     return 2
-  return 50
+  return 10
   
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 400
+  return 200
 
 
 def average(lst):
@@ -57,6 +57,7 @@ treatments = [
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
   "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-CBC-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",
   "eggcc-tiger-ILP-WITHCTX-O0-O0",
   "eggcc-WITHCTX-O0-O0",
@@ -90,6 +91,12 @@ EGGCC_BINARY = "target/release/eggcc"
 
 MEMORY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024 
 MEMORY_LIMIT_HUMAN = "16 GiB"
+
+ILP_TREATMENT_MARKER = "ILP"
+
+
+def _should_enforce_memory_limit(treatment: str) -> bool:
+  return not ILP_TREATMENT_MARKER in treatment
 
 
 def _set_memory_limits():
@@ -129,8 +136,8 @@ def _terminate_process_tree(proc):
     proc.wait()
 
 
-def run_with_timeout_killing_tree(cmd, timeout_secs):
-  preexec = _set_memory_limits
+def run_with_timeout_killing_tree(cmd, timeout_secs, *, apply_memory_limits=True):
+  preexec = _set_memory_limits if apply_memory_limits else None
   with subprocess.Popen(
       cmd,
       shell=True,
@@ -189,6 +196,8 @@ def get_eggcc_options(benchmark):
       return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-ILP-CBC-O0-O0":
+      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-NOMIN-O0-O0":
@@ -231,7 +240,7 @@ def setup_benchmark(name):
 def optimize(benchmark):
   print(f'[{benchmark.index}/{benchmark.total}] Optimizing {benchmark.name} with {benchmark.treatment}', flush=True)
   if benchmark.is_last_before_ilp:
-    print('Waiting for all other benchmarks to complete before ILP comparison...')
+    print('Waiting for all other benchmarks to complete before ILP comparison...', flush=True)
   profile_dir = benchmark_profile_dir(benchmark.name)
   optimized_bril_file = f'{profile_dir}/{benchmark.name}-{benchmark.treatment}.bril'
   eggcc_run_data = f'{profile_dir}/{benchmark.treatment}-eggcc-run-data.json'
@@ -256,9 +265,13 @@ def optimize(benchmark):
       "error": '',
     }
 
-  timed_out = False
+  enforce_memory_limit = _should_enforce_memory_limit(benchmark.treatment)
   try:
-    process = run_with_timeout_killing_tree(cmd1, eggcc_timeout_secs())
+    process = run_with_timeout_killing_tree(
+      cmd1,
+      eggcc_timeout_secs(),
+      apply_memory_limits=enforce_memory_limit,
+    )
   except subprocess.TimeoutExpired:
     # Timeouts are failures
     print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {eggcc_timeout_secs()} seconds', flush=True)
@@ -289,7 +302,9 @@ def optimize(benchmark):
     f.write(process.stdout)
 
   # Second command intentionally has no timeout (can run longer than first phase)
-  preexec = _set_memory_limits if os.name != "nt" else None
+  preexec = None
+  if os.name != "nt" and enforce_memory_limit:
+    preexec = _set_memory_limits
   process2 = subprocess.run(
     cmd2,
     shell=True,
@@ -537,7 +552,9 @@ if __name__ == '__main__':
   # for large machines leave a few cores free
   if parallelism > 30:
     parallelism -= 4
-  ilp_parallelism = 4 if os.cpu_count() >= 8 else 1
+  # Use 10 threads for ILP comparison, and each ILP benchmark will use cup_count() / 11 threads
+  # WARNING: if you edit this, edit the number of threads used in time_ilp.cpp
+  ilp_parallelism = 10 if os.cpu_count() >= 20 else 1
 
 
   # separate to_run into ILP_COMPARISON and others

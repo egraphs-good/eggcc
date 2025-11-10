@@ -32,6 +32,18 @@ int main(int argc, char *argv[]) {
             requested_ilp_no_minimize = true;
         } else if (strcmp(argv[i], "--time-ilp") == 0) {
             g_config.time_ilp = true;
+        } else if (strcmp(argv[i], "--ilp-solver") == 0) {
+            assert(i + 1 < argc);
+            const char *solver = argv[i + 1];
+            if (strcmp(solver, "gurobi") == 0) {
+                g_config.use_gurobi = true;
+            } else if (strcmp(solver, "cbc") == 0) {
+                g_config.use_gurobi = false;
+            } else {
+                std::fprintf(stderr, "Unknown ILP solver '%s'. Expected 'gurobi' or 'cbc'.\n", solver);
+                return 1;
+            }
+            ++i;
         }
     }
 

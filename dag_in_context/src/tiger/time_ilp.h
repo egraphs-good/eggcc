@@ -18,6 +18,7 @@ struct ExtractRegionTiming {
     std::optional<long long> ilp_duration_ns;
     bool ilp_timed_out;
     bool ilp_infeasible;
+    size_t ilp_edge_variable_count;
     size_t statewalk_width_liveon_satelliteon_max;
     double statewalk_width_liveon_satelliteon_avg;
     size_t statewalk_width_liveon_satelliteoff_max;

@@ -447,7 +447,7 @@ static ExtractionENodeId build_extraction_node(
 
 } // namespace
 
-Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible)  {
+Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *edge_variable_count)  {
 	auto fail = [&](const string &msg) -> void {
 		cerr << "ILP extraction error: " << msg << endl;
 		exit(1);
@@ -602,13 +602,20 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	lp << "Minimize\n";
 	if (g_config.ilp_minimize_objective) {
 		lp << " obj:";
+		int term_count = 0;
 		for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 			for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
 				if (!firstTerm) {
-					lp << " +";
+					lp << " + ";
+				} else {
+					lp << " ";
+					firstTerm = false;
 				}
-				firstTerm = false;
-				lp << " " << pickCost[c][n] << " " << pickNode[c][n];
+				lp << pickCost[c][n] << " " << pickNode[c][n];
+				++term_count;
+				if (term_count % 50 == 0) {
+					lp << "\n";
+				}
 			}
 		}
 		if (firstTerm) {
@@ -657,6 +664,9 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 				lp << " - " << pickNode[c][n] << " >= 0\n";
 			}
 		}
+	}
+	if (edge_variable_count != nullptr) {
+		*edge_variable_count = choices.size();
 	}
 	
 	// If you choose a child edge, you must pick the enode it points to.
@@ -1186,17 +1196,17 @@ pair<EClassId, ENodeId> findArg(const EGraph &g) {
 
 typedef int RegionId;
 
-static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible) {
+static pair<Extraction, std::chrono::nanoseconds> run_ilp_extractor(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost, bool &timed_out, bool &infeasible, size_t *edge_variable_count) {
 	auto start = std::chrono::steady_clock::now();
 	timed_out = false;
 	infeasible = false;
-	Extraction extraction = extractRegionILPInner(g, root, rstatewalk_cost, timed_out, infeasible);
+	Extraction extraction = extractRegionILPInner(g, root, rstatewalk_cost, timed_out, infeasible, edge_variable_count);
 	auto elapsed = std::chrono::steady_clock::now() - start;
 	return make_pair(extraction, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
 }
 
-long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible) {
-	auto result = run_ilp_extractor(g, root, rstatewalk_cost, timed_out, infeasible);
+long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const vector<vector<Cost> > &rstatewalk_cost, Extraction &out, bool &timed_out, bool &infeasible, size_t &edge_variable_count) {
+	auto result = run_ilp_extractor(g, root, rstatewalk_cost, timed_out, infeasible, &edge_variable_count);
 	out = std::move(result.first);
 	return result.second.count();
 }
@@ -1206,7 +1216,8 @@ long long extract_region_ilp_with_timing(const EGraph &g, EClassId root, const v
 Extraction extractRegionILP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &rstatewalk_cost) {
 	bool ilp_timed_out = false;
 	bool ilp_infeasible = false;
-	auto ilp_result = run_ilp_extractor(g, root, rstatewalk_cost, ilp_timed_out, ilp_infeasible);
+	size_t edge_variable_count = 0;
+	auto ilp_result = run_ilp_extractor(g, root, rstatewalk_cost, ilp_timed_out, ilp_infeasible, &edge_variable_count);
 	if (ilp_timed_out) {
 		cout << "TIMEOUT" << endl;
 		std::exit(1);

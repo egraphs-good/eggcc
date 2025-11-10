@@ -15,6 +15,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
   extract_times = []
   ilp_times = []
   ilp_timeout_count = 0
+  ilp_infeasible_count = 0
 
   for sample in points:
     extract_time = sample["extract_time"]
@@ -24,6 +25,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
 
     ilp_infeasible = sample.get("ilp_infeasible", False)
     if ilp_infeasible:
+      ilp_infeasible_count += 1
       continue
 
     if sample["ilp_timed_out"]:
@@ -37,7 +39,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     ilp_value = ilp_time["secs"] + ilp_time["nanos"] / 1e9
     ilp_times.append(ilp_value)
 
-  if not extract_times and not ilp_times and ilp_timeout_count == 0:
+  if not extract_times and not ilp_times and ilp_timeout_count == 0 and ilp_infeasible_count == 0:
     print("WARNING: No extraction timing data found; skipping CDF plot")
     return
 
@@ -81,36 +83,36 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     min_time = earliest_time if min_time is None else min(min_time, earliest_time)
 
   extract_total = len(extract_times)
-  ilp_total = len(ilp_times) + ilp_timeout_count
+  ilp_total = len(ilp_times) + ilp_timeout_count + ilp_infeasible_count
 
   _plot_cdf(extract_times, extract_total, f'{EGGCC_NAME} Extraction Time', 'blue')
   _plot_cdf(ilp_times, ilp_total, 'ILP Solve Time', 'green')
 
+  total_ilp_entries = float(ilp_total) if ilp_total > 0 else 1.0
+  current_ilp_count = len(ilp_times)
+  last_tail_edge = None
+  baseline_tail_time = float(np.max(ilp_times)) if ilp_times else float(ILP_TIMEOUT_SECONDS)
+  if baseline_tail_time <= 0:
+    baseline_tail_time = 1e-3 if use_log_x else 1.0
+
   if ilp_timeout_count:
-    current_count = len(ilp_times)
-    final_count = current_count + ilp_timeout_count
-    if final_count <= 0:
-      final_count = ilp_timeout_count
     tail_end_time = float(ILP_TIMEOUT_SECONDS)
     tail_start_time = float(np.max(ilp_times)) if ilp_times else tail_end_time
     if tail_start_time > tail_end_time:
       tail_start_time = tail_end_time
-
     if use_log_x:
-      if tail_end_time <= 0:
-        tail_end_time = 1e-3
+      if tail_start_time <= 0:
+        tail_start_time = max(tail_end_time / 10.0, 1e-3)
       tail_plot_end = tail_end_time * 1.05 if tail_end_time > 0 else 1e-3
     else:
       delta = max(0.05 * tail_end_time, 1.0)
       tail_plot_end = tail_end_time + delta
 
     tail_times = np.array([tail_start_time, tail_end_time, tail_plot_end], dtype=float)
-    total = float(final_count)
-    if total <= 0:
-      total = float(ilp_timeout_count)
-    current_percent = (current_count / total) * 100.0 if total else 0.0
-    final_percent = 100.0
-    tail_percents = np.array([current_percent, final_percent, final_percent], dtype=float)
+    start_percent = (current_ilp_count / total_ilp_entries) * 100.0 if total_ilp_entries else 0.0
+    current_ilp_count += ilp_timeout_count
+    timeout_percent = (current_ilp_count / total_ilp_entries) * 100.0 if total_ilp_entries else 100.0
+    tail_percents = np.array([start_percent, timeout_percent, timeout_percent], dtype=float)
     ax.step(tail_times, tail_percents, where='post', color='red', linewidth=2, label='ILP Timeouts')
 
     plotted_any = True
@@ -123,7 +125,48 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
       else:
         min_time = min(min_time, tail_min_time)
     max_time = max(max_time, float(np.max(tail_times)))
-    max_percent = max(max_percent, final_percent)
+    last_tail_edge = tail_plot_end
+
+  if ilp_infeasible_count:
+    base_time = last_tail_edge if last_tail_edge is not None else baseline_tail_time
+    if use_log_x:
+      if base_time <= 0:
+        base_time = 1e-3
+      infeasible_start_time = base_time
+      infeasible_end_time = infeasible_start_time * 1.1
+      infeasible_plot_end = infeasible_end_time * 1.05
+    else:
+      if base_time <= 0:
+        base_time = 0.1
+      delta = max(0.05 * base_time, 1.0)
+      infeasible_start_time = base_time
+      infeasible_end_time = infeasible_start_time + delta
+      infeasible_plot_end = infeasible_end_time + delta
+
+    infeasible_times = np.array([infeasible_start_time, infeasible_end_time, infeasible_plot_end], dtype=float)
+    start_percent = (current_ilp_count / total_ilp_entries) * 100.0 if total_ilp_entries else 0.0
+    current_ilp_count += ilp_infeasible_count
+    infeasible_percent = (current_ilp_count / total_ilp_entries) * 100.0 if total_ilp_entries else 100.0
+    infeasible_percents = np.array([start_percent, infeasible_percent, infeasible_percent], dtype=float)
+    ax.step(
+      infeasible_times,
+      infeasible_percents,
+      where='post',
+      color='orange',
+      linewidth=2,
+      label='ILP Infeasible',
+    )
+
+    plotted_any = True
+
+    positive_infeasible_times = [t for t in infeasible_times if t > 0]
+    if positive_infeasible_times:
+      infeasible_min_time = min(positive_infeasible_times)
+      if min_time is None:
+        min_time = infeasible_min_time
+      else:
+        min_time = min(min_time, infeasible_min_time)
+    max_time = max(max_time, float(np.max(infeasible_times)))
 
   if not plotted_any:
     print("WARNING: No data plotted in make_extraction_time_cdf")
@@ -157,19 +200,22 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     ax.set_xlim(left=left, right=right)
 
   if use_exp_y:
+    EXPONENTIAL_STRENGTH = 0.5
     def _exp_forward(values):
       arr = np.asarray(values, dtype=float)
       clipped = np.clip(arr, 0.0, max_percent)
-      transformed = np.log1p(clipped)
+      transformed = 1.1 ** clipped
       return transformed
 
     def _exp_inverse(values):
       arr = np.asarray(values, dtype=float)
-      clipped = np.clip(arr, 0.0, max_percent)
-      norm = np.expm1(clipped)
-      return np.clip(norm, 0.0, max_percent)
+      min_val = 1.0
+      max_val = 1.1 ** max_percent
+      clipped = np.clip(arr, min_val, max_val)
+      restored = np.log(clipped) / np.log(1.1)
+      return np.clip(restored, 0.0, max_percent)
 
-    ax.set_yscale('function', functions=( _exp_inverse, _exp_forward))
+    ax.set_yscale('function', functions=(_exp_forward, _exp_inverse))
     ax.set_ylim(0.0, max_percent)
     tick_candidates = [0.0, 10.0, 25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.5, 99.9, 100.0]
     ticks = sorted({t for t in tick_candidates if t <= max_percent + 1e-6})
@@ -224,6 +270,9 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y=False):
     return f"{value:.2f}%"
 
   ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_percent_tick))
+  # set y min to 90 percent
+  if use_exp_y:
+    ax.set_ylim(bottom=90.0)
 
   ax.legend(loc='lower right')
 

@@ -89,7 +89,7 @@ Cost get_enode_cost(const ENode &n) {
     } else if (op == "Eq" || op ==  "LessThan" || op == "GreaterThan" || op == "LessEq" || op == "GreaterEq") {
         return 100;
     } else if (op == "Select") {
-        return 2000;
+        return 1500;
     } else if (op == "Smax" || op == "Smin" || op == "FEq") {
         return 100;
     } else if (op == "FLessThan" || op == "FGreaterThan" || op == "FLessEq" || op == "FGreaterEq") {
@@ -99,7 +99,7 @@ Cost get_enode_cost(const ENode &n) {
     } else if (op == "Alloc" || op == "Free") {
         return 1000;
     } else if (op == "Call") {
-        return 1000000;
+        return 500000;
     } else if (op == "Program" || op == "Function") {
         return 0;
     // special treatment for loops and ifs somewhere else
@@ -170,7 +170,7 @@ pair<vector<ENodeId>, vector<Cost> > greedy_extract_compute_eclasses_pick(const 
                         // Heuristics for computing cost of a loop
                         // Can be improved further by plumbing the information from the iter analysis
                         // This can potentially overflow due to deeply nested loops
-                        ndis.sum += body_cost * 1000;
+                        ndis.sum += body_cost * 500;
                     } else {
                         // Otherwise, just the bag cost
                         ndis = SCost(get_enode_cost(n));
@@ -215,7 +215,7 @@ Cost get_statewalk_enode_cost(const EGraph &g, const vector<Cost> &eclass_cost, 
     } else if (n.get_op() == "DoWhile") {
         DEBUG_ASSERT(n.ch.size() == 2);
         Cost body_cost = eclass_cost[n.ch[1]];
-        ret = body_cost * 1000;
+        ret = body_cost * 500;
     } else {
         ret = get_enode_cost(n);
         for (size_t k = 0; k < n.ch.size(); ++k) {

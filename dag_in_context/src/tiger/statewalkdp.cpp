@@ -34,7 +34,7 @@ struct BitsetExtraInfo {
 };
 
 Statewalk statewalkDP(const EGraph &g, const EClassId root, const vector<vector<Cost> > &statewalk_cost, const bool use_liveness, const bool use_satellite_opt, StatewalkWidthStat *const stat) {
-     // find arg
+    // find arg
     DEBUG_ASSERT(arg_check_regionalized_egraph(g));
     EClassId argc = UNEXTRACTABLE_ECLASS;
     ENodeId argn = UNEXTRACTABLE_ECLASS;

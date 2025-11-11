@@ -149,8 +149,40 @@ def all_region_extract_points(treatment, data, benchmarks):
 def dedup(lst):
   return list(dict.fromkeys(lst))
 
+_DIGIT_WORDS = {
+  "0": "Zero",
+  "1": "One",
+  "2": "Two",
+  "3": "Three",
+  "4": "Four",
+  "5": "Five",
+  "6": "Six",
+  "7": "Seven",
+  "8": "Eight",
+  "9": "Nine",
+}
+
+
+def convert_string_to_valid_latex_var(name):
+  text = str(name)
+  sanitized_parts = []
+  for ch in text:
+    if ch.isdigit():
+      sanitized_parts.append(_DIGIT_WORDS[ch])
+    elif ch.isalpha():
+      sanitized_parts.append(ch)
+    # drop characters that LaTeX macro names can't include, like spaces or punctuation
+  sanitized_name = ''.join(sanitized_parts)
+  if not sanitized_name:
+    sanitized_name = "Macro"
+  elif not sanitized_name[0].isalpha():
+    sanitized_name = f"Macro{sanitized_name}"
+  return sanitized_name
+
+
 def format_latex_macro(name, value):
-  return f"\\newcommand{{\\{name}}}{{{value}\\xspace}}\n"
+  sanitized_name = convert_string_to_valid_latex_var(name)
+  return f"\\newcommand{{\\{sanitized_name}}}{{{value}\\xspace}}\n"
 
 # given a ratio, format it as a percentage and create a latex macro
 def format_latex_macro_percent(name, percent_as_ratio):

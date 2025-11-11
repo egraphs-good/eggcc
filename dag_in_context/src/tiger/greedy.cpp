@@ -159,7 +159,7 @@ pair<vector<ENodeId>, vector<Cost> > greedy_extract_compute_eclasses_pick(const 
                         DEBUG_ASSERT(n.ch.size() == 4);
                         ndis = SCost(get_enode_cost(n));
                         ndis += make_pair(n.ch[0], dis[n.ch[0]]);
-                        ndis += make_pair(n.ch[0], dis[n.ch[1]]);
+                        ndis += make_pair(n.ch[1], dis[n.ch[1]]);
                         Cost then_cost = dis[n.ch[2]].sum, else_cost = dis[n.ch[3]].sum;
                         // Heuristics for computing cost of an If
                         ndis.sum += max(then_cost, else_cost) + (min(then_cost, else_cost) >> 2);
@@ -200,12 +200,29 @@ vector<Cost> greedy_extract_estimate_all_eclasses_cost(const EGraph &g) {
 
 
 Cost get_statewalk_enode_cost(const EGraph &g, const vector<Cost> &eclass_cost, const ENode &n) {
-    Cost ret = eclass_cost[n.eclass];
-    for (size_t i = 0; i < n.ch.size(); ++i) {
-        EClassId cid = n.ch[i];
-        if (g.eclasses[cid].isEffectful) {
-            ret -= eclass_cost[cid];
-            break;
+    Cost ret = 0;
+    if (n.get_op() == "If") {
+        DEBUG_ASSERT(n.ch.size() == 4);
+        ret = get_enode_cost(n);
+        if (!g.eclasses[n.ch[0]].isEffectful) {
+            ret += eclass_cost[n.ch[0]];
+        }
+        if (!g.eclasses[n.ch[1]].isEffectful) {
+            ret += eclass_cost[n.ch[1]];
+        }
+        Cost then_cost = eclass_cost[n.ch[2]], else_cost = eclass_cost[n.ch[3]];
+        ret += max(then_cost, else_cost) + (min(then_cost, else_cost) >> 2);
+    } else if (n.get_op() == "DoWhile") {
+        DEBUG_ASSERT(n.ch.size() == 2);
+        Cost body_cost = eclass_cost[n.ch[1]];
+        ret = body_cost * 1000;
+    } else {
+        ret = get_enode_cost(n);
+        for (size_t k = 0; k < n.ch.size(); ++k) {
+            EClassId cid = n.ch[k];
+            if (!g.eclasses[cid].isEffectful) {
+                ret += eclass_cost[cid];
+            }
         }
     }
     return ret;

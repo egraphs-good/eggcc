@@ -289,7 +289,7 @@ def optimize(benchmark):
 
   # check for an ILP timeout in the output
   if "TIMEOUT" in process.stdout:
-    failure_data[ILPRegionTimeOut] = True
+    failure_data["ILPRegionTimeOut"] = True
     failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 

@@ -29,7 +29,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
   "llvmCompileTimeSecs": 0.890,
   "extractRegionTimings": [],
   "failed": false,
-  ILPRegionTimeOut: false
+  "ILPRegionTimeOut": false
 }
 ```
 

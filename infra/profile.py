@@ -60,7 +60,7 @@ treatments = [
   "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-CBC-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",
-  "eggcc-tiger-ILP-WITHCTX-O0-O0",
+  #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
   # run both tiger and ILP on the same egraphs, keep this last in the list
   "eggcc-tiger-ILP-COMPARISON", 

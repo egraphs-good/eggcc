@@ -88,7 +88,9 @@ Cost get_enode_cost(const ENode &n) {
         return 2500;
     } else if (op == "Eq" || op ==  "LessThan" || op == "GreaterThan" || op == "LessEq" || op == "GreaterEq") {
         return 100;
-    } else if (op == "Select" || op == "Smax" || op == "Smin" || op == "FEq") {
+    } else if (op == "Select") {
+        return 2000;
+    } else if (op == "Smax" || op == "Smin" || op == "FEq") {
         return 100;
     } else if (op == "FLessThan" || op == "FGreaterThan" || op == "FLessEq" || op == "FGreaterEq") {
         return 1000;
@@ -197,20 +199,16 @@ vector<Cost> greedy_extract_estimate_all_eclasses_cost(const EGraph &g) {
 }
 
 
-Cost get_statewalk_enode_cost(const vector<Cost> &eclass_cost, const ENode &n) {
-    if (n.get_op() == "If") {
-        DEBUG_ASSERT(n.ch.size() == 4);
-        Cost then_cost = eclass_cost[n.ch[2]], else_cost = eclass_cost[n.ch[3]];
-        // Heuristics for computing cost of an If
-        return max(then_cost, else_cost) + (min(then_cost, else_cost) >> 2);
-    } else if (n.get_op() == "DoWhile") {
-        DEBUG_ASSERT(n.ch.size() == 2);
-        Cost body_cost = eclass_cost[n.ch[1]];
-        // Heuristics for computing cost of a loop
-        return body_cost * 1000;
-    } else {
-        return get_enode_cost(n);
+Cost get_statewalk_enode_cost(const EGraph &g, const vector<Cost> &eclass_cost, const ENode &n) {
+    Cost ret = eclass_cost[n.eclass];
+    for (size_t i = 0; i < n.ch.size(); ++i) {
+        EClassId cid = n.ch[i];
+        if (g.eclasses[cid].isEffectful) {
+            ret -= eclass_cost[cid];
+            break;
+        }
     }
+    return ret;
 }
 
 vector<vector<Cost> > compute_statewalk_cost(const EGraph &g) {
@@ -223,7 +221,7 @@ vector<vector<Cost> > compute_statewalk_cost(const EGraph &g) {
             statewalk_cost[i].resize(c.nenodes());
             for (ENodeId j = 0; j < (ENodeId)c.nenodes(); ++j) {
                 const ENode &n = c.enodes[j];
-                statewalk_cost[i][j] = get_statewalk_enode_cost(eclass_cost, n);
+                statewalk_cost[i][j] = get_statewalk_enode_cost(g, eclass_cost, n);
             }
         }
     }

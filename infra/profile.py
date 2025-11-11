@@ -28,10 +28,11 @@ def num_warmup_samples():
     return 2
   return 10
   
+# TODO bump this to 200
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 200
+  return 100
 
 
 def average(lst):
@@ -563,7 +564,10 @@ if __name__ == '__main__':
   others[-1].is_last_before_ilp = True
 
   run_benchmarks_parallel(others, parallelism, compile_data)
+  print(f'Finished benchmarks, took {time.perf_counter() - start_time:.2f} seconds', flush=True)
+  time_after_others = time.perf_counter()
   run_benchmarks_parallel(ilp_comparison, ilp_parallelism, compile_data)
+  print(f'Completed ILP comparison benchmarks, took {time.perf_counter() - time_after_others:.2f} seconds', flush=True)
   
   # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
   failed_paths = set()

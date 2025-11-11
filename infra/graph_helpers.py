@@ -4,6 +4,8 @@ EGGCC_NAME = "eggcc"
 
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
+# note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
+
 if profile.TO_ABLATE != "":
   GRAPH_RUN_MODES.extend(["eggcc-ablation-O0-O0", "eggcc-ablation-O3-O0", "eggcc-ablation-O3-O3"])
 
@@ -163,4 +165,14 @@ def benchmarks_in_folder(folder):
       files.append(os.path.join(root, filename))
   # just get file name without extension
   return [os.path.splitext(os.path.basename(f))[0] for f in files]
+
+
+def duration_to_seconds(duration):
+  return float(duration["secs"]) + float(duration["nanos"]) / 1_000_000_000.0
+
+
+def mean(values):
+  if not values:
+    raise ValueError("mean() requires at least one value")
+  return sum(values) / len(values)
 

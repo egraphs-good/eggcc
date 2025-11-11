@@ -19,6 +19,8 @@ from ilp_encoding_graph import *
 from macros import *
 
 
+# note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
+
 # a graph of how the ilp solver time changes
 # compared to the size of the egraph
 # when the ilp solve time is null it timed out
@@ -512,9 +514,6 @@ def make_jitter(profile, upper_x_bound, output):
   plt.tight_layout()
   plt.savefig(output)
 
-def mean(lst):
-  return sum(lst) / len(lst)
-
 def normalized(profile, benchmark, treatment):
   baseline = get_baseline_cycles(profile, benchmark)
   treatment_cycles = get_cycles(profile, benchmark, treatment)
@@ -755,27 +754,27 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
+  make_jitter(profile, 4, f'{graphs_folder}/jitter-plot-max-4.png')
 
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
-  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction_time_cdf.pdf', use_log_x=True, use_exp_y=False)
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction-time-histogram.pdf')
+  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
   make_extraction_time_cdf(
     profile,
-    f'{graphs_folder}/extraction_time_cdf_linear.pdf',
+    f'{graphs_folder}/extraction-time-cdf-linear.pdf',
     use_log_x=False,
     use_exp_y=False,
   )
   make_extraction_time_cdf(
     profile,
-    f'{graphs_folder}/extraction_time_cdf_exp_y.pdf',
+    f'{graphs_folder}/extraction-time-cdf-exp-y.pdf',
     use_log_x=False,
     use_exp_y=True,
   )
   #make_ilp_encoding_scatter(
   #  profile,
-  #  f'{graphs_folder}/ilp_encoding_vs_egraph_size.pdf',
+  #  f'{graphs_folder}/ilp-encoding-vs-egraph-size.pdf',
   #)
   statewalk_histogram_max_width = None
   statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
@@ -783,14 +782,14 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_statewalk_width_histogram(
     profile,
-    f'{graphs_folder}/statewalk_width_histogram_with_liveness.pdf',
+    f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
     True,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
   make_statewalk_width_histogram(
     profile,
-    f'{graphs_folder}/statewalk_width_histogram.pdf',
+    f'{graphs_folder}/statewalk-width-histogram.pdf',
     False,
     is_average=False,
     max_width=statewalk_histogram_max_width,
@@ -803,20 +802,20 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     max_width=statewalk_histogram_max_width,
   )
 
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-ILP-time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-times-size-vs-tiger-time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-times-size-vs-ILP-time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width.pdf',
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width.pdf',
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
@@ -824,7 +823,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width_max100.pdf',
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-max100.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
@@ -832,7 +831,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width_max100.pdf',
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-max100.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
@@ -857,7 +856,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       xanchor = 0.4
       yanchor = 0.95
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized_binary_perf_chart_{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+  make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

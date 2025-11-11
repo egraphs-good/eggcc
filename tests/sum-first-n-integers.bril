@@ -1,0 +1,110 @@
+# three versions of summing the first n positive integers
+#
+#   f: naive loop
+#   g: textbook closed form (n * (n + 1)) / 2
+#   h: overflow avoiding closed form
+#
+# there is a main function that calls all three versions and compares their answers
+
+@f(input: int): int {
+  # int sum = 0;
+  # for (int i = 1; i <= input; i++) {
+  #   sum += i;
+  # }
+  # return sum;
+  sum = const 0;
+  i = const 1;
+  .top:
+    c = le i input;
+    br c .body .done;
+  .body:
+    sum = add sum i;
+    one = const 1;
+    i = add i one;
+    jmp .top;
+  .done:
+    ret sum;
+}
+
+@g(input: int): int {
+  # note that this can overflow
+  # return (input * (input + 1)) / 2;
+  one = const 1;
+  inc = add input one;
+  m = mul input inc;
+  two = const 2;
+  d = div m two;
+  ret d;
+}
+
+@h(input: int): int {
+  # this solves most of the overflow problems of @g above
+  # if ((input & 1) == 0) {
+  #   return (input / 2) * (input + 1);
+  # } else {
+  #   return input * ((input + 1) / 2);
+  # }
+  one = const 1;
+  two = const 2;
+  inc = add input one;
+  d = div input two;
+  m = mul d two;
+  c = eq m input;
+  br c .yes .no;
+  .yes:  # input was even
+    m = mul d inc;
+    ret m;
+  .no:  # otherwise we know input + 1 is even
+    d = div inc two;
+    m = mul input d;
+    ret m;
+}
+
+############################################################
+# here begins the test harness
+############################################################
+
+# call all three versions on the given input, print their answers, and
+# print and return whether all three agree
+@test_one_input(input: int): bool {
+  # first print the three answers
+  f_ans: int = call @f input;
+  print f_ans;
+  g_ans: int = call @g input;
+  print g_ans;
+  h_ans: int = call @h input;
+  print h_ans;
+
+  # now print whether all three are equal
+  fg_good = eq f_ans g_ans;
+  fh_good = eq f_ans h_ans;
+  good = and fg_good fh_good;
+  print good;
+  ret good;
+}
+
+# call test_one_input on all inputs in the range [1, limit]
+@test_all_inputs_upto(limit: int): bool {
+  i = const 1;
+  good = const true;
+  .top:
+    c = le i limit;
+    br c .body .done;
+  .body:
+    print i;
+    next: bool = call @test_one_input i;
+    good = and good next;
+    one = const 1;
+    i = add i one;
+    jmp .top;
+  .done:
+    ret good;
+}
+
+# specialize test_all_inputs_upto to a specific limit, say 10
+# (brili does not support command line args or stdin, so we have to hardcode here)
+@main {
+  n = const 10;
+  all_good: bool = call @test_all_inputs_upto n;
+  print all_good;
+}

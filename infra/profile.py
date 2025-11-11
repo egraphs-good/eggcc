@@ -261,7 +261,7 @@ def optimize(benchmark):
       "llvmCompileTimeSecs": False,
       "extractRegionTimings": False,
       "failed": True,
-      ILPRegionTimeOut: False,
+      "ILPRegionTimeOut": False,
       "error": '',
     }
 
@@ -354,7 +354,7 @@ def optimize(benchmark):
     "llvmCompileTimeSecs": llvm_compile_time,
     "extractRegionTimings": extract_region_timings,
     "failed": False,
-    ILPRegionTimeOut: False,
+    "ILPRegionTimeOut": False,
   }
   return res
 

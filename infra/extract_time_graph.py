@@ -191,17 +191,11 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
     baseline_tail_time = float(np.max(series["times"])) if series["times"] else float(series["timeout_time"])
     if baseline_tail_time <= 0:
       baseline_tail_time = 1e-3 if use_log_x else 1.0
-    offset_baseline_tail_time = float(_offset_times([baseline_tail_time], offset_index)[0])
-    last_tail_edge = None
 
     if series["timeout_count"] > 0:
       tail_end_time = float(series["timeout_time"])
-      tail_start_time = float(np.max(series["times"])) if series["times"] else tail_end_time
-      if tail_start_time > tail_end_time:
-        tail_start_time = tail_end_time
+      tail_start_time = tail_end_time
       if use_log_x:
-        if tail_start_time <= 0:
-          tail_start_time = max(tail_end_time / 10.0, 1e-3)
         tail_plot_end = tail_end_time * 1.05 if tail_end_time > 0 else 1e-3
       else:
         delta = max(0.05 * tail_end_time, 1.0)
@@ -209,6 +203,17 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
 
       tail_times = _offset_times([tail_start_time, tail_end_time, tail_plot_end], offset_index)
       start_percent = (current_count / total_entries) * 100.0 if total_entries else 0.0
+      if series["times"]:
+        connection_times = _offset_times([baseline_tail_time, tail_end_time], offset_index)
+        connection_percents = np.array([start_percent, start_percent], dtype=float)
+        ax.step(
+          connection_times,
+          connection_percents,
+          where='post',
+          color=series["color"],
+          linewidth=2,
+          label='_nolegend_',
+        )
       current_count += series["timeout_count"]
       timeout_percent = (current_count / total_entries) * 100.0 if total_entries else 100.0
       tail_percents = np.array([start_percent, timeout_percent, timeout_percent], dtype=float)

@@ -21,6 +21,7 @@ def make_macros(profile, benchmark_suites, output_file):
     for sample in region_points:
       benchmark_name = sample.get("benchmark")
       if benchmark_name is None:
+        print(sample)
         print("WARNING: region point missing benchmark name; skipping benchmark macro generation")
         return
       if benchmark_name not in benchmark_regions:

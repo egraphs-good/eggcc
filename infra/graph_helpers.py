@@ -31,10 +31,9 @@ COLOR_MAP = {
   "eggcc-ablation-O0-O0": "blue",
   "eggcc-ablation-O3-O0": "green",
   "eggcc-ablation-O3-O3": "orange",
-  "eggcc-ILP-O0-O0": "red",
-  "eggcc-tiger-O0-O0": "cyan",
+  "eggcc-tiger-O0-O0": "green",
   "eggcc-tiger-WL-O0-O0": "magenta",
-  "eggcc-tiger-ILP-O0-O0": "green",
+  "eggcc-tiger-ILP-O0-O0": "#3784ff",
   "eggcc-tiger-ILP-CBC-O0-O0": "olive",
   "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
   "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
@@ -55,7 +54,7 @@ SHAPE_MAP = {
   "eggcc-ablation-O3-O0": "o",
   "eggcc-ablation-O3-O3": "o",
   "eggcc-tiger-O0-O0": "o",
-  'eggcc-tiger-ILP-O0-O0': "o",
+  'eggcc-tiger-ILP-O0-O0': "^",
 }
 
 EXTRACTION_INSET_BOUNDS = (0.4, 0.3, 0.38 * 1.5, 0.35 * 1.5) # x y width height
@@ -198,6 +197,9 @@ def benchmarks_in_folder(folder):
   for root, _, filenames in os.walk(folder):
     for filename in filenames:
       files.append(os.path.join(root, filename))
+
+  # filter out README.md
+  files = [f for f in files if os.path.basename(f).lower() != "readme.md"]
   # just get file name without extension
   return [os.path.splitext(os.path.basename(f))[0] for f in files]
 

@@ -520,11 +520,14 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
   sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
+  if benchmarks_to_include is not None:
+    # keep sorting but filter to only benchmarks in benchmarks_to_include
+    benchmarks = [b for b in benchmarks if b in benchmarks_to_include]
 
 
   spacing = 0.2
@@ -553,15 +556,33 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     for runmode in treatments:
       if is_ilp_timeout(profile, benchmark, runmode):
         # for timeouts, add x marks to the top
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="red")
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color="red",
+          fontsize=14,
+          fontweight='bold',
+        )
         i += 1
         continue
 
       if is_ilp_infeasible(profile, benchmark, runmode):
         # for infeasibles, add x marks to the top
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="orange")
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color="orange",
+          fontsize=14,
+          fontweight='bold',
+        )
         i += 1
         continue
       
@@ -569,11 +590,19 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
 
       # for outliers, add x marks to the top
       if yval > y_max:
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color=COLOR_MAP[runmode])
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color=COLOR_MAP[runmode],
+          fontsize=14,
+          fontweight='bold',
+        )
       else:
         ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3, marker=SHAPE_MAP[runmode])
-      i += 1
 
     current_pos += spacing * 3
 
@@ -588,19 +617,45 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     
   
   # add the legend
-  #handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
-  handles = [plt.Line2D([0], [0], marker=SHAPE_MAP[rm], color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in treatments]
+  legend_handles = []
+  legend_labels = []
+  for rm in treatments:
+    legend_handles.append(
+      plt.Line2D(
+        [0],
+        [0],
+        marker=SHAPE_MAP[rm],
+        color='w',
+        markerfacecolor=COLOR_MAP[rm],
+        markersize=10,
+        alpha=0.7,
+      )
+    )
+    legend_labels.append(to_paper_names_treatment(rm))
 
-  # add dotted line at 1.0 to handles
-  handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0, label='1.0'))
+  legend_handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0))
+  legend_labels.append('LLVM-O3-O0')
 
-  treatmentsLegend = [f"{rm}" for rm in treatments]
-  treatmentsLegend.append(BASELINE_TREATMENT)
-  treatmentsLegend = [to_paper_names_treatment(t) for t in treatmentsLegend]
+  legend_handles.append(
+    plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
+  )
+  legend_labels.append('ILP Timeout (5 min)')
 
+  legend_handles.append(
+    plt.Line2D([0], [0], marker='x', color='orange', linestyle='None', markersize=10, markeredgewidth=3.0)
+  )
+  legend_labels.append('ILP Infeasible')
 
-  ax.legend(handles, treatmentsLegend, title=
-          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, yanchor))
+  anchor_point = (xanchor, yanchor) if xanchor is not None and yanchor is not None else (0.02, 0.98)
+  if legend:
+    ax.legend(
+      legend_handles,
+      legend_labels,
+      title='Treatment',
+      loc='upper left',
+      bbox_to_anchor=anchor_point,
+      borderaxespad=0.3,
+    )
 
   ax.set_ylim(0.25, y_max)
 
@@ -804,18 +859,21 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-ILP-time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-tiger-time-min-2.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False, width_min=2)
+  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-vs-ILP-time-min-2.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False, width_min=2)
+
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-times-size-vs-tiger-time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk-width-times-size-vs-ILP-time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width.pdf',
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width.pdf',
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
@@ -823,40 +881,49 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-max100.pdf',
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
-    max_width=100,
+    max_width=6000,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-max100.pdf',
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
     is_liveon=False,
     is_average=False,
     min_width=1,
-    max_width=100,
+    max_width=6000,
     runtime_source="ilp",
   )
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
-    profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
+    profile_for_suite = [b for b in profile if b['benchmark'] in suite_benchmarks]
 
     width = 10
     height = 4
-    y_max = 2.0
-    xanchor = 0.8
-    yanchor = 0.4
+    y_max = 3.5
+    xanchor = 0.02
+    yanchor = 0.98
     if suite == "polybench":
       y_max = 10.0
       width = 5
-      height = 3.5
-      xanchor = 0.4
-      yanchor = 0.95
+      height = 5.0
+      xanchor = 0.02
+      yanchor = 0.98
 
-  make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    if suite == "bril":
+      benchmarks_under3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") <= 3.0]
+      benchmarks_over3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") > 3.0]
+      
+
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, benchmarks_under3, legend=True)
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], 20.0, 3, height, xanchor, yanchor, benchmarks_over3, legend=False)
+
+    else:
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, None, legend=True)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

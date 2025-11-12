@@ -134,7 +134,7 @@ def print_top_statewalk_width_samples(
     print(f"  {idx}. {benchmark} ({sample_treatment}) – {width_display}")
 
 
-def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average, scale_by_egraph_size):
+def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, is_average, scale_by_egraph_size, width_min=None):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -155,10 +155,8 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
   for sample in points:
     width = sample[width_key]
     if width is None:
-      missing_widths += 1
-      continue
-    if width <= 0:
-      non_positive_widths += 1
+      raise KeyError(f"Missing {width_key} in sample for benchmark {sample.get('benchmark')}")
+    if width_min is not None and width < width_min:
       continue
 
     x_magnitude = width
@@ -202,7 +200,7 @@ def make_statewalk_width_performance_scatter(data, output, plot_ilp, is_liveon, 
     print(f"WARNING: Skipping {missing_egraph_sizes} samples with missing egraph_size when scaling x-axis")
   if missing_timings and not plot_ilp:
     print(f"WARNING: Skipping {missing_timings} samples with missing extract_time")
-
+  
   plt.figure(figsize=(10, 6))
 
   plotted_any = False
@@ -291,6 +289,10 @@ def make_egraph_size_vs_statewalk_width_heatmap(
   runtime_source="tiger",
 ):
   benchmarks = dedup([b.get('benchmark') for b in data])
+  benchmarks = [b for b in benchmarks if b != 'raytrace']
+  if not benchmarks:
+    print("WARNING: No benchmarks available after filtering raytrace; skipping heatmap")
+    return
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
   width_key = f"statewalk_width_{'liveon' if is_liveon else 'liveoff'}_satelliteoff_{'avg' if is_average else 'max'}"
@@ -459,7 +461,7 @@ def make_egraph_size_vs_statewalk_width_heatmap(
   title += ' with Liveness' if is_liveon else ' without Liveness'
   if max_width is not None:
     title += f' (≤ Width {max_width})'
-    plt.ylim(bottom=0, top=max_width)
+    plt.ylim(bottom=0)
   plt.title(title)
 
   plt.tight_layout()

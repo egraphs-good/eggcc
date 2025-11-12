@@ -31,7 +31,7 @@ class StatewalkTreatment:
 
   def runtime_display_name(self) -> str:
     return {
-      "tiger": "StateWalk DP",
+      "tiger": "Statewalk DP",
       "ilp_gurobi": "Gurobi",
       "ilp_cbc": "CBC",
     }.get(self.runtime, self.runtime)

@@ -15,49 +15,141 @@ def make_macros(profile, benchmark_suites, output_file):
   with open(output_file, 'a') as out:
     benchmarks = dedup([row["benchmark"] for row in profile])
     benchmark_regions = {benchmark: 0 for benchmark in benchmarks}
+    suite_region_counts = {}
 
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
 
     for benchmark in benchmarks:
       row = get_row(profile, benchmark, "eggcc-tiger-ILP-COMPARISON")
       timings = row["extractRegionTimings"]
-      macro_name = f"NumSubregions{convert_string_to_valid_latex_var(benchmark)}"
-      out.write(format_latex_macro(macro_name, len(timings)))
+      out.write(
+        format_latex_macro(
+          f"NumSubregions{convert_string_to_valid_latex_var(benchmark)}",
+          len(timings),
+        )
+      )
       benchmark_regions[benchmark] = len(timings)
+      if row["suite"] not in suite_region_counts:
+        suite_region_counts[row["suite"]] = []
+      suite_region_counts[row["suite"]].append(benchmark_regions[benchmark])
 
     region_counts = list(benchmark_regions.values())
-    avg_regions = mean(region_counts)
-    out.write(format_latex_macro("AvgNumSubregionsPerBenchmark", f"{avg_regions:.2f}"))
-    max_regions = max(region_counts)
-    out.write(format_latex_macro("MaxNumSubregionsPerBenchmark", max_regions))
+    out.write(
+      format_latex_macro(
+        "AvgNumSubregionsPerBenchmark",
+        f"{mean(region_counts):.2f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxNumSubregionsPerBenchmark",
+        max(region_counts),
+      )
+    )
+
+    if "polybench" not in suite_region_counts:
+      raise ValueError("No polybench suite benchmarks found when computing regionalized e-graphs per benchmark")
+    out.write(
+      format_latex_macro(
+        "AvgPolybenchRegionalizedEgraphsPerBenchmark",
+        f"{mean(suite_region_counts['polybench']):.2f}",
+      )
+    )
 
     # report number of benchmarks in each benchmark suite
     for suite in benchmark_suites:
-      suite_name = os.path.basename(suite)
-      suite_benchmarks = benchmarks_in_folder(suite)
-      macro_name = f"Num{suite_name}Benchmarks"
-      out.write(format_latex_macro(macro_name, len(suite_benchmarks)))
+      out.write(
+        format_latex_macro(
+          f"Num{os.path.basename(suite)}Benchmarks",
+          len(benchmarks_in_folder(suite)),
+        )
+      )
 
     # report the number of benchmarks in the profile
     out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
-    ilp_timeout_benchmarks = {
-      row["benchmark"]
-      for row in profile
-      if row["runMethod"] == 'eggcc-tiger-ILP-O0-O0' and row["ILPRegionTimeOut"]
-    }
-    if None in ilp_timeout_benchmarks:
-      ilp_timeout_benchmarks.discard(None)
-    out.write(format_latex_macro("NumeggcctigerILPGurobiRegionTimeoutBenchmarks", len(ilp_timeout_benchmarks)))
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPGurobiRegionTimeoutBenchmarks",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-O0-O0')),
+      )
+    )
 
-    ilp_cbc_timeout_benchmarks = {
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPGurobiRegionTimeoutBenchmarksBril",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-O0-O0', suite='bril')),
+      )
+    )
+
+    ilp_gurobi_solved_benchmarks = {
       row["benchmark"]
       for row in profile
-      if row["runMethod"] == 'eggcc-tiger-ILP-CBC-O0-O0' and row["ILPRegionTimeOut"]
+      if row["runMethod"] == 'eggcc-tiger-ILP-O0-O0' and not row["ILPRegionTimeOut"]
     }
-    if None in ilp_cbc_timeout_benchmarks:
-      ilp_cbc_timeout_benchmarks.discard(None)
-    out.write(format_latex_macro("NumeggcctigerILPCBCRegionTimeoutBenchmarks", len(ilp_cbc_timeout_benchmarks)))
+    if None in ilp_gurobi_solved_benchmarks:
+      raise ValueError("Found benchmark with name None among ILP Gurobi solved benchmarks")
+    out.write(format_latex_macro("NumILPGurobiSolvedBenchmarks", len(ilp_gurobi_solved_benchmarks)))
+
+    tiger_times_on_gurobi_solved = []
+    for benchmark in ilp_gurobi_solved_benchmarks:
+      tiger_row = get_row(profile, benchmark, 'eggcc-tiger-O0-O0')
+      extraction_time = tiger_row["eggccExtractionTimeSecs"]
+      if extraction_time is False or extraction_time is None:
+        raise ValueError(
+          f"Missing eggccExtractionTimeSecs for benchmark {benchmark}; cannot compute average extraction time"
+        )
+      tiger_times_on_gurobi_solved.append(extraction_time)
+
+    if not tiger_times_on_gurobi_solved:
+      raise ValueError("No eggcc-tiger-O0-O0 extraction times available for Gurobi-solved benchmarks")
+    out.write(
+      format_latex_macro(
+        "AvgEggcctigerO0O0ExtractionTimeSecsOnILPGurobiSolvedBenchmarks",
+        f"{mean(tiger_times_on_gurobi_solved):.6f}",
+      )
+    )
+
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPCBCRegionTimeoutBenchmarks",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-CBC-O0-O0')),
+      )
+    )
+
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPCBCRegionTimeoutBenchmarksBril",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-CBC-O0-O0', suite='bril')),
+      )
+    )
+
+    raytrace_row = get_row(profile, "raytrace", "eggcc-tiger-ILP-COMPARISON")
+    raytrace_timings = raytrace_row["extractRegionTimings"]
+    out.write(
+      format_latex_macro("NumRaytraceRegionalizedEgraphs", len(raytrace_timings))
+    )
+    out.write(
+      format_latex_macro(
+        "MaxRaytraceRegionalizedEgraphTerms",
+        max(sample["egraph_size"] for sample in raytrace_timings),
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxRaytraceTigerExtractionTimeSecs",
+        f"{max(
+          duration_to_seconds(sample['extract_time_liveon_satelliteon'])
+          for sample in raytrace_timings
+        ):.6f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "NumRaytraceILPRegionalizedEgraphTimeouts",
+        sum(1 for sample in raytrace_timings if sample["ilp_timed_out"]),
+      )
+    )
 
     total_regionalized_egraphs = len(region_points)
     if total_regionalized_egraphs == 0:
@@ -67,13 +159,21 @@ def make_macros(profile, benchmark_suites, output_file):
 
     ilp_region_timeout_count = sum(1 for sample in region_points if sample["ilp_timed_out"])
     out.write(format_latex_macro("NumILPGurobiRegionTimeouts", ilp_region_timeout_count))
-    timeout_ratio = ilp_region_timeout_count / total_regionalized_egraphs
-    out.write(format_latex_macro_percent("PercentILPGurobiRegionTimeouts", timeout_ratio))
+    out.write(
+      format_latex_macro_percent(
+        "PercentILPGurobiRegionTimeouts",
+        ilp_region_timeout_count / total_regionalized_egraphs,
+      )
+    )
 
     ilp_infeasible_count = sum(1 for sample in region_points if sample.get("ilp_infeasible"))
     out.write(format_latex_macro("NumILPGurobiInfeasibleRegions", ilp_infeasible_count))
-    infeasible_ratio = ilp_infeasible_count / total_regionalized_egraphs
-    out.write(format_latex_macro_percent("PercentILPGurobiInfeasibleRegions", infeasible_ratio))
+    out.write(
+      format_latex_macro_percent(
+        "PercentILPGurobiInfeasibleRegions",
+        ilp_infeasible_count / total_regionalized_egraphs,
+      )
+    )
 
     ilp_region_times = [
       duration_to_seconds(sample["ilp_extract_time"])
@@ -83,8 +183,12 @@ def make_macros(profile, benchmark_suites, output_file):
     if not ilp_region_times:
       print("WARNING: No ILP extract times available; skipping AvgILPGurobiRegionExtractTimeSecs macro")
       return
-    avg_ilp_region_time = mean(ilp_region_times)
-    out.write(format_latex_macro("AvgILPGurobiRegionExtractTimeSecs", f"{avg_ilp_region_time:.6f}"))
+    out.write(
+      format_latex_macro(
+        "AvgILPGurobiRegionExtractTimeSecs",
+        f"{mean(ilp_region_times):.6f}",
+      )
+    )
 
     tiger_region_times = [
       duration_to_seconds(sample["extract_time_liveon_satelliteon"])
@@ -93,26 +197,41 @@ def make_macros(profile, benchmark_suites, output_file):
     if not tiger_region_times:
       print("WARNING: No tiger extract times available; skipping AvgTigerLiveOnSatelliteOnRegionExtractTimeSecs macro")
       return
-    avg_tiger_region_time = mean(tiger_region_times)
-    out.write(format_latex_macro("AvgTigerLiveOnSatelliteOnRegionExtractTimeSecs", f"{avg_tiger_region_time:.6f}"))
-    max_tiger_region_time = max(tiger_region_times)
-    out.write(format_latex_macro("MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs", f"{max_tiger_region_time:.6f}"))
+    out.write(
+      format_latex_macro(
+        "AvgTigerLiveOnSatelliteOnRegionExtractTimeSecs",
+        f"{mean(tiger_region_times):.6f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs",
+        f"{max(tiger_region_times):.6f}",
+      )
+    )
 
-    width_field = "statewalk_width_liveon_satelliteon_max"
-    statewalk_widths = [sample[width_field] for sample in region_points]
+    statewalk_widths = [
+      sample["statewalk_width_liveon_satelliteon_max"]
+      for sample in region_points
+    ]
     total_regions = len(statewalk_widths)
 
     if total_regions == 0:
       print("WARNING: No statewalk width data available; skipping statewalk width macros")
       return
     for threshold in range(1, 31):
-      under_count = sum(1 for width in statewalk_widths if width < threshold)
-      percent_under = under_count / total_regions
-      macro_name = f"PercentRegionsStatewalkWidthUnder{threshold}"
-      out.write(format_latex_macro_percent(macro_name, percent_under))
+      out.write(
+        format_latex_macro_percent(
+          f"PercentRegionsStatewalkWidthUnder{threshold}",
+          sum(1 for width in statewalk_widths if width < threshold) / total_regions,
+        )
+      )
 
     top_widths = sorted(set(statewalk_widths), reverse=True)[:20]
     for width_value in top_widths:
-      count_at_or_above = sum(1 for width in statewalk_widths if width >= width_value)
-      macro_name = f"NumRegionsStatewalkWidthAbove{width_value}"
-      out.write(format_latex_macro(macro_name, count_at_or_above))
+      out.write(
+        format_latex_macro(
+          f"NumRegionsStatewalkWidthAbove{width_value}",
+          sum(1 for width in statewalk_widths if width >= width_value),
+        )
+      )

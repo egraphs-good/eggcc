@@ -1,6 +1,7 @@
 import profile
 import os
 EGGCC_NAME = "eggcc"
+TIGER_NAME = "Statewalk DP"
 
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
@@ -151,6 +152,21 @@ def all_region_extract_points(treatment, data, benchmarks):
 def dedup(lst):
   return list(dict.fromkeys(lst))
 
+
+def timeout_benchmarks_for_run(profile, run_method, suite=None):
+  benchmarks_with_timeouts = {
+    row["benchmark"]
+    for row in profile
+    if row["runMethod"] == run_method
+    and row["ILPRegionTimeOut"]
+    and (suite is None or row["suite"] == suite)
+  }
+  if None in benchmarks_with_timeouts:
+    raise ValueError(
+      f"Found benchmark with name None for run {run_method} and suite {suite}; data is malformed"
+    )
+  return benchmarks_with_timeouts
+
 _DIGIT_WORDS = {
   "0": "Zero",
   "1": "One",
@@ -189,7 +205,7 @@ def format_latex_macro(name, value):
 # given a ratio, format it as a percentage and create a latex macro
 def format_latex_macro_percent(name, percent_as_ratio):
   percent = percent_as_ratio * 100
-  return format_latex_macro(name, f"{percent:.2f}")
+  return format_latex_macro(name, f"{percent:.2f}\\%")
 
 def benchmarks_in_folder(folder):
   # recursively find all files

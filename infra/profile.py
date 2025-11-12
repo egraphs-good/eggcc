@@ -28,11 +28,10 @@ def num_warmup_samples():
     return 2
   return 10
   
-# TODO bump this to 200
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  return 100
+  return 200
 
 
 def average(lst):

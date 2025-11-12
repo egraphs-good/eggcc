@@ -18,20 +18,12 @@ def make_macros(profile, benchmark_suites, output_file):
 
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
 
-    for sample in region_points:
-      benchmark_name = sample.get("benchmark")
-      if benchmark_name is None:
-        print(sample)
-        print("WARNING: region point missing benchmark name; skipping benchmark macro generation")
-        return
-      if benchmark_name not in benchmark_regions:
-        print(f"WARNING: Unexpected benchmark {benchmark_name} in region data; aborting macro generation")
-        return
-      benchmark_regions[benchmark_name] += 1
-
-    for benchmark, count in benchmark_regions.items():
+    for benchmark in benchmarks:
+      row = get_row(profile, benchmark, "eggcc-tiger-ILP-COMPARISON")
+      timings = row["extractRegionTimings"]
       macro_name = f"NumSubregions{convert_string_to_valid_latex_var(benchmark)}"
-      out.write(format_latex_macro(macro_name, count))
+      out.write(format_latex_macro(macro_name, len(timings)))
+      benchmark_regions[benchmark] = len(timings)
 
     region_counts = list(benchmark_regions.values())
     avg_regions = mean(region_counts)

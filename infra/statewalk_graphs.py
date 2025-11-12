@@ -32,8 +32,8 @@ class StatewalkTreatment:
   def runtime_display_name(self) -> str:
     return {
       "tiger": "StateWalk DP",
-      "ilp_gurobi": "ILP (Gurobi)",
-      "ilp_cbc": "ILP (CBC)",
+      "ilp_gurobi": "Gurobi",
+      "ilp_cbc": "CBC",
     }.get(self.runtime, self.runtime)
 
   def duration_field(self) -> str:
@@ -66,9 +66,14 @@ class StatewalkTreatment:
     raise ValueError(f"Unknown runtime source {self.runtime}")
 
   def timeout_label(self) -> str:
+    return "Timeout (5 min)"
+
+  def timeout_color(self) -> str:
     if self.runtime == "ilp_cbc":
-      return "ILP (CBC) Timeout"
-    return "ILP Timeout (5 min)"
+      return "#8c564b"
+    if self.runtime == "ilp_gurobi":
+      return "#d62728"
+    return "red"
 
   def infeasible_label(self) -> str:
     if self.runtime == "ilp_cbc":
@@ -79,11 +84,15 @@ class StatewalkTreatment:
     if self.label:
       return self.label
     runtime_name = self.runtime_display_name()
-    modifiers = [
-      "Live-On" if self.liveness_on else "Live-Off",
-      "Satellite-On" if self.satellite_on else "Satellite-Off",
-    ]
-    return f"{runtime_name} ({', '.join(modifiers)})"
+    modifier_text = ""
+    
+    if self.runtime == "tiger":
+      modifiers = [
+        "Live-On" if self.liveness_on else "Live-Off",
+        "Satellite-On" if self.satellite_on else "Satellite-Off",
+      ]
+      modifier_text = f" ({', '.join(modifiers)})"
+    return f"{runtime_name}{modifier_text}"
 
   def color(self) -> str:
     if self.runtime == "tiger":
@@ -245,6 +254,18 @@ def _collect_statewalk_scatter_points(
   width_min,
   width_max=None,
 ):
+  def _jitter(values, magnitude=0.5):
+    if not values:
+      return values
+    noise = np.random.uniform(-magnitude, magnitude, size=len(values))
+    jittered = []
+    for value, delta in zip(values, noise):
+      jittered_value = value + float(delta)
+      if jittered_value < 0:
+        jittered_value = 0.0
+      jittered.append(jittered_value)
+    return jittered
+
   agg_part = "avg" if is_average else "max"
   width_key = f"statewalk_width_liveoff_satelliteoff_{agg_part}"
   duration_field = treatment.duration_field()
@@ -258,9 +279,6 @@ def _collect_statewalk_scatter_points(
   timeout_y = []
   infeasible_x = []
   infeasible_y = []
-  missing_egraph_sizes = 0
-  non_positive_products = 0
-  missing_timings = 0
 
   for sample in points:
     width = sample.get(width_key)
@@ -275,11 +293,9 @@ def _collect_statewalk_scatter_points(
     if scale_by_egraph_size:
       egraph_size = sample.get("egraph_size")
       if egraph_size is None:
-        missing_egraph_sizes += 1
-        continue
+        raise KeyError(f"Missing egraph_size in sample for benchmark {sample.get('benchmark')}")
       if egraph_size <= 0:
-        non_positive_products += 1
-        continue
+        raise ValueError(f"Non-positive egraph_size in sample for benchmark {sample.get('benchmark')}")
       x_magnitude = width * egraph_size
 
     if is_ilp_runtime:
@@ -294,8 +310,8 @@ def _collect_statewalk_scatter_points(
 
     runtime_value = sample.get(duration_field)
     if runtime_value is None:
-      missing_timings += 1
-      continue
+      raise KeyError(f"Missing {duration_field} in sample for benchmark {sample.get('benchmark')}")
+      
     value = duration_to_seconds(runtime_value)
 
     x_values.append(x_magnitude)
@@ -305,12 +321,9 @@ def _collect_statewalk_scatter_points(
     "x_values": x_values,
     "y_values": y_values,
     "timeout_x": timeout_x,
-    "timeout_y": timeout_y,
+    "timeout_y": _jitter(timeout_y),
     "infeasible_x": infeasible_x,
     "infeasible_y": infeasible_y,
-    "missing_egraph_sizes": missing_egraph_sizes,
-    "non_positive_products": non_positive_products,
-    "missing_timings": missing_timings,
     "duration_field": duration_field,
     "is_ilp_runtime": is_ilp_runtime,
   }
@@ -330,19 +343,6 @@ def make_statewalk_width_performance_scatter(
   results = _collect_statewalk_scatter_points(points, treatment, is_average, scale_by_egraph_size, width_min)
   duration_field = results["duration_field"]
   is_ilp_runtime = results["is_ilp_runtime"]
-
-  if results["missing_egraph_sizes"]:
-    print(
-      f"WARNING: Skipping {results['missing_egraph_sizes']} samples with missing egraph_size when scaling x-axis for {treatment.display_name()}"
-    )
-  if results["non_positive_products"]:
-    print(
-      f"WARNING: Skipping {results['non_positive_products']} samples with non-positive egraph_size when scaling statewalk width for {treatment.display_name()}"
-    )
-  if results["missing_timings"]:
-    print(
-      f"WARNING: Skipping {results['missing_timings']} samples with missing {duration_field} for {treatment.display_name()}"
-    )
 
   plt.figure(figsize=(10, 6))
 
@@ -374,7 +374,7 @@ def make_statewalk_width_performance_scatter(
     plt.scatter(
       timeout_x,
       timeout_y,
-      color='red',
+      color=treatment.timeout_color(),
       marker='x',
       label=treatment.timeout_label(),
       linewidths=2.0,
@@ -442,12 +442,6 @@ def make_statewalk_width_performance_scatter_multi(
   if len(treatment_list) < 2:
     raise ValueError("Expected at least two treatments for multi scatter plot")
 
-  base_runtime = treatment_list[0].runtime
-  if any(t.runtime != base_runtime for t in treatment_list):
-    raise ValueError("All treatments must share the same runtime for multi scatter plot")
-  if any(t.timeout_field() is not None for t in treatment_list):
-    raise ValueError("Multi scatter plot currently supports only non-ILP runtimes")
-
   benchmarks = dedup([b.get('benchmark') for b in data])
 
   plt.figure(figsize=(10, 6))
@@ -456,19 +450,6 @@ def make_statewalk_width_performance_scatter_multi(
   for treatment in treatment_list:
     points = all_region_extract_points(treatment.region_run_method, data, benchmarks)
     results = _collect_statewalk_scatter_points(points, treatment, is_average, scale_by_egraph_size, width_min, width_max)
-
-    if results["missing_egraph_sizes"]:
-      print(
-        f"WARNING: Skipping {results['missing_egraph_sizes']} samples with missing egraph_size when scaling x-axis for {treatment.display_name()}"
-      )
-    if results["non_positive_products"]:
-      print(
-        f"WARNING: Skipping {results['non_positive_products']} samples with non-positive egraph_size when scaling statewalk width for {treatment.display_name()}"
-      )
-    if results["missing_timings"]:
-      print(
-        f"WARNING: Skipping {results['missing_timings']} samples with missing {results['duration_field']} for {treatment.display_name()}"
-      )
 
     x_values = results["x_values"]
     y_values = results["y_values"]
@@ -488,6 +469,28 @@ def make_statewalk_width_performance_scatter_multi(
     )
     plotted_any = True
 
+    if results["is_ilp_runtime"]:
+      if results["timeout_x"]:
+        plt.scatter(
+          results["timeout_x"],
+          results["timeout_y"],
+          color=treatment.timeout_color(),
+          marker='x',
+          label=f"{treatment.display_name()} – {treatment.timeout_label()}",
+          linewidths=2.0,
+          s=100,
+        )
+      if results["infeasible_x"]:
+        plt.scatter(
+          results["infeasible_x"],
+          results["infeasible_y"],
+          color='orange',
+          marker='x',
+          label=f"{treatment.display_name()} – {treatment.infeasible_label()}",
+          linewidths=2.0,
+          s=100,
+        )
+
   if not plotted_any:
     print("WARNING: No data plotted in make_statewalk_width_performance_scatter_multi")
     plt.close()
@@ -505,9 +508,8 @@ def make_statewalk_width_performance_scatter_multi(
   plt.xlabel(x_label)
   plt.ylabel('Runtime (Seconds)')
 
-  runtime_name = treatment_list[0].runtime_display_name()
   comparison_labels = ' vs '.join(t.display_name() for t in treatment_list)
-  title = f"Statewalk Width vs {runtime_name} Runtime ({comparison_labels})"
+  title = f"Statewalk Width vs Runtime ({comparison_labels})"
   if scale_by_egraph_size:
     title += ' (Width × Size)'
   plt.title(title)

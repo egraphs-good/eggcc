@@ -878,7 +878,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   make_statewalk_width_performance_scatter_multi(
     profile,
-    f'{graphs_folder}/statewalk-width-vs-tiger-time-max-10k.pdf',
+    f'{graphs_folder}/statewalk-width-vs-ilp-time-max-10k.pdf',
     [tiger_optimizations_off, tiger_optimizations_on],
     is_average=False,
     scale_by_egraph_size=False,
@@ -887,7 +887,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_statewalk_width_performance_scatter_multi(
     profile,
     f'{graphs_folder}/statewalk-width-vs-ILP-time-max-10k.pdf',
-    [ilp_gurobi, ilp_cbc],
+    [ilp_cbc, ilp_gurobi],
     is_average=False,
     scale_by_egraph_size=False,
     width_max=10000,

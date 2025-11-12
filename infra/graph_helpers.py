@@ -5,6 +5,9 @@ EGGCC_NAME = "eggcc"
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 # note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
+# never hide errors about missing keys or anything like that
+# if data is empty so you can't compute a number, don't default to 0, abort instead with a warning
+
 
 if profile.TO_ABLATE != "":
   GRAPH_RUN_MODES.extend(["eggcc-ablation-O0-O0", "eggcc-ablation-O3-O0", "eggcc-ablation-O3-O3"])

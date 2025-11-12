@@ -9,8 +9,6 @@ from graph_helpers import *
 
 
 # note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
-# never hide errors about missing keys or anything like that
-# if data is empty so you can't compute a number, don't default to 0, abort instead with a warning
 
 # given a profile.json, list of suite paths, and an output file
 def make_macros(profile, benchmark_suites, output_file):

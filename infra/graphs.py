@@ -16,6 +16,7 @@ from graph_helpers import *
 from statewalk_graphs import *
 from extract_time_graph import *
 from ilp_encoding_graph import *
+from peggy_comparison_graph import make_peggy_comparison_graph
 from macros import *
 
 
@@ -919,6 +920,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   make_ilp_encoding_scatter(
     profile,
     f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
+  )
+  make_peggy_comparison_graph(
+    profile,
+    "./infra/peggy_data.csv",
+    f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
+    f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
   )
   
   for suite_path in benchmark_suites:

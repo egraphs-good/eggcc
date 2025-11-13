@@ -303,7 +303,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "GeometricMeanILPEncodingVarsPerEgraphSize",
-        round(encoding_geo_mean),
+        f"{encoding_geo_mean:.2f}",
       )
     )
     out.write(

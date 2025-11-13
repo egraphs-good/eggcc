@@ -56,7 +56,7 @@ def make_ilp_encoding_scatter(data, output):
       solved_sizes,
       solved_encodings,
       color='green',
-      label='ILP Encoding (Solved)',
+      label='Gurobi (Solved)',
       alpha=0.7,
       edgecolors='black',
       linewidths=0.5,
@@ -81,7 +81,7 @@ def make_ilp_encoding_scatter(data, output):
       infeasible_sizes,
       infeasible_encodings,
       color='orange',
-      label='ILP Encoding (Infeasible)',
+      label='Gurobi (Infeasible)',
       alpha=0.9,
       edgecolors='black',
       linewidths=0.5,
@@ -89,15 +89,28 @@ def make_ilp_encoding_scatter(data, output):
       marker='^',
     )
 
-  plt.xlabel('E-graph Size')
-  plt.ylabel('ILP Encoding Size (Edge Variables)')
+  plt.xlabel('E-graph Size (# of Terms)')
+  plt.ylabel('ILP Encoding Size (# of Variables)')
   plt.title('ILP Encoding Size vs E-graph Size')
 
   ax = plt.gca()
-  ax.set_xscale('log')
-  ax.set_yscale('log')
+  xlim = ax.get_xlim()
+  ylim = ax.get_ylim()
+  lower = min(xlim[0], ylim[0])
+  upper = max(xlim[1], ylim[1])
+  ax.plot(
+    [lower, upper],
+    [lower, upper],
+    linestyle='--',
+    color='blue',
+    linewidth=1,
+    label='x = y',
+    zorder=3,
+  )
+  ax.set_xlim(xlim)
+  ax.set_ylim(ylim)
 
   plt.grid(alpha=0.3)
-  plt.legend(loc='lower right')
+  plt.legend(loc='upper left')
   plt.tight_layout()
   plt.savefig(output)

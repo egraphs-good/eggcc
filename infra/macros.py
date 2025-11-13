@@ -235,7 +235,7 @@ def make_macros(profile, benchmark_suites, output_file):
     )
 
     statewalk_widths = [
-      sample["statewalk_width_liveon_satelliteon_max"]
+      sample["statewalk_width_liveoff_satelliteoff_max"]
       for sample in region_points
     ]
     total_regions = len(statewalk_widths)
@@ -243,6 +243,16 @@ def make_macros(profile, benchmark_suites, output_file):
     if total_regions == 0:
       print("WARNING: No statewalk width data available; skipping statewalk width macros")
       return
+
+    max_statewalk_width = max(statewalk_widths)
+    if isinstance(max_statewalk_width, float) and max_statewalk_width.is_integer():
+      max_statewalk_width = int(max_statewalk_width)
+    out.write(
+      format_latex_macro(
+        "MaxStatewalkWidthAllBenchmarks",
+        max_statewalk_width,
+      )
+    )
     for threshold in range(1, 31):
       out.write(
         format_latex_macro_percent(
@@ -259,3 +269,71 @@ def make_macros(profile, benchmark_suites, output_file):
           sum(1 for width in statewalk_widths if width >= width_value),
         )
       )
+
+    heat3d_width = None
+    if "heat-3d" in benchmarks:
+      heat3d_row = get_row(profile, "heat-3d", "eggcc-tiger-ILP-COMPARISON")
+      heat3d_timings = heat3d_row["extractRegionTimings"]
+      width_key = "statewalk_width_liveon_satelliteon_max"
+      values = [sample.get(width_key) for sample in heat3d_timings if sample.get(width_key) is not None]
+      if values:
+        heat3d_width = max(values)
+
+    if heat3d_width is None:
+      print("WARNING: No statewalk width data for heat-3d live-on satellite-on; skipping macro")
+    else:
+      if isinstance(heat3d_width, float) and heat3d_width.is_integer():
+        heat3d_width = int(heat3d_width)
+      out.write(
+        format_latex_macro(
+          "StatewalkWidthHeatThreeDLiveOnSatelliteOn",
+          heat3d_width,
+        )
+      )
+
+    geometric_speedup = compute_geometric_mean_tiger_speedup_vs_gurobi(region_points)
+    out.write(
+      format_latex_macro(
+        "GeometricMeanTigerSpeedupVsGurobiWithTimeouts",
+        f"{geometric_speedup:.2f}",
+      )
+    )
+
+
+def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
+  if not region_points:
+    raise ValueError("No regionalized e-graphs provided when computing tiger speedup macro")
+
+  ratios = []
+
+  for sample in region_points:
+    if "extract_time_liveon_satelliteon" not in sample:
+      raise KeyError("Missing extract_time_liveon_satelliteon when computing tiger speedup macro")
+    tiger_duration = sample["extract_time_liveon_satelliteon"]
+    tiger_time = duration_to_seconds(tiger_duration)
+
+    if sample["ilp_timed_out"]:
+      gurobi_time = ILP_TIMEOUT_SECONDS
+    elif sample["ilp_infeasible"]:
+      gurobi_duration = sample["ilp_extract_time"]
+      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
+    else:
+      gurobi_duration = sample["ilp_extract_time"]
+      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
+
+    if tiger_time <= 0:
+      raise ValueError("Non-positive tiger time encountered when computing tiger speedup macro")
+    if gurobi_time <= 0:
+      gurobi_time = ILP_TIMEOUT_SECONDS
+
+    ratio = gurobi_time / tiger_time
+    if ratio <= 0:
+      raise ValueError("Non-positive speedup ratio encountered when computing tiger speedup macro")
+
+    ratios.append(ratio)
+
+  if not ratios:
+    raise ValueError("No valid tiger/Gurobi timing pairs for speedup macro")
+
+  return geometric_mean(ratios)
+

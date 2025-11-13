@@ -1,5 +1,6 @@
 import profile
 import os
+import math
 EGGCC_NAME = "eggcc"
 TIGER_NAME = "Statewalk DP"
 TIGER_INLINE_NAME = "DP"
@@ -229,4 +230,19 @@ def mean(values):
   if not values:
     raise ValueError("mean() requires at least one value")
   return sum(values) / len(values)
+
+
+def geometric_mean(values):
+  if not values:
+    raise ValueError("geometric_mean() requires at least one value")
+  log_sum = 0.0
+  count = 0
+  for value in values:
+    if value <= 0:
+      raise ValueError("geometric_mean() requires all values to be positive")
+    log_sum += math.log(value)
+    count += 1
+  if count == 0:
+    raise ValueError("geometric_mean() requires at least one positive value")
+  return math.exp(log_sum / count)
 

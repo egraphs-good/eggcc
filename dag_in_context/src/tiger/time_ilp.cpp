@@ -91,33 +91,24 @@ SolverMetrics run_solver_for_metrics(const EGraph &gr, EClassId root,
 
 void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                          EClassId root,
-                         const vector<vector<Cost>> &rstatewalk_cost,
-                         bool primary_use_gurobi) {
-  SolverMetrics primary_metrics =
-      run_solver_for_metrics(gr, root, rstatewalk_cost, primary_use_gurobi);
-  sample.ilp_timed_out = primary_metrics.timed_out;
-  sample.ilp_infeasible = primary_metrics.infeasible;
-  sample.ilp_encoding_num_vars = primary_metrics.encoding_vars;
-  sample.ilp_duration_ns = primary_metrics.duration_ns;
+                         const vector<vector<Cost>> &rstatewalk_cost) {
+    SolverMetrics gurobi_metrics =
+      run_solver_for_metrics(gr, root, rstatewalk_cost, true);
+    sample.ilp_timed_out = gurobi_metrics.timed_out;
+    sample.ilp_infeasible = gurobi_metrics.infeasible;
+    sample.ilp_encoding_num_vars = gurobi_metrics.encoding_vars;
+    sample.ilp_duration_ns = gurobi_metrics.duration_ns;
 
-  if (!primary_use_gurobi) {
-    // primary results already correspond to CBC; reuse them for the CBC fields.
-    sample.cbc_ilp_duration_ns = primary_metrics.duration_ns;
-    sample.cbc_ilp_timed_out = primary_metrics.timed_out;
-    sample.cbc_ilp_infeasible = primary_metrics.infeasible;
-  } else {
-  SolverMetrics cbc_metrics =
-    run_solver_for_metrics(gr, root, rstatewalk_cost, false);
+  
+    SolverMetrics cbc_metrics = run_solver_for_metrics(gr, root, rstatewalk_cost, false);
     sample.cbc_ilp_duration_ns = cbc_metrics.duration_ns;
     sample.cbc_ilp_timed_out = cbc_metrics.timed_out;
     sample.cbc_ilp_infeasible = cbc_metrics.infeasible;
-  }
 }
 
 vector<ExtractRegionTiming>
 compute_extract_region_timings(const EGraph &g,
-                               const vector<EClassId> &fun_roots,
-                               bool primary_use_gurobi) {
+                               const vector<EClassId> &fun_roots) {
   vector<EClassId> region_roots = find_all_region_roots(g, fun_roots);
 
   vector<vector<Cost>> statewalk_cost = compute_statewalk_cost(g);
@@ -191,8 +182,8 @@ compute_extract_region_timings(const EGraph &g,
       cerr.flush();
       const PreparedRegion &prepared = prepared_regions[idx];
       ExtractRegionTiming &sample = timings[prepared.index];
-  compute_ilp_metrics(sample, prepared.egraph, prepared.root,
-          prepared.statewalk_cost, primary_use_gurobi);
+      compute_ilp_metrics(sample, prepared.egraph, prepared.root,
+          prepared.statewalk_cost);
     }
   };
   cerr << "\n";

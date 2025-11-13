@@ -36,8 +36,7 @@ struct ExtractRegionTiming {
 
 std::vector<ExtractRegionTiming> compute_extract_region_timings(
     const EGraph &g,
-    const std::vector<EClassId> &fun_roots,
-    bool primary_use_gurobi);
+    const std::vector<EClassId> &fun_roots);
 
 bool write_extract_region_timings_json(
     const std::vector<ExtractRegionTiming> &timings,

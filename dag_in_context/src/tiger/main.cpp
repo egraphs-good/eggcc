@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (g_config.time_ilp) {
-        vector<ExtractRegionTiming> timings = compute_extract_region_timings(g, roots, use_gurobi_solver);
+        vector<ExtractRegionTiming> timings = compute_extract_region_timings(g, roots);
         if (!write_extract_region_timings_json(timings, g_config.extract_region_timings_path)) {
             std::fprintf(stderr, "failed to write extract-region timings to %s\n", g_config.extract_region_timings_path.c_str());
             return 1;

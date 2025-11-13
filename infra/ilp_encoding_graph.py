@@ -69,7 +69,7 @@ def make_ilp_encoding_scatter(data, output):
       timeout_sizes,
       timeout_encodings,
       color='red',
-      label='ILP Encoding (Timeout)',
+      label='Gurobi (Timeout)',
       alpha=0.9,
       linewidths=1.2,
       s=70,

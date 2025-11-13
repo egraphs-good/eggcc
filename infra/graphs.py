@@ -674,7 +674,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
 # TODO change back after anonymization is lifted
 def to_paper_names_treatment(treatment):
   if treatment == 'llvm-O0-O0':
-    return 'LLVM-O0-O0'
+    return 'LLVM-O0'
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
   if treatment == 'eggcc-O0-O0':
@@ -699,8 +699,6 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Sequential-O0-O0'
   if treatment == 'eggcc-O3-O3':
     return 'EQCC-O3-O3'
-  if treatment == 'eggcc-ILP-O0-O0':
-    return 'EQCC-ILP-O0-O0'
   if treatment == 'eggcc-WITHCTX-O0-O0':
     return 'EQCC-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-O0-O0':
@@ -708,7 +706,7 @@ def to_paper_names_treatment(treatment):
   if treatment == 'eggcc-tiger-WL-O0-O0':
     return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return f'EQCC-ILP-O0'
+    return f'EQCC-GUROBI-O0'
   if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
     return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
   if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':

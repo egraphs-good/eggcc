@@ -71,7 +71,7 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         label_eggcc="Statewalk DP",
         label_ilp="ILP",
     )
-    axs.set_title("Statewalk DP runtime percentage in eqcc")
+    axs.set_title("Statewalk DP runtime percentage in EQCC")
     
     # Adjust layout and save
     plt.tight_layout()

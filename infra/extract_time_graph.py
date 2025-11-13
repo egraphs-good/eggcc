@@ -246,9 +246,9 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
     plt.close()
     return
 
-  ax.set_xlabel('Time (Seconds)')
-  ax.set_ylabel('Percent of Benchmarks')
-  ax.set_title('CDF of Extraction Times')
+  ax.set_xlabel('Time (Seconds)', fontsize=15)
+  ax.set_ylabel('Percent of Benchmarks', fontsize=15)
+  ax.set_title('CDF of Extraction Times', fontsize=18)
 
   if max_time <= 0:
     max_time = 1.0
@@ -347,7 +347,8 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
   if use_exp_y:
     ax.set_ylim(bottom=90.0)
   ax.set_ylim(top=100.0)
-  ax.legend(loc='lower right')
+  ax.legend(loc='lower right', fontsize=15)
+  ax.tick_params(axis='both', which='major', labelsize=13)
 
   plt.tight_layout()
   plt.savefig(output)

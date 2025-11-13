@@ -882,58 +882,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   make_statewalk_width_performance_scatter_multi(
     profile,
-    f'{graphs_folder}/statewalk-width-vs-ilp-time-max-10k.pdf',
-    [tiger_optimizations_off, tiger_optimizations_on],
-    is_average=False,
-    scale_by_egraph_size=False,
-    width_max=10000,
-  )
-  make_statewalk_width_performance_scatter_multi(
-    profile,
-    f'{graphs_folder}/statewalk-width-vs-ILP-time-max-10k.pdf',
+    f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
     [ilp_cbc, ilp_gurobi],
     is_average=False,
     scale_by_egraph_size=False,
-    width_max=10000,
   )
-  make_statewalk_width_performance_scatter(
-    profile,
-    f'{graphs_folder}/statewalk-width-vs-ILP-time.pdf',
-    ilp_gurobi,
-    is_average=False,
-    scale_by_egraph_size=False,
-  )
-  make_statewalk_width_performance_scatter(
-    profile,
-    f'{graphs_folder}/statewalk-width-vs-tiger-time-min-2.pdf',
-    tiger_optimizations_off,
-    is_average=False,
-    scale_by_egraph_size=False,
-    width_min=2,
-  )
-  make_statewalk_width_performance_scatter(
-    profile,
-    f'{graphs_folder}/statewalk-width-vs-ILP-time-min-2.pdf',
-    ilp_gurobi,
-    is_average=False,
-    scale_by_egraph_size=False,
-    width_min=2,
-  )
-
-  make_statewalk_width_performance_scatter(
-    profile,
-    f'{graphs_folder}/statewalk-width-times-size-vs-tiger-time.pdf',
-    tiger_optimizations_off,
-    is_average=False,
-    scale_by_egraph_size=True,
-  )
-  make_statewalk_width_performance_scatter(
-    profile,
-    f'{graphs_folder}/statewalk-width-times-size-vs-ILP-time.pdf',
-    ilp_gurobi,
-    is_average=False,
-    scale_by_egraph_size=True,
-  )
+  
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
     f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',

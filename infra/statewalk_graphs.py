@@ -469,27 +469,16 @@ def make_statewalk_width_performance_scatter_multi(
     )
     plotted_any = True
 
-    if results["is_ilp_runtime"]:
-      if results["timeout_x"]:
-        plt.scatter(
-          results["timeout_x"],
-          results["timeout_y"],
-          color=treatment.timeout_color(),
-          marker='x',
-          label=f"{treatment.display_name()} – {treatment.timeout_label()}",
-          linewidths=2.0,
-          s=100,
-        )
-      if results["infeasible_x"]:
-        plt.scatter(
-          results["infeasible_x"],
-          results["infeasible_y"],
-          color='orange',
-          marker='x',
-          label=f"{treatment.display_name()} – {treatment.infeasible_label()}",
-          linewidths=2.0,
-          s=100,
-        )
+    if results["is_ilp_runtime"] and results["timeout_x"]:
+      plt.scatter(
+        results["timeout_x"],
+        results["timeout_y"],
+        color=treatment.color(),
+        marker='x',
+        linewidths=2.0,
+        s=100,
+        label='_nolegend_',
+      )
 
   if not plotted_any:
     print("WARNING: No data plotted in make_statewalk_width_performance_scatter_multi")
@@ -503,21 +492,25 @@ def make_statewalk_width_performance_scatter_multi(
       x_label = "Statewalk Width × E-graph Size"
   else:
     x_label = f"Statewalk Width{' Average' if is_average else ''}"
-  x_label += f" ({SCATTER_WIDTH_CONFIGURATION})"
 
-  plt.xlabel(x_label)
-  plt.ylabel('Runtime (Seconds)')
+  plt.xlabel(x_label, fontsize=24)
+  plt.ylabel('Runtime (Seconds)', fontsize=24)
 
-  comparison_labels = ' vs '.join(t.display_name() for t in treatment_list)
-  title = f"Statewalk Width vs Runtime ({comparison_labels})"
+  title = f"Statewalk Width vs Runtime"
+  # add (ILP) if any treatment is ILP
+  if any(t.runtime != "tiger" for t in treatment_list):
+    title += " (ILP)"
+  else:
+    title += " (Statewalk DP)"
   if scale_by_egraph_size:
     title += ' (Width × Size)'
-  plt.title(title)
+  plt.title(title, fontsize=28)
 
   plt.grid(alpha=0.3)
-  plt.legend(loc='best')
+  plt.legend(loc='best', fontsize=24)
 
   ax = plt.gca()
+  ax.tick_params(axis='both', which='major', labelsize=26)
   ax.set_xscale('log')
 
   plt.tight_layout()

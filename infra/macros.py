@@ -130,7 +130,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgEggcctigerO0O0ExtractionTimeSecsOnILPGurobiSolvedBenchmarks",
-        f"{mean(tiger_times_on_gurobi_solved):.6f}",
+        f"{mean(tiger_times_on_gurobi_solved):.3f}",
       )
     )
 
@@ -156,7 +156,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "MaxRaytraceRegionalizedEgraphTerms",
-        max(sample["egraph_size"] for sample in raytrace_timings),
+        f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
       )
     )
     out.write(
@@ -210,7 +210,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgILPGurobiRegionExtractTimeSecs",
-        f"{mean(ilp_region_times):.6f}",
+        f"{mean(ilp_region_times):.3f}",
       )
     )
 
@@ -230,7 +230,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs",
-        f"{max(tiger_region_times):.6f}",
+        f"{max(tiger_region_times):.4f}",
       )
     )
 
@@ -303,7 +303,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "GeometricMeanILPEncodingVarsPerEgraphSize",
-        f"{encoding_geo_mean:.2f}",
+        round(encoding_geo_mean),
       )
     )
     out.write(

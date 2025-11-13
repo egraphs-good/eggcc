@@ -148,7 +148,15 @@ compute_extract_region_timings(const EGraph &g,
     prepared.statewalk_cost = project_statewalk_cost(gr2g, statewalk_cost);
 
     ExtractRegionTiming sample;
-    sample.egraph_size = g.eclasses.size();
+
+    // compute egraph size: number of nodes in the regionalized egraph
+    size_t egraph_size = 0;
+    for (const auto &eclass : prepared.egraph.eclasses) {
+      egraph_size += eclass.enodes.size();
+    }
+
+
+    sample.egraph_size = egraph_size;
     compute_tiger_metrics(sample, prepared.egraph, prepared.root,
                           prepared.statewalk_cost);
     timings[idx] = sample;

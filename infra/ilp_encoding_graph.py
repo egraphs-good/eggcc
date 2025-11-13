@@ -8,8 +8,10 @@ def make_ilp_encoding_scatter(data, output):
 
   solved_sizes = []
   solved_encodings = []
-  timeout_count = 0
-  infeasible_count = 0
+  timeout_sizes = []
+  timeout_encodings = []
+  infeasible_sizes = []
+  infeasible_encodings = []
 
   for sample in points:
     if "egraph_size" not in sample:
@@ -21,38 +23,67 @@ def make_ilp_encoding_scatter(data, output):
     if egraph_size <= 0 or encoding_size <= 0:
       raise ValueError("ILP encoding scatter received non-positive egraph or encoding size")
 
-    if sample["ilp_infeasible"]:
-      infeasible_count += 1
+    if sample.get("ilp_infeasible"):
+      infeasible_sizes.append(egraph_size)
+      infeasible_encodings.append(encoding_size)
       continue
-    if sample["ilp_timed_out"]:
-      timeout_count += 1
+    if sample.get("ilp_timed_out"):
+      timeout_sizes.append(egraph_size)
+      timeout_encodings.append(encoding_size)
       continue
-    else:
-      solved_sizes.append(egraph_size)
-      solved_encodings.append(encoding_size)
 
-  if not solved_sizes:
-    if timeout_count or infeasible_count:
-      print(
-        "WARNING: No solved ILP samples for encoding scatter; all candidates "
-        f"timed out ({timeout_count}) or were infeasible ({infeasible_count})."
-      )
-    else:
-      print("WARNING: No ILP encoding data available for scatter plot")
+    solved_sizes.append(egraph_size)
+    solved_encodings.append(encoding_size)
+
+  if not (solved_sizes or timeout_sizes or infeasible_sizes):
+    print("WARNING: No ILP encoding data available for scatter plot")
     return
+
+  if not solved_sizes and (timeout_sizes or infeasible_sizes):
+    print(
+      "WARNING: No solved ILP samples for encoding scatter; plotting only "
+      f"timeouts ({len(timeout_sizes)}) and infeasible cases ({len(infeasible_sizes)})."
+    )
 
   plt.figure(figsize=(10, 6))
 
-  plt.scatter(
-    solved_sizes,
-    solved_encodings,
-    color='green',
-    label='ILP Encoding (Solved)',
-    alpha=0.7,
-    edgecolors='black',
-    linewidths=0.5,
-    s=60,
-  )
+  if solved_sizes:
+    plt.scatter(
+      solved_sizes,
+      solved_encodings,
+      color='green',
+      label='ILP Encoding (Solved)',
+      alpha=0.7,
+      edgecolors='black',
+      linewidths=0.5,
+      s=60,
+      marker='o',
+    )
+
+  if timeout_sizes:
+    plt.scatter(
+      timeout_sizes,
+      timeout_encodings,
+      color='red',
+      label='ILP Encoding (Timeout)',
+      alpha=0.9,
+      linewidths=1.2,
+      s=70,
+      marker='x',
+    )
+
+  if infeasible_sizes:
+    plt.scatter(
+      infeasible_sizes,
+      infeasible_encodings,
+      color='orange',
+      label='ILP Encoding (Infeasible)',
+      alpha=0.9,
+      edgecolors='black',
+      linewidths=0.5,
+      s=65,
+      marker='^',
+    )
 
   plt.xlabel('E-graph Size')
   plt.ylabel('ILP Encoding Size (Edge Variables)')

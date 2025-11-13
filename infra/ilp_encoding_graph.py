@@ -89,9 +89,9 @@ def make_ilp_encoding_scatter(data, output):
       marker='^',
     )
 
-  plt.xlabel('E-graph Size (# of Terms)')
-  plt.ylabel('ILP Encoding Size (# of Variables)')
-  plt.title('ILP Encoding Size vs E-graph Size')
+  plt.xlabel('E-graph Size (# of Terms)', fontsize=24)
+  plt.ylabel('ILP Encoding Size (# of Variables)', fontsize=24)
+  plt.title('ILP Encoding Size vs E-graph Size', fontsize=28)
 
   ax = plt.gca()
   xlim = ax.get_xlim()
@@ -110,7 +110,9 @@ def make_ilp_encoding_scatter(data, output):
   ax.set_xlim(xlim)
   ax.set_ylim(ylim)
 
+  ax.tick_params(axis='both', which='major', labelsize=22)
+
   plt.grid(alpha=0.3)
-  plt.legend(loc='upper left')
+  plt.legend(loc='upper left', fontsize=20)
   plt.tight_layout()
   plt.savefig(output)

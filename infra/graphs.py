@@ -878,6 +878,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     [tiger_optimizations_off, tiger_optimizations_on],
     is_average=False,
     scale_by_egraph_size=False,
+    y_break=(0.6, 4.5),
+    y_break_runtimes={'tiger'},
   )
   make_statewalk_width_performance_scatter_multi(
     profile,

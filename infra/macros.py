@@ -5,6 +5,7 @@ from matplotlib.patches import Patch
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import os
+import math
 from graph_helpers import *
 
 
@@ -54,7 +55,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgPolybenchRegionalizedEgraphsPerBenchmark",
-        f"{mean(suite_region_counts['polybench']):.2f}",
+        f"{round(mean(suite_region_counts['polybench']))}",
       )
     )
 
@@ -251,13 +252,15 @@ def make_macros(profile, benchmark_suites, output_file):
       format_latex_macro(
         "MaxStatewalkWidthAllBenchmarks",
         max_statewalk_width,
+        group_thousands=True,
       )
     )
     for threshold in range(1, 31):
+      percent = (sum(1 for width in statewalk_widths if width < threshold) / total_regions)
       out.write(
         format_latex_macro_percent(
           f"PercentRegionsStatewalkWidthUnder{threshold}",
-          sum(1 for width in statewalk_widths if width < threshold) / total_regions,
+          percent,
         )
       )
 
@@ -295,7 +298,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "GeometricMeanTigerSpeedupVsGurobiWithTimeouts",
-        f"{geometric_speedup:.2f}",
+        int(math.floor(geometric_speedup / 10.0) * 10),
       )
     )
 

@@ -348,14 +348,12 @@ pub enum Schedule {
     Sequential,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum, Default)]
 pub enum IlpSolver {
     #[default]
     Gurobi,
     Cbc,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
@@ -396,6 +394,12 @@ pub struct ExtractRegionTiming {
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
+    #[serde(default)]
+    pub cbc_ilp_extract_time: Option<Duration>,
+    #[serde(default)]
+    pub cbc_ilp_timed_out: bool,
+    #[serde(default)]
+    pub cbc_ilp_infeasible: bool,
     pub ilp_encoding_num_vars: u64,
     pub statewalk_width_liveon_satelliteon_max: u64,
     pub statewalk_width_liveon_satelliteon_avg: f64,
@@ -563,7 +567,7 @@ fn run_tiger_pipeline(
     batch: &[String],
     egraph: &egraph_serialize::EGraph,
     _should_maintain_linearity: bool,
-) -> (TreeProgram, Vec<ExtractRegionTiming>) {
+) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
     let json = serde_json::to_string_pretty(egraph)
         .map_err(|err| format!("failed to serialize egraph: {err}"))
         .unwrap();
@@ -606,6 +610,7 @@ fn run_tiger_pipeline(
         Some(TIGER_MEMORY_LIMIT_BYTES)
     };
 
+    let extraction_start = Instant::now();
     let tiger_output = match run_cmd_line_with_memory_limit(
         tiger_bin.as_os_str(),
         tiger_args.iter(),
@@ -633,6 +638,7 @@ fn run_tiger_pipeline(
             panic!("tiger invocation failed: {message}");
         }
     };
+    let eggcc_extraction_time = extraction_start.elapsed();
 
     // Tiger returns an egglog file containing just one program, run the egglog program
     let mut tiger_egraph = egglog::EGraph::default();
@@ -664,6 +670,12 @@ fn run_tiger_pipeline(
             ilp_timed_out: Option<bool>,
             #[serde(default)]
             ilp_infeasible: Option<bool>,
+            #[serde(default)]
+            cbc_ilp_duration_ns: Option<u64>,
+            #[serde(default)]
+            cbc_ilp_timed_out: Option<bool>,
+            #[serde(default)]
+            cbc_ilp_infeasible: Option<bool>,
             ilp_encoding_num_vars: u64,
             statewalk_width_liveon_satelliteon_max: u64,
             statewalk_width_liveon_satelliteon_avg: f64,
@@ -695,18 +707,24 @@ fn run_tiger_pipeline(
         for (idx, row) in rows.into_iter().enumerate() {
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
             let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
-            let ilp_extract_time = if ilp_timed_out || ilp_infeasible {
-                None
-            } else {
-                match row.ilp_duration_ns {
-                    Some(nanos) => Some(Duration::from_nanos(nanos)),
-                    None => {
-                        panic!(
-                            "Missing ilp_duration_ns for non-timeout extract-region timing on row {}",
-                            idx + 1
-                        );
-                    }
+            let ilp_extract_time = match (ilp_timed_out, row.ilp_duration_ns) {
+                (true, _) => None,
+                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (false, None) => {
+                    panic!(
+                        "Missing ilp_duration_ns for non-timeout extract-region timing on row {} (infeasible={})",
+                        idx + 1,
+                        ilp_infeasible
+                    );
                 }
+            };
+
+            let cbc_ilp_timed_out = row.cbc_ilp_timed_out.unwrap_or(false);
+            let cbc_ilp_infeasible = row.cbc_ilp_infeasible.unwrap_or(false);
+            let cbc_ilp_extract_time = match (cbc_ilp_timed_out, row.cbc_ilp_duration_ns) {
+                (true, _) => None,
+                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (false, None) => None,
             };
 
             region_timings.push(ExtractRegionTiming {
@@ -726,6 +744,9 @@ fn run_tiger_pipeline(
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,
+                cbc_ilp_extract_time,
+                cbc_ilp_timed_out,
+                cbc_ilp_infeasible,
                 ilp_encoding_num_vars: row.ilp_encoding_num_vars,
                 statewalk_width_liveon_satelliteon_max: row.statewalk_width_liveon_satelliteon_max,
                 statewalk_width_liveon_satelliteon_avg: row.statewalk_width_liveon_satelliteon_avg,
@@ -745,9 +766,10 @@ fn run_tiger_pipeline(
         }
     }
 
-    (extracted, region_timings)
+    (extracted, region_timings, eggcc_extraction_time)
 }
 
+/// Returns the extracted program, timing information, and the total extraction duration.
 #[allow(clippy::too_many_arguments)]
 fn extract(
     eggcc_config: &EggccConfig,
@@ -758,7 +780,7 @@ fn extract(
     termdag: &mut TermDag,
     should_maintain_linearity: bool,
     extract_debug_exprs: bool,
-) -> (TreeProgram, Vec<ExtractRegionTiming>) {
+) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
     if eggcc_config.use_tiger {
         run_tiger_pipeline(
             eggcc_config,
@@ -768,6 +790,7 @@ fn extract(
             should_maintain_linearity,
         )
     } else {
+        let extraction_start = Instant::now();
         let result = greedy_dag_extract(
             original_prog,
             batch.clone(),
@@ -779,7 +802,8 @@ fn extract(
             extract_debug_exprs,
         )
         .1;
-        (result, Vec::new())
+        let extraction_duration = extraction_start.elapsed();
+        (result, Vec::new(), extraction_duration)
     }
 }
 
@@ -862,6 +886,7 @@ pub fn optimize(
 
             let serialization_start = Instant::now();
             let (serialized, unextractables) = serialized_egraph(egraph);
+            let serialization_duration = serialization_start.elapsed();
 
             if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
                 tiger_dump_counter += 1;
@@ -882,7 +907,6 @@ pub fn optimize(
                 });
             }
 
-            let extraction_start = Instant::now();
             let mut termdag = egglog::TermDag::default();
             let has_debug_exprs = has_debug_exprs(&serialized);
             if has_debug_exprs {
@@ -890,7 +914,7 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (iter_result, region_timings) = extract(
+            let (iter_result, region_timings, extract_time) = extract(
                 eggcc_config,
                 &res,
                 batch.clone(),
@@ -901,10 +925,8 @@ pub fn optimize(
                 has_debug_exprs,
             );
 
-            let extraction_end = Instant::now();
-
-            eggcc_extraction_time += extraction_end - extraction_start;
-            eggcc_serialization_time += extraction_start - serialization_start;
+            eggcc_extraction_time += extract_time;
+            eggcc_serialization_time += serialization_duration;
 
             extract_region_timings.extend(region_timings);
 

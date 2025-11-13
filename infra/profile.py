@@ -59,7 +59,7 @@ treatments = [
   "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-CBC-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",
-  "eggcc-tiger-ILP-WITHCTX-O0-O0",
+  #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
   # run both tiger and ILP on the same egraphs, keep this last in the list
   "eggcc-tiger-ILP-COMPARISON", 
@@ -261,7 +261,7 @@ def optimize(benchmark):
       "llvmCompileTimeSecs": False,
       "extractRegionTimings": False,
       "failed": True,
-      "ILPTimeOut": False,
+      "ILPRegionTimeOut": False,
       "error": '',
     }
 
@@ -289,7 +289,7 @@ def optimize(benchmark):
 
   # check for an ILP timeout in the output
   if "TIMEOUT" in process.stdout:
-    failure_data["ILPTimeOut"] = True
+    failure_data["ILPRegionTimeOut"] = True
     failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 
@@ -354,7 +354,7 @@ def optimize(benchmark):
     "llvmCompileTimeSecs": llvm_compile_time,
     "extractRegionTimings": extract_region_timings,
     "failed": False,
-    "ILPTimeOut": False,
+    "ILPRegionTimeOut": False,
   }
   return res
 
@@ -563,7 +563,10 @@ if __name__ == '__main__':
   others[-1].is_last_before_ilp = True
 
   run_benchmarks_parallel(others, parallelism, compile_data)
+  print(f'Finished benchmarks, took {time.perf_counter() - start_time:.2f} seconds', flush=True)
+  time_after_others = time.perf_counter()
   run_benchmarks_parallel(ilp_comparison, ilp_parallelism, compile_data)
+  print(f'Completed ILP comparison benchmarks, took {time.perf_counter() - time_after_others:.2f} seconds', flush=True)
   
   # Derive timed-out paths and successful (non-timeout) run modes per benchmark (avoid duplication later)
   failed_paths = set()

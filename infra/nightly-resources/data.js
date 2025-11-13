@@ -97,6 +97,7 @@ function getOverallStatistics(suite) {
     const eggcc_extraction_times = [];
     const eggcc_serialization_times = [];
     const llvm_compile_times = [];
+    const eggcc_non_extraction_times = [];
     for (const benchmark of benchmarks) {
       const row = getRow(benchmark, treatment);
       if (!row || row.failed) continue;
@@ -104,6 +105,9 @@ function getOverallStatistics(suite) {
       eggcc_extraction_times.push(row.eggccExtractionTimeSecs);
       eggcc_serialization_times.push(row.eggccSerializationTimeSecs);
       llvm_compile_times.push(row.llvmCompileTimeSecs);
+      eggcc_non_extraction_times.push(
+        row.eggccCompileTimeSecs - row.eggccExtractionTimeSecs,
+      );
     }
 
     result.push({
@@ -114,6 +118,7 @@ function getOverallStatistics(suite) {
       "Eggcc Compile Time": eggcc_compile_times.length
         ? tryRound(mean(eggcc_compile_times))
         : "timeout",
+      "Eggcc Non Extraction Time": tryRound(mean(eggcc_non_extraction_times)),
       "Eggcc Serialization Time": eggcc_serialization_times.length
         ? tryRound(mean(eggcc_serialization_times))
         : "timeout",

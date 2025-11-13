@@ -16,7 +16,10 @@ from graph_helpers import *
 from statewalk_graphs import *
 from extract_time_graph import *
 from ilp_encoding_graph import *
+from macros import *
 
+
+# note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
 
 # a graph of how the ilp solver time changes
 # compared to the size of the egraph
@@ -511,20 +514,20 @@ def make_jitter(profile, upper_x_bound, output):
   plt.tight_layout()
   plt.savefig(output)
 
-def mean(lst):
-  return sum(lst) / len(lst)
-
 def normalized(profile, benchmark, treatment):
   baseline = get_baseline_cycles(profile, benchmark)
   treatment_cycles = get_cycles(profile, benchmark, treatment)
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
   sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
+  if benchmarks_to_include is not None:
+    # keep sorting but filter to only benchmarks in benchmarks_to_include
+    benchmarks = [b for b in benchmarks if b in benchmarks_to_include]
 
 
   spacing = 0.2
@@ -533,6 +536,8 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   fig, ax = plt.subplots()
   fig.set_size_inches(width, height)
   
+  has_ilp_infeasible = False
+
   for benchmark in benchmarks:
     miny = 100000
     maxy = 0
@@ -553,15 +558,34 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     for runmode in treatments:
       if is_ilp_timeout(profile, benchmark, runmode):
         # for timeouts, add x marks to the top
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="red")
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color="red",
+          fontsize=14,
+          fontweight='bold',
+        )
         i += 1
         continue
 
       if is_ilp_infeasible(profile, benchmark, runmode):
         # for infeasibles, add x marks to the top
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color="orange")
+        has_ilp_infeasible = True
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color="orange",
+          fontsize=14,
+          fontweight='bold',
+        )
         i += 1
         continue
       
@@ -569,11 +593,19 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
 
       # for outliers, add x marks to the top
       if yval > y_max:
-        jitter_amt = 0.05
-        ax.text(current_pos + jitter_amt*i, y_max, 'x', ha='center', va='center', zorder=3, color=COLOR_MAP[runmode])
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color=COLOR_MAP[runmode],
+          fontsize=14,
+          fontweight='bold',
+        )
       else:
         ax.scatter(current_pos, yval, color=COLOR_MAP[runmode], s=CIRCLE_SIZE, zorder=3, marker=SHAPE_MAP[runmode])
-      i += 1
 
     current_pos += spacing * 3
 
@@ -588,19 +620,46 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     
   
   # add the legend
-  #handles = [plt.Rectangle((0,0),1,1, color=COLOR_MAP[rm]) for rm in treatments]
-  handles = [plt.Line2D([0], [0], marker=SHAPE_MAP[rm], color='w', markerfacecolor=COLOR_MAP[rm], markersize=10, alpha=0.7) for rm in treatments]
+  legend_handles = []
+  legend_labels = []
+  for rm in treatments:
+    legend_handles.append(
+      plt.Line2D(
+        [0],
+        [0],
+        marker=SHAPE_MAP[rm],
+        color='w',
+        markerfacecolor=COLOR_MAP[rm],
+        markersize=10,
+        alpha=0.7,
+      )
+    )
+    legend_labels.append(to_paper_names_treatment(rm))
 
-  # add dotted line at 1.0 to handles
-  handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0, label='1.0'))
+  legend_handles.append(plt.Line2D([0], [0], color='gray', linestyle='--', linewidth=1.0))
+  legend_labels.append('LLVM-O3-O0')
 
-  treatmentsLegend = [f"{rm}" for rm in treatments]
-  treatmentsLegend.append(BASELINE_TREATMENT)
-  treatmentsLegend = [to_paper_names_treatment(t) for t in treatmentsLegend]
+  legend_handles.append(
+    plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
+  )
+  legend_labels.append('ILP Timeout (5 min)')
 
+  if has_ilp_infeasible:
+    legend_handles.append(
+      plt.Line2D([0], [0], marker='x', color='orange', linestyle='None', markersize=10, markeredgewidth=3.0)
+    )
+    legend_labels.append('ILP Infeasible')
 
-  ax.legend(handles, treatmentsLegend, title=
-          'Treatment', loc='upper right', bbox_to_anchor=(xanchor, yanchor))
+  anchor_point = (xanchor, yanchor) if xanchor is not None and yanchor is not None else (0.02, 0.98)
+  if legend:
+    ax.legend(
+      legend_handles,
+      legend_labels,
+      title='Treatment',
+      loc='upper left',
+      bbox_to_anchor=anchor_point,
+      borderaxespad=0.3,
+    )
 
   ax.set_ylim(0.25, y_max)
 
@@ -615,7 +674,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
 # TODO change back after anonymization is lifted
 def to_paper_names_treatment(treatment):
   if treatment == 'llvm-O0-O0':
-    return 'LLVM-O0-O0'
+    return 'LLVM-O0'
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
   if treatment == 'eggcc-O0-O0':
@@ -640,41 +699,25 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-Sequential-O0-O0'
   if treatment == 'eggcc-O3-O3':
     return 'EQCC-O3-O3'
-  if treatment == 'eggcc-ILP-O0-O0':
-    return 'EQCC-ILP-O0-O0'
   if treatment == 'eggcc-WITHCTX-O0-O0':
     return 'EQCC-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-O0-O0':
-    return 'EQCC-Tiger-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-WL-O0-O0':
-    return 'EQCC-Tiger-WL-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return 'EQCC-Tiger-ILP-O0-O0'
+    return f'EQCC-GUROBI-O0'
   if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
-    return 'EQCC-Tiger-ILP-CBC-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
   if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
-    return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
   if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
-    return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
   if treatment == 'eggcc-tiger-ILP-COMPARISON':
-    return 'EQCC-Tiger-ILP-Comparison'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
   raise KeyError(f"Unknown treatment {treatment}")
 
 
-
-# given a profile.json, list of suite paths, and an output file
-def make_macros(profile, benchmark_suites, output_file):
-  with open(output_file, 'a') as out:
-    # report number of benchmarks in each benchmark suite
-    for suite in benchmark_suites:
-      suite_name = os.path.basename(suite)
-      benchmarks = benchmarks_in_folder(suite)
-      macro_name = f"Num{suite_name}Benchmarks"
-      out.write(format_latex_macro(macro_name, len(benchmarks)))
-    
-    # report the number of benchmarks in the profile
-    benchmarks = dedup([b.get('benchmark') for b in profile])
-    out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
 
   
 
@@ -768,109 +811,143 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  make_jitter(profile, 4, f'{graphs_folder}/jitter_plot_max_4.png')
+  make_jitter(profile, 4, f'{graphs_folder}/jitter-plot-max-4.png')
 
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_tiger_time.pdf', plot_ilp=False)
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph_size_vs_ILP_time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction_time_histogram.pdf')
-  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction_time_cdf.pdf', use_log_x=True, use_exp_y=False)
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction-time-histogram.pdf')
+  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
   make_extraction_time_cdf(
     profile,
-    f'{graphs_folder}/extraction_time_cdf_linear.pdf',
+    f'{graphs_folder}/extraction-time-cdf-linear.pdf',
     use_log_x=False,
     use_exp_y=False,
   )
   make_extraction_time_cdf(
     profile,
-    f'{graphs_folder}/extraction_time_cdf_exp_y.pdf',
+    f'{graphs_folder}/extraction-time-cdf-exp-y.pdf',
     use_log_x=False,
     use_exp_y=True,
   )
   #make_ilp_encoding_scatter(
   #  profile,
-  #  f'{graphs_folder}/ilp_encoding_vs_egraph_size.pdf',
+  #  f'{graphs_folder}/ilp-encoding-vs-egraph-size.pdf',
   #)
   statewalk_histogram_max_width = None
-  statewalk_histogram_treatment = "eggcc-tiger-ILP-COMPARISON"
 
+  tiger_optimizations_on = StatewalkTreatment(
+    runtime="tiger",
+    liveness_on=True,
+    satellite_on=True,
+    label="Optimizations On",
+  )
+  tiger_optimizations_off = StatewalkTreatment(
+    runtime="tiger",
+    liveness_on=False,
+    satellite_on=False,
+    label="Optimizations Off",
+  )
+  ilp_gurobi = StatewalkTreatment(runtime="ilp_gurobi", liveness_on=False, satellite_on=False)
+  ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
   make_statewalk_width_histogram(
     profile,
-    f'{graphs_folder}/statewalk_width_histogram_with_liveness.pdf',
-    True,
+    f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
+    tiger_optimizations_on,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
   make_statewalk_width_histogram(
     profile,
-    f'{graphs_folder}/statewalk_width_histogram.pdf',
-    False,
+    f'{graphs_folder}/statewalk-width-histogram.pdf',
+    tiger_optimizations_off,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
   print_top_statewalk_width_samples(
     profile,
-    statewalk_histogram_treatment,
-    is_liveon=False,
+    tiger_optimizations_off,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
 
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=False)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=False)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_tiger_time.pdf', plot_ilp=False, is_liveon=False, is_average=False, scale_by_egraph_size=True)
-  make_statewalk_width_performance_scatter(profile, f'{graphs_folder}/statewalk_width_times_size_vs_ILP_time.pdf', plot_ilp=True, is_liveon=False, is_average=False, scale_by_egraph_size=True)
+  make_statewalk_width_performance_scatter_multi(
+    profile,
+    f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf',
+    [tiger_optimizations_off, tiger_optimizations_on],
+    is_average=False,
+    scale_by_egraph_size=False,
+  )
+  make_statewalk_width_performance_scatter_multi(
+    profile,
+    f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
+    [ilp_cbc, ilp_gurobi],
+    is_average=False,
+    scale_by_egraph_size=False,
+  )
+  
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width.pdf',
-    is_liveon=False,
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
+    tiger_optimizations_off,
     is_average=False,
     min_width=1,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width.pdf',
-    is_liveon=False,
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
+    ilp_gurobi,
     is_average=False,
     min_width=1,
-    runtime_source="ilp",
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_tiger_time_with_egraph_size_vs_statewalk_width_max100.pdf',
-    is_liveon=False,
+    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
+    tiger_optimizations_off,
     is_average=False,
     min_width=1,
-    max_width=100,
+    max_width=6000,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
     profile,
-    f'{graphs_folder}/heatmap_ilp_time_with_egraph_size_vs_statewalk_width_max100.pdf',
-    is_liveon=False,
+    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
+    ilp_gurobi,
     is_average=False,
     min_width=1,
-    max_width=100,
-    runtime_source="ilp",
+    max_width=6000,
+  )
+  make_ilp_encoding_scatter(
+    profile,
+    f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
   )
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
-    profile_for_suite = [b for b in profile if b.get('benchmark') in suite_benchmarks]
+    profile_for_suite = [b for b in profile if b['benchmark'] in suite_benchmarks]
 
     width = 10
     height = 4
-    y_max = 2.0
-    xanchor = 0.8
-    yanchor = 0.4
+    y_max = 3.5
+    xanchor = 0.02
+    yanchor = 0.98
     if suite == "polybench":
       y_max = 10.0
       width = 5
-      height = 3.5
-      xanchor = 0.4
-      yanchor = 0.95
+      height = 5.0
+      xanchor = 0.02
+      yanchor = 0.98
 
-    make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized_binary_perf_chart_{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor)
+    if suite == "bril":
+      benchmarks_under3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") <= 3.0]
+      benchmarks_over3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") > 3.0]
+      
+
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, benchmarks_under3, legend=True)
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], 20.0, 1.5, height, xanchor, yanchor, benchmarks_over3, legend=False)
+
+    else:
+      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, None, legend=True)
 
   make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

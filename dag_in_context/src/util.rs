@@ -9,11 +9,8 @@ use std::{
 #[cfg(not(unix))]
 use std::io::ErrorKind;
 
-#[cfg(unix)]
-use std::os::unix::process::CommandExt;
-
-#[cfg(unix)]
-use std::os::unix::process::ExitStatusExt;
+#[cfg(all(unix, not(target_os = "macos")))]
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 
 use tempfile::tempfile;
 
@@ -117,14 +114,6 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
-    #[cfg(not(unix))]
-    if memory_limit_bytes.is_some() {
-        return Err(std::io::Error::new(
-            ErrorKind::Unsupported,
-            "memory limits are only supported on Unix targets",
-        ));
-    }
-
     // Write the input to a temporary file so the child can read it directly without
     // relying on manually managed filesystem paths.
     let mut temp_file = tempfile()?;
@@ -138,7 +127,7 @@ where
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     if let Some(limit) = memory_limit_bytes {
         let limit = limit as libc::rlim_t;
         unsafe {
@@ -200,7 +189,7 @@ where
         .join()
         .map_err(|_| std::io::Error::other("failed to join stderr reader"))??;
 
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     if let Some(limit_bytes) = memory_limit_bytes {
         if let Some(signal) = status.signal() {
             if matches!(signal, libc::SIGKILL | libc::SIGABRT) {

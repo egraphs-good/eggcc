@@ -7,7 +7,10 @@
 
 #include "egraphin.h"
 
-// ilp_duration_ns is invalid when ilp_timed_out or ilp_infeasible is true
+// ilp_duration_ns is cleared only when the configured ILP solver times out. When the
+// solver reports infeasibility we still record the runtime so downstream consumers can
+// measure how long the attempt took. The CBC-specific fields are populated when a
+// separate CBC run is available; otherwise they remain empty/default-initialized.
 struct ExtractRegionTiming {
     size_t egraph_size;
     long long tiger_duration_liveon_satelliteon_ns;
@@ -17,6 +20,9 @@ struct ExtractRegionTiming {
     std::optional<long long> ilp_duration_ns;
     bool ilp_timed_out;
     bool ilp_infeasible;
+    std::optional<long long> cbc_ilp_duration_ns;
+    bool cbc_ilp_timed_out;
+    bool cbc_ilp_infeasible;
     size_t ilp_encoding_num_vars;
     size_t statewalk_width_liveon_satelliteon_max;
     double statewalk_width_liveon_satelliteon_avg;

@@ -704,19 +704,19 @@ def to_paper_names_treatment(treatment):
   if treatment == 'eggcc-WITHCTX-O0-O0':
     return 'EQCC-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-O0-O0':
-    return 'EQCC-Tiger-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-WL-O0-O0':
-    return 'EQCC-Tiger-WL-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return 'EQCC-Tiger-ILP-O0-O0'
+    return f'EQCC-ILP-O0'
   if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
-    return 'EQCC-Tiger-ILP-CBC-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
   if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
-    return 'EQCC-Tiger-ILP-WITHCTX-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
   if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
-    return 'EQCC-Tiger-ILP-NOMIN-O0-O0'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
   if treatment == 'eggcc-tiger-ILP-COMPARISON':
-    return 'EQCC-Tiger-ILP-Comparison'
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
   raise KeyError(f"Unknown treatment {treatment}")
 
 

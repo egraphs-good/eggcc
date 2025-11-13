@@ -2,6 +2,7 @@ import profile
 import os
 EGGCC_NAME = "eggcc"
 TIGER_NAME = "Statewalk DP"
+TIGER_INLINE_NAME = "DP"
 
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 

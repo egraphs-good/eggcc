@@ -16,12 +16,14 @@ def make_macros(profile, benchmark_suites, output_file):
     benchmarks = dedup([row["benchmark"] for row in profile])
     benchmark_regions = {benchmark: 0 for benchmark in benchmarks}
     suite_region_counts = {}
+    benchmark_suite_map = {}
 
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
 
     for benchmark in benchmarks:
       row = get_row(profile, benchmark, "eggcc-tiger-ILP-COMPARISON")
       timings = row["extractRegionTimings"]
+      benchmark_suite_map[benchmark] = row["suite"]
       out.write(
         format_latex_macro(
           f"NumSubregions{convert_string_to_valid_latex_var(benchmark)}",
@@ -67,6 +69,28 @@ def make_macros(profile, benchmark_suites, output_file):
 
     # report the number of benchmarks in the profile
     out.write(format_latex_macro("NumBenchmarksAllSuites", len(benchmarks)))
+
+    bril_benchmarks = [b for b in benchmarks if benchmark_suite_map.get(b) == "bril"]
+    if not bril_benchmarks:
+      print("WARNING: No bril benchmarks found in profile; skipping Bril performance macro")
+    else:
+      bril_better_count = 0
+      for benchmark in bril_benchmarks:
+        eggcc_cycles = get_cycles(profile, benchmark, "eggcc-tiger-O0-O0")
+        llvm_cycles = get_cycles(profile, benchmark, "llvm-O3-O0")
+
+        eggcc_mean = mean(eggcc_cycles)
+        llvm_mean = mean(llvm_cycles)
+
+        if eggcc_mean < llvm_mean:
+          bril_better_count += 1
+
+      out.write(
+        format_latex_macro(
+          "NumBrilBenchmarksEggcctigerO0O0BetterThanLlvmO3O0",
+          bril_better_count,
+        )
+      )
 
     out.write(
       format_latex_macro(

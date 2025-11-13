@@ -23,11 +23,15 @@ def make_ilp_encoding_scatter(data, output):
     if egraph_size <= 0 or encoding_size <= 0:
       raise ValueError("ILP encoding scatter received non-positive egraph or encoding size")
 
-    if sample.get("ilp_infeasible"):
+    if "ilp_infeasible" not in sample:
+      raise KeyError("ILP encoding scatter requires 'ilp_infeasible' in every sample")
+    if sample["ilp_infeasible"]:
       infeasible_sizes.append(egraph_size)
       infeasible_encodings.append(encoding_size)
       continue
-    if sample.get("ilp_timed_out"):
+    if "ilp_timed_out" not in sample:
+      raise KeyError("ILP encoding scatter requires 'ilp_timed_out' in every sample")
+    if sample["ilp_timed_out"]:
       timeout_sizes.append(egraph_size)
       timeout_encodings.append(encoding_size)
       continue

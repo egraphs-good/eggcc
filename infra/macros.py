@@ -299,6 +299,20 @@ def make_macros(profile, benchmark_suites, output_file):
       )
     )
 
+    encoding_geo_mean, encoding_max = compute_encoding_vars_per_egraph_stats(region_points)
+    out.write(
+      format_latex_macro(
+        "GeometricMeanILPEncodingVarsPerEgraphSize",
+        f"{encoding_geo_mean:.2f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxILPEncodingVarsPerEgraphSize",
+        f"{encoding_max:.2f}",
+      )
+    )
+
 
 def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
   if not region_points:
@@ -312,12 +326,16 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
     tiger_duration = sample["extract_time_liveon_satelliteon"]
     tiger_time = duration_to_seconds(tiger_duration)
 
-    if sample["ilp_timed_out"]:
+    if "ilp_timed_out" not in sample:
+      raise KeyError("Missing ilp_timed_out when computing tiger speedup macro")
+    if "ilp_infeasible" not in sample:
+      raise KeyError("Missing ilp_infeasible when computing tiger speedup macro")
+
+    if sample["ilp_timed_out"] or sample["ilp_infeasible"]:
       gurobi_time = ILP_TIMEOUT_SECONDS
-    elif sample["ilp_infeasible"]:
-      gurobi_duration = sample["ilp_extract_time"]
-      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
     else:
+      if "ilp_extract_time" not in sample:
+        raise KeyError("Missing ilp_extract_time when computing tiger speedup macro")
       gurobi_duration = sample["ilp_extract_time"]
       gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
 
@@ -336,4 +354,31 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
     raise ValueError("No valid tiger/Gurobi timing pairs for speedup macro")
 
   return geometric_mean(ratios)
+
+
+def compute_encoding_vars_per_egraph_stats(region_points):
+  if not region_points:
+    raise ValueError("No regionalized e-graphs provided when computing encoding size ratios")
+
+  ratios = []
+
+  for sample in region_points:
+    num_vars = sample["ilp_encoding_num_vars"]
+    egraph_size = sample["egraph_size"]
+
+    if num_vars is None or num_vars <= 0:
+      raise ValueError("Non-positive ilp_encoding_num_vars encountered when computing encoding size ratios")
+    if egraph_size is None or egraph_size <= 0:
+      raise ValueError("Non-positive egraph_size encountered when computing encoding size ratios")
+
+    ratio = num_vars / egraph_size
+    if ratio <= 0:
+      raise ValueError("Non-positive encoding ratio encountered when computing encoding size ratios")
+
+    ratios.append(ratio)
+
+  if not ratios:
+    raise ValueError("No ILP encoding variable data available when computing encoding size ratios")
+
+  return geometric_mean(ratios), max(ratios)
 

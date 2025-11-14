@@ -923,6 +923,14 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     profile,
     f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
   )
+  make_ilp_encoding_time_scatter(
+    profile,
+    f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
+  )
+  make_cbc_encoding_time_scatter(
+    profile,
+    f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
+  )
   make_peggy_comparison_graph(
     profile,
     "./infra/peggy_data.csv",

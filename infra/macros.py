@@ -6,6 +6,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import os
 import math
+import statistics
 from graph_helpers import *
 
 
@@ -20,6 +21,7 @@ def make_macros(profile, benchmark_suites, output_file):
     benchmark_suite_map = {}
 
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
+    print_fastest_ilp_benchmarks(profile, benchmarks)
 
     for benchmark in benchmarks:
       row = get_row(profile, benchmark, "eggcc-tiger-ILP-COMPARISON")
@@ -314,6 +316,57 @@ def make_macros(profile, benchmark_suites, output_file):
         "MaxILPEncodingVarsPerEgraphSize",
         f"{encoding_max:.2f}",
       )
+    )
+
+
+def print_fastest_ilp_benchmarks(profile, benchmarks, run_method="eggcc-tiger-ILP-COMPARISON", top_n=100):
+  stats = []
+  for benchmark in benchmarks:
+    row = get_row(profile, benchmark, run_method)
+    timings = row["extractRegionTimings"]
+    solved_times = []
+    for sample in timings:
+      if "ilp_infeasible" not in sample:
+        raise KeyError("Missing ilp_infeasible when computing fastest ILP benchmarks")
+      if sample["ilp_infeasible"]:
+        continue
+      if "ilp_timed_out" not in sample:
+        raise KeyError("Missing ilp_timed_out when computing fastest ILP benchmarks")
+      if sample["ilp_timed_out"]:
+        continue
+      if "ilp_extract_time" not in sample:
+        raise KeyError("Missing ilp_extract_time when computing fastest ILP benchmarks")
+      ilp_duration = sample["ilp_extract_time"]
+      if ilp_duration is None:
+        continue
+      solved_times.append(duration_to_seconds(ilp_duration))
+
+    if solved_times:
+      avg_time = mean(solved_times)
+      median_time = statistics.median(solved_times)
+      time_range = max(solved_times) - min(solved_times)
+      stats.append(
+        {
+          "benchmark": benchmark,
+          "mean": avg_time,
+          "median": median_time,
+          "range": time_range,
+          "regions": len(solved_times),
+        }
+      )
+
+  if not stats:
+    print("WARNING: No ILP benchmarks with solved regions found when reporting fastest benchmarks")
+    return
+
+  stats.sort(key=lambda entry: entry["median"])
+  limit = min(top_n, len(stats))
+  print(f"Top {limit} benchmarks with fastest ILP extract times:")
+  for idx, entry in enumerate(stats[:limit], start=1):
+    print(
+      f"{idx}. {entry['benchmark']}: mean={entry['mean']:.4f}s, "
+      f"median={entry['median']:.4f}s, range={entry['range']:.4f}s, "
+      f"regions_solved={entry['regions']}"
     )
 
 

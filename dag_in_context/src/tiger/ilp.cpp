@@ -583,7 +583,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	}
 	lp << "Subject To\n";
 
-	// Require at least one root enode to be picked
+	// Require exactly one root node
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
 		if (c != root) {
 			continue;
@@ -597,7 +597,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 			lp << (first ? " " : " + ") << pickNode[c][n];
 			first = false;
 		}
-		lp << " >= 1\n";
+		lp << " = 1\n";
 	}
 
 	// If you pick an enode, for every child index pick at least one child edge.
@@ -704,9 +704,9 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	string solver_name = use_gurobi ? "gurobi" : "cbc";
 	string cmd = "";
 	if (use_gurobi) {
-		cmd = string("gurobi_cl TimeLimit=300 Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
+		cmd = string("gurobi_cl TimeLimit=1 Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
 	} else {
-		cmd = "cbc \"" + lp_path + "\" -seconds 300 solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
+		cmd = "cbc \"" + lp_path + "\" -seconds 1 solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	auto start = std::chrono::steady_clock::now();
 	int ret = run_command(cmd);
@@ -724,7 +724,8 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		ofstream out_debug_log("/tmp/tiger_last_extract.log", ios::binary);
 		out_debug_log << in_debug_log.rdbuf();
 	}
-	bool solver_timed_out = contains_case_insensitive(solver_log, "timeout");
+	// cerr << solver_log << endl;
+	bool solver_timed_out = contains_case_insensitive(solver_log, "timeout") || contains_case_insensitive(solver_log, "time limit");
 
 	if (solver_timed_out) {
 		timed_out = true;

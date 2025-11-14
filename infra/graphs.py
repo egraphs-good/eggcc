@@ -877,7 +877,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     y_break_runtimes={'tiger'},
   )
   make_statewalk_width_performance_scatter_multi(
-    profile,
+    data,
     f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
     [ilp_cbc, ilp_gurobi],
     is_average=False,

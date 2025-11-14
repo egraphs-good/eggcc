@@ -657,10 +657,10 @@ def make_statewalk_width_performance_scatter_multi(
         legend_labels = list(legend_entries.keys())
         ax_lower.legend(legend_handles, legend_labels, loc='upper left', fontsize=24)
 
-      fig.text(0.025, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
+      fig.text(0.01, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
 
       fig.tight_layout(rect=[0.0, 0.14, 1.0, 0.98], pad=0.8)
-      fig.subplots_adjust(hspace=0.18, bottom=0.18)
+      fig.subplots_adjust(hspace=0.18, bottom=0.18, left=0.16)
       fig.savefig(output, bbox_inches='tight')
       return
     else:
@@ -702,7 +702,7 @@ def make_statewalk_width_performance_scatter_multi(
           )
 
       ax.set_xlabel(x_label, fontsize=24)
-      ax.set_ylabel('Runtime (Seconds)', fontsize=24)
+      ax.set_ylabel('Runtime (Seconds)', fontsize=24, labelpad=20)
       ax.set_title(title, fontsize=28)
 
       ax.grid(alpha=0.3)
@@ -715,7 +715,7 @@ def make_statewalk_width_performance_scatter_multi(
         ax.legend(legend_handles, legend_labels, loc='best', fontsize=24)
 
       fig.tight_layout(pad=0.8)
-      fig.subplots_adjust(bottom=0.18)
+      fig.subplots_adjust(bottom=0.18, left=0.16)
       fig.savefig(output, bbox_inches='tight')
       return
 

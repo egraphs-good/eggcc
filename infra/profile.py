@@ -31,8 +31,7 @@ def num_warmup_samples():
 def num_samples():
   if IS_TESTING_MODE:
     return 100
-  # TODO change back
-  return 10
+  return 200
 
 
 def average(lst):
@@ -43,25 +42,25 @@ TO_ABLATE = "" # change to a ruleset to ablate
 
 # use for running a subset of the treatments
 # disables checks that ensure the data is complete
-UNSAFE_TREATMENTS = True
+UNSAFE_TREATMENTS = False
 treatments = [
-#  "rvsdg-round-trip-to-executable",
-#  "llvm-O0-O0",
-#  "llvm-O1-O0",
-#  "llvm-O2-O0",
-#  "eggcc-O0-O0",
-#  "eggcc-sequential-O0-O0",
-#  "llvm-O3-O0",
-#  "llvm-O3-O3",
-#  "eggcc-O3-O0",
-#  "eggcc-O3-O3",
-#  "eggcc-tiger-WL-O0-O0",
-#  "eggcc-tiger-O0-O0",
-#  "eggcc-tiger-ILP-O0-O0",
-#  "eggcc-tiger-ILP-CBC-O0-O0",
-#  "eggcc-tiger-ILP-NOMIN-O0-O0",
-#  #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
-#  "eggcc-WITHCTX-O0-O0",
+  "rvsdg-round-trip-to-executable",
+  "llvm-O0-O0",
+  "llvm-O1-O0",
+  "llvm-O2-O0",
+  "eggcc-O0-O0",
+  "eggcc-sequential-O0-O0",
+  "llvm-O3-O0",
+  "llvm-O3-O3",
+  "eggcc-O3-O0",
+  "eggcc-O3-O3",
+  "eggcc-tiger-WL-O0-O0",
+  "eggcc-tiger-O0-O0",
+  "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-CBC-O0-O0",
+  "eggcc-tiger-ILP-NOMIN-O0-O0",
+  #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
+  "eggcc-WITHCTX-O0-O0",
   # run both tiger and ILP on the same egraphs, keep this last in the list
   "eggcc-tiger-ILP-COMPARISON", 
 ]

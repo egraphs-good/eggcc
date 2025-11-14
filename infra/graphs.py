@@ -919,15 +919,15 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
   )
   make_ilp_encoding_time_scatter(
-    profile,
+    data,
     f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
   )
   make_cbc_encoding_time_scatter(
-    profile,
+    data,
     f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
   )
   make_peggy_comparison_graph(
-    profile,
+    data,
     "./infra/peggy_data.csv",
     f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
     f'{graphs_folder}/peggy-extraction-time-ratio.pdf'

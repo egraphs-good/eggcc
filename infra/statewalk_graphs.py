@@ -659,9 +659,10 @@ def make_statewalk_width_performance_scatter_multi(
 
       fig.text(0.025, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
 
-      fig.tight_layout(rect=[0.0, 0.08, 1.0, 0.98])
-      fig.subplots_adjust(hspace=0.18)
-      fig.savefig(output)
+      fig.tight_layout(rect=[0.0, 0.14, 1.0, 0.98], pad=0.8)
+      fig.subplots_adjust(hspace=0.18, bottom=0.18)
+      fig.savefig(output, bbox_inches='tight')
+      return
     else:
       fig, ax = plt.subplots(figsize=(10, 6))
       legend_entries = {}
@@ -713,8 +714,10 @@ def make_statewalk_width_performance_scatter_multi(
         legend_labels = list(legend_entries.keys())
         ax.legend(legend_handles, legend_labels, loc='best', fontsize=24)
 
-  fig.tight_layout()
-  fig.savefig(output)
+      fig.tight_layout(pad=0.8)
+      fig.subplots_adjust(bottom=0.18)
+      fig.savefig(output, bbox_inches='tight')
+      return
 
 
 def make_egraph_size_vs_statewalk_width_heatmap(

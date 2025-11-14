@@ -50,77 +50,28 @@ static void kill_process_group(pid_t pid) {
 	}
 }
 
-static int run_command_with_timeout(const string &command, int timeout_seconds, bool &timed_out) {
-	timed_out = false;
-#if defined(_WIN32)
-	(void)timeout_seconds;
-	int result = system(command.c_str());
-	return result;
-#else
-	pid_t pid = fork();
-	if (pid < 0) {
-		return -1;
-	}
-	if (pid == 0) {
-		if (setsid() == -1) {
-			setpgid(0, 0);
-		}
-		execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
-		_exit(127);
-	}
-	setpgid(pid, pid);
-		
 
-	int status = 0;
-	if (timeout_seconds <= 0) {
-		while (waitpid(pid, &status, 0) < 0) {
-			if (errno != EINTR) {
-				int err = errno;
-				kill_process_group(pid);
-				waitpid(pid, &status, 0);
-				errno = err;
-				return -1;
-			}
-		}
-	} else {
-			auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_seconds);
-		while (true) {
-			pid_t result = waitpid(pid, &status, WNOHANG);
-			if (result == pid) {
-				break;
-			}
-			if (result == 0) {
-					if (std::chrono::steady_clock::now() >= deadline) {
-					timed_out = true;
-					kill_process_group(pid);
-					waitpid(pid, &status, 0);
-					break;
-				}
-					std::this_thread::sleep_for(std::chrono::milliseconds(50));
-				continue;
-			}
-			if (result == -1) {
-				if (errno == EINTR) {
-					continue;
-				}
-				kill_process_group(pid);
-				waitpid(pid, &status, 0);
-				return -1;
-			}
-		}
-	}
+static int run_command(const std::string &command) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        return -1; // fork failed
+    }
 
-	if (timed_out) {
-		return -1;
-	}
-	if (WIFEXITED(status)) {
-		return WEXITSTATUS(status);
-	}
-	if (WIFSIGNALED(status)) {
-		return 128 + WTERMSIG(status);
-	}
-	return -1;
-#endif
+    if (pid == 0) {
+        // Child process: execute the command
+        execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
+        _exit(127); // exec failed
+    }
+
+    // Parent process: wait for child to finish
+    int status;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return -1; // waitpid failed
+        }
+    }
+
+    return status; // contains exit code and signal info
 }
 
 struct SolverSolution {
@@ -753,21 +704,14 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	string solver_name = use_gurobi ? "gurobi" : "cbc";
 	string cmd = "";
 	if (use_gurobi) {
-		cmd = string("gurobi_cl Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
+		cmd = string("gurobi_cl TimeLimit=300 Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
 	} else {
-		cmd = string("cbc \"") + lp_path + "\" solve branch solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
+		cmd = "cbc \"" + lp_path + "\" -seconds 300 solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
-	bool solver_timed_out = false;
-	int timeout = g_config.ilp_timeout_seconds;
-	int ret = run_command_with_timeout(cmd, timeout, solver_timed_out);
-	if (solver_timed_out) {
-		timed_out = true;
-		if (!g_config.time_ilp) {
-			cout << "TIMEOUT" << endl;
-			fail(solver_name + " timed out after " + to_string(timeout) + " seconds");
-		}
-		return Extraction();
-	}
+	auto start = std::chrono::steady_clock::now();
+	int ret = run_command(cmd);
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> elapsed_seconds = end - start;
 	string solver_log;
 	{
 		ifstream log_in(log_path.c_str(), ios::binary);
@@ -779,6 +723,18 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		ifstream in_debug_log(log_path.c_str(), ios::binary);
 		ofstream out_debug_log("/tmp/tiger_last_extract.log", ios::binary);
 		out_debug_log << in_debug_log.rdbuf();
+	}
+	bool solver_timed_out = contains_case_insensitive(solver_log, "timeout");
+
+	if (solver_timed_out) {
+		timed_out = true;
+		if (!g_config.time_ilp) {
+			cout << "TIMEOUT" << endl;
+			std::ostringstream timeout_stream;
+			timeout_stream << elapsed_seconds.count();
+			fail(solver_name + " reported a timeout after " + timeout_stream.str() + " seconds");
+		}
+		return Extraction();
 	}
 	if (ret != 0) {
 		cerr << solver_name << " log output:\n" << solver_log << endl;

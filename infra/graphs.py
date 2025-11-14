@@ -617,6 +617,11 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   # turn off x labels
   ax.set_xticks([])
   ax.set_xticklabels([])
+  if legend:
+    ax.set_xlabel(
+      f"Benchmarks sorted by {to_paper_names_treatment(treatments[0])}",
+      fontsize=18,
+    )
 
     
   
@@ -643,13 +648,13 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   legend_handles.append(
     plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
   )
-  legend_labels.append('ILP Timeout (5 min)')
+  legend_labels.append('Gurobi Timeout (5 min)')
 
   if has_ilp_infeasible:
     legend_handles.append(
       plt.Line2D([0], [0], marker='x', color='orange', linestyle='None', markersize=10, markeredgewidth=3.0)
     )
-    legend_labels.append('ILP Infeasible')
+    legend_labels.append('Gurobi Infeasible')
 
   anchor_point = (xanchor, yanchor) if xanchor is not None and yanchor is not None else (0.02, 0.98)
   if legend:
@@ -660,6 +665,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
       loc='upper left',
       bbox_to_anchor=anchor_point,
       borderaxespad=0.3,
+      fontsize=12,
     )
 
   ax.set_ylim(0.25, y_max)
@@ -943,23 +949,54 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     y_max = 3.5
     xanchor = 0.02
     yanchor = 0.98
+
     if suite == "polybench":
       y_max = 10.0
-      width = 5
+      width = 6
       height = 5.0
-      xanchor = 0.02
-      yanchor = 0.98
 
     if suite == "bril":
       benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
       benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
-      
 
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, benchmarks_under3, legend=True)
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], 20.0, 1.5, height, xanchor, yanchor, benchmarks_over3, legend=False)
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        y_max,
+        width,
+        height + 0.5,
+        xanchor,
+        yanchor,
+        benchmarks_under3,
+        legend=True,
+      )
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        20.0,
+        2,
+        height,
+        xanchor,
+        yanchor,
+        benchmarks_over3,
+        legend=False,
+      )
 
     else:
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, None, legend=True)
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        y_max,
+        width,
+        height,
+        xanchor,
+        yanchor,
+        None,
+        legend=True,
+      )
 
   make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 

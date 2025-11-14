@@ -109,6 +109,13 @@ def make_macros(profile, benchmark_suites, output_file):
       )
     )
 
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPNOMINRegionTimeoutBenchmarks",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-NOMIN-O0-O0')),
+      )
+    )
+
     ilp_gurobi_solved_benchmarks = {
       row["benchmark"]
       for row in profile
@@ -217,6 +224,24 @@ def make_macros(profile, benchmark_suites, output_file):
       )
     )
 
+    nomin_region_times = [
+      duration_to_seconds(sample["ilp_extract_time"])
+      for sample in region_points
+      if (
+        sample.get("ilp_solver") == "nomin"
+        and not sample.get("ilp_timed_out_nomin", False)
+        and not sample.get("ilp_infeasible_nomin", False)
+        and sample.get("ilp_extract_time_nomin") is not None
+      )
+    ]
+    if nomin_region_times:
+      out.write(
+        format_latex_macro(
+          "AvgILPNOMINRegionExtractTimeSecs",
+          f"{mean(nomin_region_times):.3f}",
+        )
+      )
+
     tiger_region_times = [
       duration_to_seconds(sample["extract_time_liveon_satelliteon"])
       for sample in region_points
@@ -246,6 +271,14 @@ def make_macros(profile, benchmark_suites, output_file):
     if total_regions == 0:
       print("WARNING: No statewalk width data available; skipping statewalk width macros")
       return
+
+    mean_statewalk_width = mean(statewalk_widths)
+    out.write(
+      format_latex_macro(
+        "MeanStatewalkWidthAllRegions",
+        f"{mean_statewalk_width:.2f}",
+      )
+    )
 
     max_statewalk_width = max(statewalk_widths)
     if isinstance(max_statewalk_width, float) and max_statewalk_width.is_integer():
@@ -297,10 +330,17 @@ def make_macros(profile, benchmark_suites, output_file):
       )
 
     geometric_speedup = compute_geometric_mean_tiger_speedup_vs_gurobi(region_points)
+    rounded_geometric_speedup = int(math.floor(geometric_speedup / 10.0) * 10)
     out.write(
       format_latex_macro(
         "GeometricMeanTigerSpeedupVsGurobiWithTimeouts",
-        int(math.floor(geometric_speedup / 10.0) * 10),
+        rounded_geometric_speedup,
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "GeometricMeanTigerSpeedupVsGurobiWithTimeoutsX",
+        f"{rounded_geometric_speedup}$\\times$",
       )
     )
 

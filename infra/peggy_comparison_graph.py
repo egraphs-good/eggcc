@@ -21,14 +21,14 @@ def get_eggcc_df(profile_data):
 def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_figure):
     eggcc_data = get_eggcc_df(eggcc_profile)
     # Set plotting parameters
-    plt.rcParams["font.size"] = 16
+    plt.rcParams["font.size"] = 18
     transparency = 0.2
     size = 150
 
     peggy_data = clean_data(peggy_file)
     
     # Create a single figure with 4 subfigures
-    fig, axs = plt.subplots(figsize=(8, 8))
+    fig, axs = plt.subplots(figsize=(10, 8))
     
     eggcc_figure
     
@@ -42,16 +42,16 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         denom="PEG2PEGTIME",
         xcol="length",
         xlabel="Number of Java bytecode instructions",
-        ylabel="Extraction runtime percentage",
+        ylabel="Portion of Time Spent in ILP",
         ax=axs,
         color="green",
         label="Peggy ILP"
     )
-    axs.set_title("ILP runtime percentage in Peggy")
+    axs.set_title("ILP Share of Optimization Time in Peggy", fontsize=28)
     plt.tight_layout()
     fig.savefig(peggy_figure, bbox_inches="tight")
     
-    fig, axs = plt.subplots(figsize=(8, 8))
+    fig, axs = plt.subplots(figsize=(10, 8))
     
     # EGGCC ratio
     ratio_plot_single_eggcc(
@@ -62,7 +62,7 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         denom="compile",
         xcol="length",
         xlabel="Number of Bril instructions",
-        ylabel="Extraction runtime percentage",
+        ylabel="Portion of Time Spent in Statewalk DP",
         ax=axs,
         eggcc_color="blue",
         ilp_color="green",
@@ -71,7 +71,7 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         label_eggcc="Statewalk DP",
         label_ilp="ILP",
     )
-    axs.set_title("Statewalk DP runtime percentage in EQCC")
+    axs.set_title("Statewalk DP Share of Optimization Time in EQCC", fontsize=28)
     
     # Adjust layout and save
     plt.tight_layout()
@@ -106,8 +106,9 @@ def clean_data(results_file):
 def ratio_plot_single(data, transparency, size, num, denom, xcol, xlabel, ylabel, ax, color, label):
     ax.set_xlim(0, 400)
     ax.set_ylim(-0.04, 1.04)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel, fontsize=24)
+    ax.set_ylabel(ylabel, fontsize=24)
+    ax.tick_params(axis='both', which='major', labelsize=24)
     
     # Filter out failure and timeout entries
     filtered_data = data[(data[num] != FAILURE) & (data[num] != TIMEOUT) & 
@@ -122,14 +123,15 @@ def ratio_plot_single(data, transparency, size, num, denom, xcol, xlabel, ylabel
     
     ax.scatter(filtered_data[xcol], ratios, c=color, s=size, alpha=transparency, label=label)
     ax.scatter(timeouts[xcol], [1] * len(timeouts), c='red', s=size, label=label + ' (timeout)', marker='x')
-    ax.legend()
+    ax.legend(fontsize=24)
 
 
 def ratio_plot_single_eggcc(data, transparency, size, num, denom, xcol, xlabel, ylabel, ax, eggcc_color, ilp_color, label_eggcc, label_ilp, eggcc, ilp):
     ax.set_xlim(0, 400)
     ax.set_ylim(-0.04, 1.04)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel, fontsize=24)
+    ax.set_ylabel(ylabel, fontsize=24)
+    ax.tick_params(axis='both', which='major', labelsize=24)
     
     # Calculate ratio
     # eggcc_data = data[data['runMethod']==eggcc]
@@ -143,7 +145,7 @@ def ratio_plot_single_eggcc(data, transparency, size, num, denom, xcol, xlabel, 
     ax.scatter(eggcc_data[xcol], eggcc_ratios, c=eggcc_color, s=size, alpha=transparency, label=label_eggcc)
     ax.scatter(ilp_data[xcol], ilp_ratios, c=ilp_color, s=size, alpha=transparency, label=label_ilp)
     ax.scatter(ilp_timeout[xcol], [1]*len(ilp_timeout), c='red', s=size, marker='x', label = label_ilp + ' (timeout)')
-    ax.legend()
+    ax.legend(fontsize=24)
 
 
 # if __name__ == "__main__":

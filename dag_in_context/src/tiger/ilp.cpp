@@ -702,11 +702,12 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	}
 
 	string solver_name = use_gurobi ? "gurobi" : "cbc";
-	string cmd = "";
+	string cmd;
+	string timeout_arg = to_string(g_config.ilp_timeout_seconds);
 	if (use_gurobi) {
-		cmd = string("gurobi_cl TimeLimit=1 Threads=1 ResultFile=\"") + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
+		cmd = string("gurobi_cl TimeLimit=") + timeout_arg + " Threads=1 ResultFile=\"" + sol_path + "\" LogFile=\"" + log_path + "\" " + lp_path + " > /dev/null 2>&1";
 	} else {
-		cmd = "cbc \"" + lp_path + "\" -seconds 1 solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
+		cmd = "cbc \"" + lp_path + "\" -seconds " + timeout_arg + " solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	auto start = std::chrono::steady_clock::now();
 	int ret = run_command(cmd);

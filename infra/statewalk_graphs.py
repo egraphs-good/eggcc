@@ -157,16 +157,20 @@ def make_statewalk_width_histogram(data, output, treatment: StatewalkTreatment, 
   frequencies = [counts[w] for w in sorted_widths]
 
   plt.figure(figsize=(10, 6))
-  plt.bar(sorted_widths, frequencies, color='skyblue', edgecolor='black')
+  plt.hist(sorted_widths, weights=frequencies, bins=[1, 2, 11, 101, 1001, 10001, 100000], color='skyblue', edgecolor='black')
+  print(sorted_widths)
+  print(frequencies)
   treatment_label = treatment.display_name()
-  plt.xlabel(f"Statewalk Width{' Average' if is_average else ''} ({treatment.modifiers_suffix()})")
-  plt.ylabel('Number of Regionalized E-Graphs')
-  title = f"Distribution of Statewalk Width – {treatment_label}"
+  plt.xlabel(f"Statewalk Width", fontsize=25)
+  plt.ylabel('Number of Regionalized E-Graphs', fontsize=20)
+  title = f"Distribution of Statewalk Width"
   if max_width_label is not None:
     title += f' (≤ {max_width_label})'
-  plt.title(title)
+  plt.title(title, fontsize=28)
   # log scale y axis
   plt.yscale('log')
+  plt.xscale('log')
+  plt.xlim(left=1)
 
   def _format_tick(value, _pos):
     if value <= 0:
@@ -179,6 +183,7 @@ def make_statewalk_width_histogram(data, output, treatment: StatewalkTreatment, 
 
   ax = plt.gca()
   ax.yaxis.set_major_formatter(mticker.FuncFormatter(_format_tick))
+  ax.tick_params(axis='both', which='major', labelsize=18)
 
   plt.grid(axis='y', linestyle='--', alpha=0.5)
   plt.tight_layout()

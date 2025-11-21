@@ -5,6 +5,8 @@ from matplotlib.patches import Patch
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import os
+import math
+import statistics
 from graph_helpers import *
 
 
@@ -19,6 +21,7 @@ def make_macros(profile, benchmark_suites, output_file):
     benchmark_suite_map = {}
 
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
+    print_fastest_ilp_benchmarks(profile, benchmarks)
 
     for benchmark in benchmarks:
       row = get_row(profile, benchmark, "eggcc-tiger-ILP-COMPARISON")
@@ -54,7 +57,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgPolybenchRegionalizedEgraphsPerBenchmark",
-        f"{mean(suite_region_counts['polybench']):.2f}",
+        f"{round(mean(suite_region_counts['polybench']))}",
       )
     )
 
@@ -106,6 +109,13 @@ def make_macros(profile, benchmark_suites, output_file):
       )
     )
 
+    out.write(
+      format_latex_macro(
+        "NumeggcctigerILPNOMINRegionTimeoutBenchmarks",
+        len(timeout_benchmarks_for_run(profile, 'eggcc-tiger-ILP-NOMIN-O0-O0')),
+      )
+    )
+
     ilp_gurobi_solved_benchmarks = {
       row["benchmark"]
       for row in profile
@@ -130,7 +140,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgEggcctigerO0O0ExtractionTimeSecsOnILPGurobiSolvedBenchmarks",
-        f"{mean(tiger_times_on_gurobi_solved):.6f}",
+        f"{mean(tiger_times_on_gurobi_solved):.3f}",
       )
     )
 
@@ -156,7 +166,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "MaxRaytraceRegionalizedEgraphTerms",
-        max(sample["egraph_size"] for sample in raytrace_timings),
+        f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
       )
     )
     out.write(
@@ -210,9 +220,27 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "AvgILPGurobiRegionExtractTimeSecs",
-        f"{mean(ilp_region_times):.6f}",
+        f"{mean(ilp_region_times):.3f}",
       )
     )
+
+    nomin_region_times = [
+      duration_to_seconds(sample["ilp_extract_time"])
+      for sample in region_points
+      if (
+        sample.get("ilp_solver") == "nomin"
+        and not sample.get("ilp_timed_out_nomin", False)
+        and not sample.get("ilp_infeasible_nomin", False)
+        and sample.get("ilp_extract_time_nomin") is not None
+      )
+    ]
+    if nomin_region_times:
+      out.write(
+        format_latex_macro(
+          "AvgILPNOMINRegionExtractTimeSecs",
+          f"{mean(nomin_region_times):.3f}",
+        )
+      )
 
     tiger_region_times = [
       duration_to_seconds(sample["extract_time_liveon_satelliteon"])
@@ -230,7 +258,7 @@ def make_macros(profile, benchmark_suites, output_file):
     out.write(
       format_latex_macro(
         "MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs",
-        f"{max(tiger_region_times):.6f}",
+        f"{max(tiger_region_times):.4f}",
       )
     )
 
@@ -244,6 +272,14 @@ def make_macros(profile, benchmark_suites, output_file):
       print("WARNING: No statewalk width data available; skipping statewalk width macros")
       return
 
+    mean_statewalk_width = mean(statewalk_widths)
+    out.write(
+      format_latex_macro(
+        "MeanStatewalkWidthAllRegions",
+        f"{mean_statewalk_width:.2f}",
+      )
+    )
+
     max_statewalk_width = max(statewalk_widths)
     if isinstance(max_statewalk_width, float) and max_statewalk_width.is_integer():
       max_statewalk_width = int(max_statewalk_width)
@@ -251,13 +287,15 @@ def make_macros(profile, benchmark_suites, output_file):
       format_latex_macro(
         "MaxStatewalkWidthAllBenchmarks",
         max_statewalk_width,
+        group_thousands=True,
       )
     )
     for threshold in range(1, 31):
+      percent = (sum(1 for width in statewalk_widths if width < threshold) / total_regions)
       out.write(
         format_latex_macro_percent(
           f"PercentRegionsStatewalkWidthUnder{threshold}",
-          sum(1 for width in statewalk_widths if width < threshold) / total_regions,
+          percent,
         )
       )
 
@@ -292,11 +330,83 @@ def make_macros(profile, benchmark_suites, output_file):
       )
 
     geometric_speedup = compute_geometric_mean_tiger_speedup_vs_gurobi(region_points)
+    rounded_geometric_speedup = int(math.floor(geometric_speedup / 10.0) * 10)
     out.write(
       format_latex_macro(
         "GeometricMeanTigerSpeedupVsGurobiWithTimeouts",
-        f"{geometric_speedup:.2f}",
+        rounded_geometric_speedup,
       )
+    )
+    out.write(
+      format_latex_macro(
+        "GeometricMeanTigerSpeedupVsGurobiWithTimeoutsX",
+        f"{rounded_geometric_speedup}$\\times$",
+      )
+    )
+
+    encoding_geo_mean, encoding_max = compute_encoding_vars_per_egraph_stats(region_points)
+    out.write(
+      format_latex_macro(
+        "GeometricMeanILPEncodingVarsPerEgraphSize",
+        f"{encoding_geo_mean:.2f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxILPEncodingVarsPerEgraphSize",
+        f"{encoding_max:.2f}",
+      )
+    )
+
+
+def print_fastest_ilp_benchmarks(profile, benchmarks, run_method="eggcc-tiger-ILP-COMPARISON", top_n=100):
+  stats = []
+  for benchmark in benchmarks:
+    row = get_row(profile, benchmark, run_method)
+    timings = row["extractRegionTimings"]
+    solved_times = []
+    for sample in timings:
+      if "ilp_infeasible" not in sample:
+        raise KeyError("Missing ilp_infeasible when computing fastest ILP benchmarks")
+      if sample["ilp_infeasible"]:
+        continue
+      if "ilp_timed_out" not in sample:
+        raise KeyError("Missing ilp_timed_out when computing fastest ILP benchmarks")
+      if sample["ilp_timed_out"]:
+        continue
+      if "ilp_extract_time" not in sample:
+        raise KeyError("Missing ilp_extract_time when computing fastest ILP benchmarks")
+      ilp_duration = sample["ilp_extract_time"]
+      if ilp_duration is None:
+        continue
+      solved_times.append(duration_to_seconds(ilp_duration))
+
+    if solved_times:
+      avg_time = mean(solved_times)
+      median_time = statistics.median(solved_times)
+      time_range = max(solved_times) - min(solved_times)
+      stats.append(
+        {
+          "benchmark": benchmark,
+          "mean": avg_time,
+          "median": median_time,
+          "range": time_range,
+          "regions": len(solved_times),
+        }
+      )
+
+  if not stats:
+    print("WARNING: No ILP benchmarks with solved regions found when reporting fastest benchmarks")
+    return
+
+  stats.sort(key=lambda entry: entry["median"])
+  limit = min(top_n, len(stats))
+  print(f"Top {limit} benchmarks with fastest ILP extract times:")
+  for idx, entry in enumerate(stats[:limit], start=1):
+    print(
+      f"{idx}. {entry['benchmark']}: mean={entry['mean']:.4f}s, "
+      f"median={entry['median']:.4f}s, range={entry['range']:.4f}s, "
+      f"regions_solved={entry['regions']}"
     )
 
 
@@ -312,12 +422,16 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
     tiger_duration = sample["extract_time_liveon_satelliteon"]
     tiger_time = duration_to_seconds(tiger_duration)
 
-    if sample["ilp_timed_out"]:
+    if "ilp_timed_out" not in sample:
+      raise KeyError("Missing ilp_timed_out when computing tiger speedup macro")
+    if "ilp_infeasible" not in sample:
+      raise KeyError("Missing ilp_infeasible when computing tiger speedup macro")
+
+    if sample["ilp_timed_out"] or sample["ilp_infeasible"]:
       gurobi_time = ILP_TIMEOUT_SECONDS
-    elif sample["ilp_infeasible"]:
-      gurobi_duration = sample["ilp_extract_time"]
-      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
     else:
+      if "ilp_extract_time" not in sample:
+        raise KeyError("Missing ilp_extract_time when computing tiger speedup macro")
       gurobi_duration = sample["ilp_extract_time"]
       gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
 
@@ -336,4 +450,31 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
     raise ValueError("No valid tiger/Gurobi timing pairs for speedup macro")
 
   return geometric_mean(ratios)
+
+
+def compute_encoding_vars_per_egraph_stats(region_points):
+  if not region_points:
+    raise ValueError("No regionalized e-graphs provided when computing encoding size ratios")
+
+  ratios = []
+
+  for sample in region_points:
+    num_vars = sample["ilp_encoding_num_vars"]
+    egraph_size = sample["egraph_size"]
+
+    if num_vars is None or num_vars <= 0:
+      raise ValueError("Non-positive ilp_encoding_num_vars encountered when computing encoding size ratios")
+    if egraph_size is None or egraph_size <= 0:
+      raise ValueError("Non-positive egraph_size encountered when computing encoding size ratios")
+
+    ratio = num_vars / egraph_size
+    if ratio <= 0:
+      raise ValueError("Non-positive encoding ratio encountered when computing encoding size ratios")
+
+    ratios.append(ratio)
+
+  if not ratios:
+    raise ValueError("No ILP encoding variable data available when computing encoding size ratios")
+
+  return geometric_mean(ratios), max(ratios)
 

@@ -182,7 +182,6 @@ _DIGIT_WORDS = {
   "9": "Nine",
 }
 
-
 def convert_string_to_valid_latex_var(name):
   text = str(name)
   sanitized_parts = []
@@ -200,14 +199,22 @@ def convert_string_to_valid_latex_var(name):
   return sanitized_name
 
 
-def format_latex_macro(name, value):
+def format_latex_macro(name, value, group_thousands=False):
   sanitized_name = convert_string_to_valid_latex_var(name)
-  return f"\\newcommand{{\\{sanitized_name}}}{{{value}\\xspace}}\n"
+  if group_thousands:
+    if isinstance(value, bool) or not isinstance(value, int):
+      raise ValueError(
+        f"format_latex_macro(group_thousands=True) requires an integer value, got {type(value).__name__}"
+      )
+    macro_value = f"{value:,}"
+  else:
+    macro_value = str(value)
+  return f"\\newcommand{{\\{sanitized_name}}}{{{macro_value}\\xspace}}\n"
 
 # given a ratio, format it as a percentage and create a latex macro
-def format_latex_macro_percent(name, percent_as_ratio):
+def format_latex_macro_percent(name, percent_as_ratio, group_thousands=False):
   percent = percent_as_ratio * 100
-  return format_latex_macro(name, f"{percent:.2f}\\%")
+  return format_latex_macro(name, f"{percent:.1f}\\%", group_thousands=group_thousands)
 
 def benchmarks_in_folder(folder):
   # recursively find all files

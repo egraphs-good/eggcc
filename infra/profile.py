@@ -560,7 +560,8 @@ if __name__ == '__main__':
   # separate to_run into ILP_COMPARISON and others
   ilp_comparison = [b for b in to_run if b.treatment == "eggcc-tiger-ILP-COMPARISON"]
   others = [b for b in to_run if b.treatment != "eggcc-tiger-ILP-COMPARISON"]
-  others[-1].is_last_before_ilp = True
+  if len(others) > 0:
+    others[-1].is_last_before_ilp = True
 
   run_benchmarks_parallel(others, parallelism, compile_data)
   print(f'Finished benchmarks, took {time.perf_counter() - start_time:.2f} seconds', flush=True)

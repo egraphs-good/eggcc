@@ -617,6 +617,11 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   # turn off x labels
   ax.set_xticks([])
   ax.set_xticklabels([])
+  if legend:
+    ax.set_xlabel(
+      f"Benchmarks sorted by {to_paper_names_treatment(treatments[0])}",
+      fontsize=18,
+    )
 
     
   
@@ -643,13 +648,13 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   legend_handles.append(
     plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
   )
-  legend_labels.append('ILP Timeout (5 min)')
+  legend_labels.append('Gurobi Timeout (5 min)')
 
   if has_ilp_infeasible:
     legend_handles.append(
       plt.Line2D([0], [0], marker='x', color='orange', linestyle='None', markersize=10, markeredgewidth=3.0)
     )
-    legend_labels.append('ILP Infeasible')
+    legend_labels.append('Gurobi Infeasible')
 
   anchor_point = (xanchor, yanchor) if xanchor is not None and yanchor is not None else (0.02, 0.98)
   if legend:
@@ -660,6 +665,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
       loc='upper left',
       bbox_to_anchor=anchor_point,
       borderaxespad=0.3,
+      fontsize=12,
     )
 
   ax.set_ylim(0.25, y_max)
@@ -803,33 +809,28 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder):
+
   # Read profile.json from nightly/output/data/profile.json
-  profile = []
+  data = []
   with open(profile_file) as f:
-      profile = json.load(f)
+      data = json.load(f)
     
   # folders in 
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  make_jitter(profile, 4, f'{graphs_folder}/jitter-plot-max-4.png')
+  make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
 
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
-  make_region_extract_plot(profile, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(profile, f'{graphs_folder}/extraction-time-histogram.pdf')
-  make_extraction_time_cdf(profile, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
-  make_extraction_time_cdf(
-    profile,
-    f'{graphs_folder}/extraction-time-cdf-linear.pdf',
-    use_log_x=False,
-    use_exp_y=False,
-  )
-  make_extraction_time_cdf(
-    profile,
-    f'{graphs_folder}/extraction-time-cdf-exp-y.pdf',
-    use_log_x=False,
-    use_exp_y=True,
-  )
+  # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
+  if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
+      print("Skipping graphing: NECESSARY_MODES is true and GRAPH_RUN_MODES is not a subset of treatments")
+      sys.exit(0)
+
+  make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
+
+  make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+  make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+  make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
   #make_ilp_encoding_scatter(
   #  profile,
   #  f'{graphs_folder}/ilp-encoding-vs-egraph-size.pdf',
@@ -852,35 +853,37 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
   make_statewalk_width_histogram(
-    profile,
+    data,
     f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
     tiger_optimizations_on,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
   make_statewalk_width_histogram(
-    profile,
+    data,
     f'{graphs_folder}/statewalk-width-histogram.pdf',
     tiger_optimizations_off,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
   print_top_statewalk_width_samples(
-    profile,
+    data,
     tiger_optimizations_off,
     is_average=False,
     max_width=statewalk_histogram_max_width,
   )
 
   make_statewalk_width_performance_scatter_multi(
-    profile,
+    data,
     f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf',
     [tiger_optimizations_off, tiger_optimizations_on],
     is_average=False,
     scale_by_egraph_size=False,
+    y_break=(0.6, 4.5),
+    y_break_runtimes={'tiger'},
   )
   make_statewalk_width_performance_scatter_multi(
-    profile,
+    data,
     f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
     [ilp_cbc, ilp_gurobi],
     is_average=False,
@@ -888,21 +891,21 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   )
   
   make_egraph_size_vs_statewalk_width_heatmap(
-    profile,
+    data,
     f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
     tiger_optimizations_off,
     is_average=False,
     min_width=1,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
-    profile,
+    data,
     f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
     ilp_gurobi,
     is_average=False,
     min_width=1,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
-    profile,
+    data,
     f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
     tiger_optimizations_off,
     is_average=False,
@@ -910,7 +913,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     max_width=6000,
   )
   make_egraph_size_vs_statewalk_width_heatmap(
-    profile,
+    data,
     f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
     ilp_gurobi,
     is_average=False,
@@ -918,11 +921,19 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     max_width=6000,
   )
   make_ilp_encoding_scatter(
-    profile,
+    data,
     f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
   )
+  make_ilp_encoding_time_scatter(
+    data,
+    f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
+  )
+  make_cbc_encoding_time_scatter(
+    data,
+    f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
+  )
   make_peggy_comparison_graph(
-    profile,
+    data,
     "./infra/peggy_data.csv",
     f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
     f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
@@ -931,32 +942,63 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
     suite_benchmarks = benchmarks_in_folder(suite_path)
-    profile_for_suite = [b for b in profile if b['benchmark'] in suite_benchmarks]
+    profile_for_suite = [b for b in data if b['benchmark'] in suite_benchmarks]
 
     width = 10
     height = 4
     y_max = 3.5
     xanchor = 0.02
     yanchor = 0.98
+
     if suite == "polybench":
       y_max = 10.0
-      width = 5
+      width = 6
       height = 5.0
-      xanchor = 0.02
-      yanchor = 0.98
 
     if suite == "bril":
-      benchmarks_under3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") <= 3.0]
-      benchmarks_over3 = [b for b in suite_benchmarks if normalized(profile, b, "eggcc-tiger-O0-O0") > 3.0]
-      
+      benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
+      benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
 
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, benchmarks_under3, legend=True)
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], 20.0, 1.5, height, xanchor, yanchor, benchmarks_over3, legend=False)
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        y_max,
+        width,
+        height + 0.5,
+        xanchor,
+        yanchor,
+        benchmarks_under3,
+        legend=True,
+      )
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        20.0,
+        2,
+        height,
+        xanchor,
+        yanchor,
+        benchmarks_over3,
+        legend=False,
+      )
 
     else:
-      make_normalized_chart(profile_for_suite, f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf', ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"], y_max, width, height, xanchor, yanchor, None, legend=True)
+      make_normalized_chart(
+        profile_for_suite,
+        f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf',
+        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        y_max,
+        width,
+        height,
+        xanchor,
+        yanchor,
+        None,
+        legend=True,
+      )
 
-  make_macros(profile, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
+  make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
 
   # make json list of graph names and put in in output
   graph_names = []
@@ -973,10 +1015,7 @@ if __name__ == '__main__':
       print("Usage: python graphs.py <nightly_output_folder> <graphs_folder> <profile.json> <benchmark_suite_folder>")
       sys.exit(1)
 
-  # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
-  if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
-      print("Skipping graphing: NECESSARY_MODES is true and GRAPH_RUN_MODES is not a subset of treatments")
-      sys.exit(0)
+  
   make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 
 

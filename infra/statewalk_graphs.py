@@ -442,6 +442,8 @@ def make_statewalk_width_performance_scatter_multi(
   scale_by_egraph_size,
   width_min=None,
   width_max=None,
+  y_break=None,
+  y_break_runtimes=None,
 ):
   treatment_list = list(treatments)
   if len(treatment_list) < 2:
@@ -449,87 +451,288 @@ def make_statewalk_width_performance_scatter_multi(
 
   benchmarks = dedup([b.get('benchmark') for b in data])
 
-  plt.figure(figsize=(10, 6))
+  break_low = break_high = None
+  if y_break is not None:
+    if not isinstance(y_break, (tuple, list)) or len(y_break) != 2:
+      raise ValueError("y_break must be a (low, high) pair when provided")
+    break_low, break_high = float(y_break[0]), float(y_break[1])
+    if not break_low < break_high:
+      raise ValueError("y_break lower bound must be less than upper bound")
+
+  if y_break_runtimes is not None:
+    if not isinstance(y_break_runtimes, (set, list, tuple)):
+      raise ValueError("y_break_runtimes must be an iterable of runtime identifiers when provided")
+    if not isinstance(y_break_runtimes, set):
+      y_break_runtimes = set(y_break_runtimes)
+
   plotted_any = False
+  plot_entries = []
 
   for treatment in treatment_list:
     points = all_region_extract_points(treatment.region_run_method, data, benchmarks)
-    results = _collect_statewalk_scatter_points(points, treatment, is_average, scale_by_egraph_size, width_min, width_max)
+    plot_entries = []
 
-    x_values = results["x_values"]
-    y_values = results["y_values"]
-
-    if not x_values:
-      continue
-
-    plt.scatter(
-      x_values,
-      y_values,
-      color=treatment.color(),
-      label=treatment.display_name(),
-      alpha=0.7,
-      edgecolors='black',
-      linewidths=0.5,
-      s=60,
-    )
-    plotted_any = True
-
-    if results["is_ilp_runtime"] and results["timeout_x"]:
-      plt.scatter(
-        results["timeout_x"],
-        results["timeout_y"],
-        color=treatment.color(),
-        marker='x',
-        linewidths=2.0,
-        s=100,
-        label='_nolegend_',
+    for treatment in treatment_list:
+      points = all_region_extract_points(treatment.region_run_method, data, benchmarks)
+      results = _collect_statewalk_scatter_points(
+        points,
+        treatment,
+        is_average,
+        scale_by_egraph_size,
+        width_min,
+        width_max,
       )
 
-  if not plotted_any:
-    print("WARNING: No data plotted in make_statewalk_width_performance_scatter_multi")
-    plt.close()
-    return
+      x_values = results["x_values"]
+      y_values = results["y_values"]
 
-  if scale_by_egraph_size:
-    if is_average:
-      x_label = "Statewalk Width Average × E-graph Size"
+      if not x_values:
+        continue
+
+      color = treatment.color()
+      label = treatment.display_name()
+      x_array = np.array(x_values)
+      y_array = np.array(y_values)
+      timeout_x = np.array(results["timeout_x"])
+      timeout_y = np.array(results["timeout_y"])
+      infeasible_x = np.array(results["infeasible_x"])
+      infeasible_y = np.array(results["infeasible_y"])
+
+      if y_break is not None:
+        if results["is_ilp_runtime"]:
+          raise ValueError(
+            "y-axis break is only supported for treatments without ILP runtimes"
+          )
+        if y_break_runtimes is None or treatment.runtime in y_break_runtimes:
+          between_mask = (y_array > break_low) & (y_array < break_high)
+          if np.any(between_mask):
+            raise ValueError(
+              f"Found runtime values between {break_low} and {break_high} seconds for treatment {label}; cannot apply axis break"
+            )
+        if timeout_x.size:
+          raise ValueError("y-axis break does not support timeout points")
+        if infeasible_x.size:
+          raise ValueError("y-axis break does not support infeasible points")
+
+      plot_entries.append(
+        {
+          "label": label,
+          "color": color,
+          "x": x_array,
+          "y": y_array,
+          "timeout_x": timeout_x,
+          "timeout_y": timeout_y,
+          "infeasible_x": infeasible_x,
+          "infeasible_y": infeasible_y,
+        }
+      )
+
+    if not plot_entries:
+      print("WARNING: No data plotted in make_statewalk_width_performance_scatter_multi")
+      return
+
+    if scale_by_egraph_size:
+      if is_average:
+        x_label = "Statewalk Width Average × E-graph Size"
+      else:
+        x_label = "Statewalk Width × E-graph Size"
     else:
-      x_label = "Statewalk Width × E-graph Size"
-  else:
-    x_label = f"Statewalk Width{' Average' if is_average else ''}"
+      x_label = f"Statewalk Width{' Average' if is_average else ''}"
 
-  plt.xlabel(x_label, fontsize=24)
-  plt.ylabel('Runtime (Seconds)', fontsize=24)
+    title = "Statewalk Width vs Runtime"
+    if any(t.runtime != "tiger" for t in treatment_list):
+      title += " (ILP)"
+    else:
+      title += " (Statewalk DP)"
+    if scale_by_egraph_size:
+      title += " (Width × Size)"
 
-  title = f"Statewalk Width vs Runtime"
-  # add (ILP) if any treatment is ILP
-  if any(t.runtime != "tiger" for t in treatment_list):
-    title += " (ILP)"
-  else:
-    title += " (Statewalk DP)"
-  if scale_by_egraph_size:
-    title += ' (Width × Size)'
-  plt.title(title, fontsize=28)
+    if y_break is not None:
+      lower_y_values = []
+      upper_y_values = []
+      for entry in plot_entries:
+        lower_mask = entry["y"] <= break_low
+        upper_mask = entry["y"] >= break_high
+        entry["lower_x"] = entry["x"][lower_mask]
+        entry["lower_y"] = entry["y"][lower_mask]
+        entry["upper_x"] = entry["x"][upper_mask]
+        entry["upper_y"] = entry["y"][upper_mask]
+        if entry["lower_y"].size:
+          lower_y_values.extend(entry["lower_y"].tolist())
+        if entry["upper_y"].size:
+          upper_y_values.extend(entry["upper_y"].tolist())
 
-  plt.grid(alpha=0.3)
-  plt.legend(loc='best', fontsize=24)
+      if lower_y_values:
+        lower_min = min(lower_y_values)
+        lower_span = break_low - lower_min
+        if lower_span <= 0:
+          lower_span = max(break_low * 0.05, 1e-6)
+          lower_bottom = break_low - lower_span
+        else:
+          lower_margin = lower_span * 0.05
+          lower_bottom = max(0.0, lower_min - lower_margin)
+          lower_span = break_low - lower_bottom
+      else:
+        lower_span = max(break_low * 0.1, 1.0)
+        lower_bottom = max(0.0, break_low - lower_span)
 
-  ax = plt.gca()
-  ax.tick_params(axis='both', which='major', labelsize=26)
-  ax.set_xscale('log')
+      if upper_y_values:
+        upper_max = max(upper_y_values)
+        upper_span = upper_max - break_high
+        if upper_span <= 0:
+          upper_span = max(break_high * 0.05, 1e-6)
+          upper_top = break_high + upper_span
+        else:
+          upper_margin = upper_span * 0.05
+          upper_top = upper_max + upper_margin
+          upper_span = upper_top - break_high
+      else:
+        upper_span = max(break_high * 0.1, 1.0)
+        upper_top = break_high + upper_span
 
-  plt.tight_layout()
-  plt.savefig(output)
+      fig = plt.figure(figsize=(10, 6))
+      gs = fig.add_gridspec(2, 1, height_ratios=[upper_span, lower_span], hspace=0.16)
+      ax_upper = fig.add_subplot(gs[0])
+      ax_lower = fig.add_subplot(gs[1], sharex=ax_upper)
+
+      legend_entries = {}
+      for entry in plot_entries:
+        label = entry["label"]
+        color = entry["color"]
+        handle = None
+        if entry["upper_x"].size:
+          handle = ax_upper.scatter(
+            entry["upper_x"],
+            entry["upper_y"],
+            color=color,
+            label=label,
+            alpha=0.7,
+            edgecolors='black',
+            linewidths=0.5,
+            s=60,
+          )
+        if entry["lower_x"].size:
+          lower_label = label if handle is None else '_nolegend_'
+          lower_handle = ax_lower.scatter(
+            entry["lower_x"],
+            entry["lower_y"],
+            color=color,
+            label=lower_label,
+            alpha=0.7,
+            edgecolors='black',
+            linewidths=0.5,
+            s=60,
+          )
+          if handle is None:
+            handle = lower_handle
+        if handle is not None and label not in legend_entries:
+          legend_entries[label] = handle
+
+      ax_lower.set_ylim(bottom=lower_bottom, top=break_low)
+      ax_upper.set_ylim(bottom=break_high, top=upper_top)
+
+      d = 0.015
+      kwargs_top = dict(transform=ax_upper.transAxes, color='k', clip_on=False)
+      ax_upper.plot((-d, +d), (-d, +d), **kwargs_top)
+      ax_upper.plot((1 - d, 1 + d), (-d, +d), **kwargs_top)
+
+      kwargs_bottom = dict(transform=ax_lower.transAxes, color='k', clip_on=False)
+      ax_lower.plot((-d, +d), (1 - d, 1 + d), **kwargs_bottom)
+      ax_lower.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs_bottom)
+
+      ax_upper.set_title(title, fontsize=28)
+      ax_upper.set_ylabel('')
+      ax_lower.set_xlabel(x_label, fontsize=24)
+
+      ax_upper.grid(alpha=0.3)
+      ax_lower.grid(alpha=0.3)
+
+      ax_upper.tick_params(axis='both', which='major', labelsize=26)
+      ax_lower.tick_params(axis='both', which='major', labelsize=26)
+      ax_upper.tick_params(labelbottom=False)
+
+      ax_upper.set_xscale('log')
+      ax_lower.set_xscale('log')
+
+      ax_upper.spines['bottom'].set_visible(False)
+      ax_lower.spines['top'].set_visible(False)
+
+      if legend_entries:
+        legend_handles = [legend_entries[label] for label in legend_entries]
+        legend_labels = list(legend_entries.keys())
+        ax_lower.legend(legend_handles, legend_labels, loc='upper left', fontsize=24)
+
+      fig.text(0.01, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
+
+      fig.tight_layout(rect=[0.0, 0.14, 1.0, 0.98], pad=0.8)
+      fig.subplots_adjust(hspace=0.18, bottom=0.18, left=0.16)
+      fig.savefig(output, bbox_inches='tight')
+      return
+    else:
+      fig, ax = plt.subplots(figsize=(10, 6))
+      legend_entries = {}
+      for entry in plot_entries:
+        handle = ax.scatter(
+          entry["x"],
+          entry["y"],
+          color=entry["color"],
+          label=entry["label"],
+          alpha=0.7,
+          edgecolors='black',
+          linewidths=0.5,
+          s=60,
+        )
+        if entry["label"] not in legend_entries:
+          legend_entries[entry["label"]] = handle
+
+        if entry["timeout_x"].size:
+          ax.scatter(
+            entry["timeout_x"],
+            entry["timeout_y"],
+            color=entry["color"],
+            marker='x',
+            linewidths=2.0,
+            s=100,
+            label='_nolegend_',
+          )
+        if entry["infeasible_x"].size:
+          ax.scatter(
+            entry["infeasible_x"],
+            entry["infeasible_y"],
+            color='orange',
+            marker='x',
+            linewidths=2.0,
+            s=100,
+            label='_nolegend_',
+          )
+
+      ax.set_xlabel(x_label, fontsize=24)
+      ax.set_ylabel('Runtime (Seconds)', fontsize=24, labelpad=20)
+      ax.set_title(title, fontsize=28)
+
+      ax.grid(alpha=0.3)
+      ax.tick_params(axis='both', which='major', labelsize=26)
+      ax.set_xscale('log')
+
+      if legend_entries:
+        legend_handles = [legend_entries[label] for label in legend_entries]
+        legend_labels = list(legend_entries.keys())
+        ax.legend(legend_handles, legend_labels, loc='best', fontsize=24)
+
+      fig.tight_layout(pad=0.8)
+      fig.subplots_adjust(bottom=0.18, left=0.16)
+      fig.savefig(output, bbox_inches='tight')
+      return
 
 
 def make_egraph_size_vs_statewalk_width_heatmap(
-  data,
-  output,
-  treatment: StatewalkTreatment,
-  is_average,
-  min_width=None,
-  max_width=None,
-):
+    data,
+    output,
+    treatment: StatewalkTreatment,
+    is_average,
+    min_width=None,
+    max_width=None,
+  ):
   benchmarks = dedup([b.get('benchmark') for b in data])
   benchmarks = [b for b in benchmarks if b != 'raytrace']
   if not benchmarks:

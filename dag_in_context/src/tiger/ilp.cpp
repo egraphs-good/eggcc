@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -35,44 +34,6 @@ using namespace std;
 
 pair<EClassId, ENodeId> findArg(const EGraph &g);
 bool validExtraction(const EGraph &g, const EClassId root, const Extraction &e);
-
-static void kill_process_group(pid_t pid) {
-	if (pid <= 0) {
-		return;
-	}
-	pid_t pgid = getpgid(pid);
-	if (pgid == pid) {
-		if (kill(-pgid, SIGKILL) == -1 && errno != ESRCH) {
-			kill(pid, SIGKILL);
-		}
-	} else {
-		kill(pid, SIGKILL);
-	}
-}
-
-
-static int run_command(const std::string &command) {
-    pid_t pid = fork();
-    if (pid < 0) {
-        return -1; // fork failed
-    }
-
-    if (pid == 0) {
-        // Child process: execute the command
-        execl("/bin/sh", "sh", "-c", command.c_str(), (char *)nullptr);
-        _exit(127); // exec failed
-    }
-
-    // Parent process: wait for child to finish
-    int status;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR) {
-            return -1; // waitpid failed
-        }
-    }
-
-    return status; // contains exit code and signal info
-}
 
 struct SolverSolution {
 	unordered_map<string, double> values;
@@ -584,21 +545,19 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 	lp << "Subject To\n";
 
 	// Require exactly one root node
-	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
-		if (c != root) {
-			continue;
-		}
-		if (g.eclasses[c].enodes.empty()) {
-			fail("encountered eclass with no enodes");
-		}
-		lp << " pick_sum_" << c << ":";
-		bool first = true;
-		for (ENodeId n = 0; n < (ENodeId)g.eclasses[c].enodes.size(); ++n) {
-			lp << (first ? " " : " + ") << pickNode[c][n];
-			first = false;
-		}
-		lp << " = 1\n";
+	if (root < 0 || root >= static_cast<EClassId>(g.eclasses.size())) {
+		fail("root eclass out of range");
 	}
+	if (g.eclasses[root].enodes.empty()) {
+		fail("encountered eclass with no enodes");
+	}
+	lp << " pick_sum_" << root << ":";
+	bool first = true;
+	for (ENodeId n = 0; n < (ENodeId)g.eclasses[root].enodes.size(); ++n) {
+		lp << (first ? " " : " + ") << pickNode[root][n];
+		first = false;
+	}
+	lp << " = 1\n";
 
 	// If you pick an enode, for every child index pick at least one child edge.
 	for (EClassId c = 0; c < (EClassId)g.eclasses.size(); ++c) {
@@ -710,7 +669,7 @@ Extraction extractRegionILPInner(const EGraph &g, const EClassId root, const vec
 		cmd = "cbc \"" + lp_path + "\" -seconds " + timeout_arg + " solve solu \"" + sol_path + "\" > \"" + log_path + "\" 2>&1";
 	}
 	auto start = std::chrono::steady_clock::now();
-	int ret = run_command(cmd);
+	int ret = std::system(cmd.c_str());
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end - start;
 	string solver_log;

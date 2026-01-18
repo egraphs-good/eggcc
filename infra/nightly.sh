@@ -97,8 +97,15 @@ popd
 # Update HTML index page.
 cp "$RESOURCE_DIR"/* "$OUTPUT_DIR"
 
-# copy data over to output
-cp -r "$DATA_DIR" "$OUTPUT_DATA_DIR"
+# copy data over to output in local mode, enabling regeneration of reports with --update flag
+if [ "$LOCAL" != "" ]; then
+  cp -r "$DATA_DIR" "$OUTPUT_DATA_DIR"
+fi
+
+# move data over to output in non-local mode
+if [ "$LOCAL" == "" ]; then
+  mv "$DATA_DIR" "$OUTPUT_DATA_DIR"
+fi
 
 # gzip all JSON and svgs in the nightly dir
 if [ "$LOCAL" == "" ]; then

@@ -109,7 +109,7 @@ fi
 
 # gzip all JSON and svgs in the nightly dir
 if [ "$LOCAL" == "" ]; then
-  gzip "$PROFILE_JSON"
+  gzip "$OUTPUT_DATA_DIR/profile.json"
   find "$OUTPUT_DIR" -name '*.svg' -exec gzip {} +
   find "$OUTPUT_DIR" -name '*.ll' -exec gzip {} +
 fi

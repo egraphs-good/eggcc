@@ -68,3 +68,16 @@
   (set (LoopNumItersGuess new-loop-input new-loop-body) (- old_cost 1))
   )
  :ruleset non-weakly-linear)
+
+ ; Two writes can be swapped if they don't alias
+(rule (    
+        (NoAlias w1-addr w2-addr)
+        (= w1 (Top (Write) w1-addr w1-val st))
+        (= w2 (Top (Write) w2-addr w2-val w1))
+      )
+      (
+        (let new-w1 (Top (Write) w2-addr w2-val st))
+        (let new-w2 (Top (Write) w1-addr w1-val new-w1))
+        (union new-w2 w2)
+      )
+      :ruleset non-weakly-linear)

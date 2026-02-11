@@ -80,19 +80,6 @@
       )
       :ruleset mem-simple)
 
-; Two writes can be swapped if they don't alias
-(rule (    
-        (NoAlias w1-addr w2-addr)
-        (= w1 (Top (Write) w1-addr w1-val st))
-        (= w2 (Top (Write) w2-addr w2-val w1))
-      )
-      (
-        (let new-w1 (Top (Write) w2-addr w2-val st))
-        (let new-w2 (Top (Write) w1-addr w1-val new-w1))
-        (union new-w2 w2)
-      )
-      :ruleset mem-simple)
-
 ; A load then a write to different addresses can be swapped
 ; Actually, does this break WeaklyLinear if the stored value depends on the
 ; loaded value? Commenting this out for now.
@@ -139,12 +126,6 @@
        (DidMemOptimization "shadowed write"))
       :ruleset mem-simple)
 
-; A load doesn't change the state
-; TODO: why does this break weaklylinear?
-(rule ((= load (Bop (Load) addr state)))
-      ((union (Get load 1) state)
-       (DidMemOptimization "drop load"))
-      :ruleset mem-simple)
 
 ; (rule ((DidMemOptimization _))
 ;       ((panic "DidMemOptimization"))

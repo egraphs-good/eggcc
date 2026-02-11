@@ -24,6 +24,9 @@
     print one_hundred;
   
   .els:
+    la3: int = load pa;
+    foola3: int = call @foo la3;
+    store pa foola3;
 }
 
 @main(x: int, y: int) {

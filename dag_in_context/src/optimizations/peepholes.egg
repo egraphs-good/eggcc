@@ -55,3 +55,14 @@
 (rewrite (Bop (PtrAdd) (Bop (PtrAdd) p x) y)
          (Bop (PtrAdd) p (Bop (Add) x y))
          :ruleset peepholes)
+
+(rewrite (Bop (Div) (Bop (Mul) a b) c) (Bop (Mul) a (Bop (Div) b c)) :ruleset peepholes)
+
+(rule
+  (
+    (= expr (Bop (Eq) a a))
+    (ContextOf expr ctx)
+    (HasArgType expr ty)
+  )
+  ((union expr (Const (Bool true) ty ctx)))
+  :ruleset peepholes)

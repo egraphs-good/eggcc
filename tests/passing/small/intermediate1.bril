@@ -1,0 +1,29 @@
+# ARGS : 10 20
+
+@foo(x : int): int {
+  two: int = const 2;
+  tmp: int = mul x two;
+  r: int = div tmp two;
+  ret r;
+}
+
+@bar(pa: ptr<int>, pb: ptr<int>) {
+  la: int = load pa;
+  foola: int = call @foo la;
+  store pa foola;
+}
+
+@main(x: int, y: int) {
+  zero: int = const 0;
+  one: int = const 1;
+  two: int = const 2;
+  pa: ptr<int> = alloc two;
+  pb: ptr<int> = ptradd pa one;
+
+  store pa x;
+  store pb y;
+  
+  call @bar pa pb;
+
+  ret;
+}

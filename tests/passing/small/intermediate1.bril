@@ -10,7 +10,20 @@
 @bar(pa: ptr<int>, pb: ptr<int>) {
   la: int = load pa;
   foola: int = call @foo la;
-  store pa foola;
+  store pb foola;
+
+  la2: int = load pa;
+  lb: int = load pb;
+  
+  cmp: bool = eq la2 lb;
+  cond: bool = not cmp;
+  br cond .thn .els;
+
+  .thn:
+    one_hundred: int = const 100;
+    print one_hundred;
+  
+  .els:
 }
 
 @main(x: int, y: int) {

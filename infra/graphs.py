@@ -10,8 +10,8 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import sys
 import os
-import profile
 
+from profile import NightlyConfig
 from graph_helpers import *
 from statewalk_graphs import *
 from extract_time_graph import *
@@ -808,8 +808,7 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
-def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder):
-
+def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig):
   # Read profile.json from nightly/output/data/profile.json
   data = []
   with open(profile_file) as f:
@@ -820,19 +819,14 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
   # Only generate ILP-comparison graphs if Gurobi treatments were run
-  if profile.USE_GUROBI:
+  if config.use_gurobi:
     make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
   else:
     print("Skipping extraction-time-cdf graph (requires Gurobi treatments)")
 
-  # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
-  if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
-      print("Skipping graphing: NECESSARY_MODES is true and GRAPH_RUN_MODES is not a subset of treatments")
-      sys.exit(0)
-
   make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
 
-  if profile.USE_GUROBI:
+  if config.use_gurobi:
     make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
     make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
     make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
@@ -860,7 +854,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
   # All statewalk and ILP-related graphs require eggcc-tiger-ILP-COMPARISON data
-  if profile.USE_GUROBI:
+  if config.use_gurobi:
     make_statewalk_width_histogram(
       data,
       f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
@@ -967,7 +961,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       height = 5.0
 
     # Choose treatments based on whether Gurobi is available
-    if profile.USE_GUROBI:
+    if config.use_gurobi:
       chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
     else:
       chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0", "llvm-O0-O0"]
@@ -1027,12 +1021,16 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     json.dump(graph_names, f)
 
 if __name__ == '__main__':
-  # parse two arguments: the output folder and the profile.json file
-  if len(sys.argv) != 5:
-      print("Usage: python graphs.py <nightly_output_folder> <graphs_folder> <profile.json> <benchmark_suite_folder>")
+  # parse arguments: the output folder, graphs folder, profile.json file, and benchmark suite folder
+  # optionally --paper or --use-gurobi flags
+  if len(sys.argv) < 5:
+      print("Usage: python graphs.py <nightly_output_folder> <graphs_folder> <profile.json> <benchmark_suite_folder> [--paper] [--use-gurobi]")
       sys.exit(1)
 
+  paper_mode = "--paper" in sys.argv
+  use_gurobi = "--use-gurobi" in sys.argv or paper_mode
+  config = NightlyConfig(paper_mode=paper_mode, use_gurobi=use_gurobi)
   
-  make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+  make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], config)
 
 

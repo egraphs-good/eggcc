@@ -3,7 +3,10 @@
 Runs profile.py, graphs.py, and generate_line_counts.py in sequence to produce the data and plots for the nightly paper.
 Moves the html over to the output folder, and gzips all JSON and SVG files for upload to the nightly-results server.
 
-Use the --update flag to only update the front end (output folder) without re-running the benchmarking. This is useful for quickly iterating on the HTML/CSS/JS without waiting benchmarking.
+Use the --update flag to only update the front end (output folder) without re-running the benchmarking.
+Use the --paper flag for production nightly runs (100% regions, Gurobi enabled, many samples).
+Use the --use-gurobi flag to enable Gurobi treatments without full paper mode.
+Use the --parallel flag to run benchmarks in parallel (benchmarking results may not be super trustworthy and have large variance).
 """
 
 import os
@@ -11,6 +14,10 @@ import sys
 import subprocess
 import shutil
 from pathlib import Path
+
+from profile import NightlyConfig, run_profile, get_treatments
+from graphs import make_graphs
+from generate_line_counts import generate_latex
 
 def run_cmd(cmd, cwd=None):
     """Run a command and exit on failure."""
@@ -22,6 +29,17 @@ def run_cmd(cmd, cwd=None):
 
 def main():
     print("Beginning eggcc nightly script...")
+
+    # Parse arguments
+    args = sys.argv[1:]
+    update_only = "--update" in args
+    paper_mode = "--paper" in args
+    use_gurobi_flag = "--use-gurobi" in args
+    parallel = "--parallel" in args
+
+    # Build config - paper mode implies use_gurobi
+    use_gurobi = paper_mode or use_gurobi_flag
+    config = NightlyConfig(paper_mode=paper_mode, use_gurobi=use_gurobi)
 
     # Determine directories
     script_dir = Path(__file__).resolve().parent
@@ -40,8 +58,6 @@ def main():
 
     # Check environment
     is_local = os.environ.get("LOCAL", "") != ""
-    args = sys.argv[1:]
-    update_only = "--update" in args
 
     # Make sure we're in the right place
     os.chdir(script_dir)
@@ -73,21 +89,24 @@ def main():
     # Run profiler
     if update_only:
         print("Skipping profile.py, updating front end")
-    elif is_local:
-        # In local mode, pass all arguments to profile.py
-        args_str = " ".join(f'"{arg}"' for arg in args)
-        run_cmd(f'./infra/profile.py "{data_dir}" {args_str} 2>&1 | tee "{log_file}"')
     else:
-        os.environ["LLVM_SYS_180_PREFIX"] = "/usr/lib/llvm-18/"
-        run_cmd("make runtime")
-        # Run on all benchmarks in nightly
-        run_cmd(f'./infra/profile.py "{data_dir}" benchmarks/passing 2>&1 | tee "{log_file}"')
+        if not is_local:
+            os.environ["LLVM_SYS_180_PREFIX"] = "/usr/lib/llvm-18/"
+            run_cmd("make runtime")
+        
+        # Determine bril directory
+        bril_dir = "benchmarks/passing"
+        
+        print(f"Running profile with data_dir={data_dir}, bril_dir={bril_dir}, parallel={parallel}")
+        run_profile(str(data_dir), bril_dir, config, parallel=parallel)
 
     # Generate the plots
-    run_cmd(f'./infra/graphs.py "{output_dir}" "{paper_dir}" "{profile_json}" benchmarks/passing 2>&1 | tee "{log_file}"')
+    print(f"Generating graphs...")
+    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
 
     # Generate latex after running the profiler (depends on profile.json)
-    run_cmd(f'./infra/generate_line_counts.py "{data_dir}" 2>&1 | tee "{log_file}"')
+    print(f"Generating line counts...")
+    generate_latex(str(data_dir))
 
     os.chdir(script_dir)
 

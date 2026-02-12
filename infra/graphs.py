@@ -944,73 +944,75 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   else:
     print("Skipping statewalk and ILP-related graphs (requires Gurobi treatments)")
   
-  for suite_path in benchmark_suites:
-    suite = os.path.basename(suite_path)
-    suite_benchmarks = benchmarks_in_folder(suite_path)
-    profile_for_suite = [b for b in data if b['benchmark'] in suite_benchmarks]
+  # Normalized charts require Gurobi treatments (eggcc-tiger-ILP-O0-O0)
+  if not config.use_gurobi:
+    print("Skipping normalized charts for all suites (requires Gurobi treatments)")
+  else:
+    for suite_path in benchmark_suites:
+      suite = os.path.basename(suite_path)
+      suite_benchmarks = benchmarks_in_folder(suite_path)
+      profile_for_suite = [b for b in data if b['benchmark'] in suite_benchmarks]
 
-    width = 10
-    height = 4
-    y_max = 3.5
-    xanchor = 0.02
-    yanchor = 0.98
+      width = 10
+      height = 4
+      y_max = 3.5
+      xanchor = 0.02
+      yanchor = 0.98
 
-    if suite == "polybench":
-      y_max = 10.0
-      width = 6
-      height = 5.0
+      if suite == "polybench":
+        y_max = 10.0
+        width = 6
+        height = 5.0
 
-    # Only generate normalized charts with ILP when Gurobi is available
-    if not config.use_gurobi:
-      print(f"Skipping normalized charts for {suite} (requires Gurobi treatments)")
-      continue
+      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
 
-    chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
+      if suite == "bril":
+        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
+        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
 
-    if suite == "bril":
-      benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
-      benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
+        make_normalized_chart(
+          profile_for_suite,
+          f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf',
+          chart_treatments,
+          y_max,
+          width,
+          height + 0.5,
+          xanchor,
+          yanchor,
+          benchmarks_under3,
+          legend=True,
+        )
+        make_normalized_chart(
+          profile_for_suite,
+          f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf',
+          chart_treatments,
+          20.0,
+          2,
+          height,
+          xanchor,
+          yanchor,
+          benchmarks_over3,
+          legend=False,
+        )
 
-      make_normalized_chart(
-        profile_for_suite,
-        f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf',
-        chart_treatments,
-        y_max,
-        width,
-        height + 0.5,
-        xanchor,
-        yanchor,
-        benchmarks_under3,
-        legend=True,
-      )
-      make_normalized_chart(
-        profile_for_suite,
-        f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf',
-        chart_treatments,
-        20.0,
-        2,
-        height,
-        xanchor,
-        yanchor,
-        benchmarks_over3,
-        legend=False,
-      )
+      else:
+        make_normalized_chart(
+          profile_for_suite,
+          f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf',
+          chart_treatments,
+          y_max,
+          width,
+          height,
+          xanchor,
+          yanchor,
+          None,
+          legend=True,
+        )
 
-    else:
-      make_normalized_chart(
-        profile_for_suite,
-        f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf',
-        chart_treatments,
-        y_max,
-        width,
-        height,
-        xanchor,
-        yanchor,
-        None,
-        legend=True,
-      )
-
-  make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
+  if config.use_gurobi:
+    make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
+  else:
+    print("Skipping macro generation (requires Gurobi treatments)")
 
   # make json list of graph names and put in in output
   graph_names = []

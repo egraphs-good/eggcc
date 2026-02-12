@@ -231,17 +231,20 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
 async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   let latexMacros = "";
-  try {
-    const response = await fetch("paper/nightlymacros.tex");
-    if (!response.ok) {
-      throw new Error(
-        `Failed to load nightlymacros.tex: ${response.status}. This is expected if you are running with UNSAFE_TREATMENTS.`,
-      );
+  
+  // Check if file exists first using HEAD request to avoid 404 error in console
+  const headResponse = await fetch("paper/nightlymacros.tex", { method: "HEAD" });
+  if (!headResponse.ok) {
+    console.info(
+      "nightlymacros.tex not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS."
+    );
+  } else {
+    try {
+      const response = await fetch("paper/nightlymacros.tex");
+      latexMacros = await response.text();
+    } catch (error) {
+      console.error("Could not load nightlymacros.tex:", error);
     }
-    latexMacros = await response.text();
-  } catch (error) {
-    console.error(error);
-    addWarning(error);
   }
   latexMacrosTextArea.value = tableMacros + latexMacros;
 }
@@ -255,16 +258,24 @@ function addGraphs() {
 
   container.innerHTML = "";
 
-  fetch("graphs.json")
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(
-          `Failed to load graphs.json: ${response.status}. Expected if you have UNSAFE_TREATMENTS enabled.`,
+  // Check if file exists first using HEAD request to avoid 404 error in console
+  fetch("graphs.json", { method: "HEAD" })
+    .then((headResponse) => {
+      if (!headResponse.ok) {
+        console.info(
+          "graphs.json not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS."
         );
+        return null;
       }
+      return fetch("graphs.json");
+    })
+    .then((response) => {
+      if (!response) return null;
       return response.json();
     })
     .then((data) => {
+      if (!data) return;
+      
       const sortedPlots = data.slice().sort((a, b) => a.localeCompare(b));
 
       const list = document.createElement("ul");
@@ -291,8 +302,7 @@ function addGraphs() {
       container.appendChild(list);
     })
     .catch((error) => {
-      console.error(error);
-      addWarning(error);
+      console.info("Could not load graphs.json:", error);
     });
 }
 

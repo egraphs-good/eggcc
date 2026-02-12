@@ -114,34 +114,59 @@ compute_extract_region_timings(const EGraph &g,
                                const vector<EClassId> &fun_roots) {
   vector<EClassId> region_roots = find_all_region_roots(g, fun_roots);
 
+  if (region_roots.empty()) {
+    return {};
+  }
+
+  // Select a random subset of regions based on percent_regions BEFORE preparing them
+  // Calculate the number of regions to run on (rounded up)
+  size_t num_regions_to_run = static_cast<size_t>(
+    std::ceil(region_roots.size() * g_config.percent_regions / 100.0));
+  if (num_regions_to_run == 0) {
+    num_regions_to_run = 1; // Always run at least one region if there are any
+  }
+
+  // Create indices and shuffle them to get random selection
+  vector<size_t> region_indices(region_roots.size());
+  for (size_t i = 0; i < region_roots.size(); ++i) {
+    region_indices[i] = i;
+  }
+  
+  // Only shuffle and subset if we're not running all regions
+  if (num_regions_to_run < region_roots.size()) {
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::shuffle(region_indices.begin(), region_indices.end(), rng);
+    region_indices.resize(num_regions_to_run);
+  }
+
   vector<vector<Cost>> statewalk_cost = compute_statewalk_cost(g);
 
-  vector<ExtractRegionTiming> timings(region_roots.size());
-  if (region_roots.empty()) {
-    return timings;
-  }
+  // timings only contains entries for the regions we are actually measuring
+  vector<ExtractRegionTiming> timings(region_indices.size());
 
   struct PreparedRegion {
     EGraph egraph;
     EClassId root;
-    size_t index;
+    size_t timings_index; // index into the timings vector
     vector<vector<Cost>> statewalk_cost;
   };
 
   vector<PreparedRegion> prepared_regions;
-  prepared_regions.reserve(region_roots.size());
+  prepared_regions.reserve(region_indices.size());
 
-  for (size_t idx = 0; idx < region_roots.size(); ++idx) {
-    auto regionalized = construct_regionalized_egraph(g, region_roots[idx]);
+  for (size_t timings_idx = 0; timings_idx < region_indices.size(); ++timings_idx) {
+    size_t region_idx = region_indices[timings_idx];
+    auto regionalized = construct_regionalized_egraph(g, region_roots[region_idx]);
     PreparedRegion prepared{};
     prepared.egraph = std::move(regionalized.first);
     prepared.root = regionalized.second.first;
-    prepared.index = idx;
+    prepared.timings_index = timings_idx;
 
     const EGraphMapping &gr2g = regionalized.second.second;
     prepared.statewalk_cost = project_statewalk_cost(gr2g, statewalk_cost);
 
-    ExtractRegionTiming sample;
+    ExtractRegionTiming sample{};
 
     // compute egraph size: number of nodes in the regionalized egraph
     size_t egraph_size = 0;
@@ -149,35 +174,12 @@ compute_extract_region_timings(const EGraph &g,
       egraph_size += eclass.enodes.size();
     }
 
-
     sample.egraph_size = egraph_size;
     compute_tiger_metrics(sample, prepared.egraph, prepared.root,
                           prepared.statewalk_cost);
-    timings[idx] = sample;
+    timings[timings_idx] = sample;
 
     prepared_regions.push_back(std::move(prepared));
-  }
-
-  // Select a random subset of regions based on percent_regions
-  // Calculate the number of regions to run ILP on (rounded up)
-  size_t num_regions_to_run = static_cast<size_t>(
-    std::ceil(prepared_regions.size() * g_config.percent_regions / 100.0));
-  if (num_regions_to_run == 0 && !prepared_regions.empty()) {
-    num_regions_to_run = 1; // Always run at least one region if there are any
-  }
-
-  // Create indices and shuffle them to get random selection
-  vector<size_t> region_indices(prepared_regions.size());
-  for (size_t i = 0; i < prepared_regions.size(); ++i) {
-    region_indices[i] = i;
-  }
-  
-  // Only shuffle and subset if we're not running all regions
-  if (num_regions_to_run < prepared_regions.size()) {
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::shuffle(region_indices.begin(), region_indices.end(), rng);
-    region_indices.resize(num_regions_to_run);
   }
 
   unsigned int hardware_threads = std::thread::hardware_concurrency();
@@ -189,25 +191,24 @@ compute_extract_region_timings(const EGraph &g,
   }
 
   
-  size_t worker_count = min<size_t>(usable_threads, region_indices.size());
+  size_t worker_count = min<size_t>(usable_threads, prepared_regions.size());
   if (worker_count == 0) {
     worker_count = 1;
   }
 
   std::atomic<size_t> next_index{0};
 
-  cerr << "Running ILP timing on " << region_indices.size() << "/" << prepared_regions.size() << " regions, one dot per region:";
+  cerr << "Running ILP timing on " << region_indices.size() << "/" << region_roots.size() << " regions, one dot per region:";
   auto worker = [&]() {
     while (true) {
       size_t work_idx = next_index.fetch_add(1, std::memory_order_relaxed);
-      if (work_idx >= region_indices.size()) {
+      if (work_idx >= prepared_regions.size()) {
         break;
       }
       cerr << ".";
       cerr.flush();
-      size_t idx = region_indices[work_idx];
-      const PreparedRegion &prepared = prepared_regions[idx];
-      ExtractRegionTiming &sample = timings[prepared.index];
+      const PreparedRegion &prepared = prepared_regions[work_idx];
+      ExtractRegionTiming &sample = timings[prepared.timings_index];
       compute_ilp_metrics(sample, prepared.egraph, prepared.root,
           prepared.statewalk_cost);
     }

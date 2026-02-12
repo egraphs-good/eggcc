@@ -76,7 +76,7 @@ _base_treatments = [
   "eggcc-WITHCTX-O0-O0",
 ]
 
-# Treatments that require Gurobi (only run in paper mode)
+# Treatments that require Gurobi (when --use-gurobi or --paper is passed)
 _gurobi_treatments = [
   "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",

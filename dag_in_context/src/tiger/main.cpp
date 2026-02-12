@@ -1,6 +1,8 @@
 #include<cassert>
+#include<cmath>
 #include<cstdio>
 #include<cstring>
+#include<stdexcept>
 
 #include "main.h"
 #include "json2egraphin.h"
@@ -34,8 +36,20 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "--time-ilp") == 0) {
             g_config.time_ilp = true;
         } else if (strcmp(argv[i], "--percent-regions") == 0) {
-            assert(i + 1 < argc);
-            g_config.percent_regions = std::stod(argv[i + 1]);
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "--percent-regions requires a value\n");
+                return 1;
+            }
+            try {
+                g_config.percent_regions = std::stod(argv[i + 1]);
+            } catch (const std::exception &e) {
+                std::fprintf(stderr, "Invalid value for --percent-regions: %s\n", argv[i + 1]);
+                return 1;
+            }
+            if (!std::isfinite(g_config.percent_regions) || g_config.percent_regions < 0.0 || g_config.percent_regions > 100.0) {
+                std::fprintf(stderr, "--percent-regions must be a finite number between 0.0 and 100.0, got: %s\n", argv[i + 1]);
+                return 1;
+            }
             ++i;
         } else if (strcmp(argv[i], "--ilp-solver") == 0) {
             assert(i + 1 < argc);

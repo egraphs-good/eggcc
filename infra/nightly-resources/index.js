@@ -233,20 +233,24 @@ async function refreshLatexMacros(tableMacros) {
   let latexMacros = "";
 
   // Check if file exists first using HEAD request to avoid 404 error in console
-  const headResponse = await fetch("paper/nightlymacros.tex", {
-    method: "HEAD",
-  });
-  if (!headResponse.ok) {
-    console.info(
-      "nightlymacros.tex not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS.",
-    );
-  } else {
-    try {
-      const response = await fetch("paper/nightlymacros.tex");
-      latexMacros = await response.text();
-    } catch (error) {
-      console.error("Could not load nightlymacros.tex:", error);
+  try {
+    const headResponse = await fetch("paper/nightlymacros.tex", {
+      method: "HEAD",
+    });
+    if (!headResponse.ok) {
+      console.info(
+        "nightlymacros.tex not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS.",
+      );
+    } else {
+      try {
+        const response = await fetch("paper/nightlymacros.tex");
+        latexMacros = await response.text();
+      } catch (error) {
+        console.error("Could not load nightlymacros.tex:", error);
+      }
     }
+  } catch (error) {
+    console.info("Could not check nightlymacros.tex:", error);
   }
   latexMacrosTextArea.value = tableMacros + latexMacros;
 }

@@ -3,6 +3,17 @@ use dag_in_context::{EggccConfig, IlpSolver, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
+fn parse_percent_regions(s: &str) -> Result<f64, String> {
+    let value: f64 = s.parse().map_err(|_| format!("Invalid number: {}", s))?;
+    if !value.is_finite() {
+        return Err(format!("Value must be finite, got: {}", s));
+    }
+    if !(0.0..=100.0).contains(&value) {
+        return Err(format!("Value must be between 0.0 and 100.0, got: {}", value));
+    }
+    Ok(value)
+}
+
 #[derive(Debug, Parser)]
 struct Args {
     /// A directory for debug output, including
@@ -88,7 +99,7 @@ struct Args {
     #[clap(long)]
     time_ilp: bool,
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Defaults to 100.0.
-    #[clap(long, default_value_t = 100.0)]
+    #[clap(long, default_value_t = 100.0, value_parser = parse_percent_regions)]
     percent_regions: f64,
     /// When provided, dump each e-graph we extract from into this directory.
     #[clap(long)]

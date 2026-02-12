@@ -11,9 +11,25 @@ import subprocess
 import shutil
 from pathlib import Path
 
-from profile import NightlyConfig, run_profile, get_treatments
+from profile import NightlyConfig, run_profile
 from graphs import make_graphs
 from generate_line_counts import generate_latex
+
+class TeeWriter:
+    """Write to both a file and the original stream."""
+    def __init__(self, file, stream):
+        self.file = file
+        self.stream = stream
+    
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+        self.file.write(data)
+        self.file.flush()
+    
+    def flush(self):
+        self.stream.flush()
+        self.file.flush()
 
 def run_cmd(cmd, cwd=None):
     """Run a command and exit on failure."""
@@ -22,6 +38,52 @@ def run_cmd(cmd, cwd=None):
     if result.returncode != 0:
         print(f"Command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
+
+def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, output_dir, 
+                paper_dir, data_dir, output_data_dir, profile_json, is_local):
+    """Main nightly workflow - run profiler, generate graphs, and package output."""
+    # Run profiler
+    if args.update:
+        print("Skipping profile.py, updating front end")
+    else:
+        if not is_local:
+            os.environ["LLVM_SYS_180_PREFIX"] = "/usr/lib/llvm-18/"
+            run_cmd("make runtime")
+        
+        print(f"Running profile with data_dir={data_dir}, bril_dir={args.benchmark_dir}, parallel={args.parallel}")
+        run_profile(str(data_dir), args.benchmark_dir, config, parallel=args.parallel)
+
+    # Generate the plots
+    print("Generating graphs...")
+    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
+
+    # Generate latex after running the profiler (depends on profile.json)
+    print("Generating line counts...")
+    generate_latex(str(data_dir))
+
+    os.chdir(script_dir)
+
+    # Update HTML index page
+    if resource_dir.exists():
+        for item in resource_dir.iterdir():
+            dest = output_dir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest)
+
+    # Copy data over to output
+    if data_dir.exists():
+        shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
+
+    # Gzip all JSON and SVGs in the nightly dir (only in non-local mode)
+    if not is_local:
+        if profile_json.exists():
+            run_cmd(f'gzip "{profile_json}"')
+        run_cmd(f'find "{output_dir}" -name "*.svg" -exec gzip {{}} +')
+        run_cmd(f'find "{output_dir}" -name "*.ll" -exec gzip {{}} +')
+
+    print("Nightly script completed successfully!")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -107,48 +169,21 @@ def main():
 
     os.chdir(top_dir)
 
-    # Run profiler
-    if args.update:
-        print("Skipping profile.py, updating front end")
-    else:
-        if not is_local:
-            os.environ["LLVM_SYS_180_PREFIX"] = "/usr/lib/llvm-18/"
-            run_cmd("make runtime")
-        
-        print(f"Running profile with data_dir={data_dir}, bril_dir={args.benchmark_dir}, parallel={args.parallel}")
-        run_profile(str(data_dir), args.benchmark_dir, config, parallel=args.parallel)
+    # Set up logging to both console and file
+    log_file_handle = open(log_file, 'w')
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = TeeWriter(log_file_handle, original_stdout)
+    sys.stderr = TeeWriter(log_file_handle, original_stderr)
 
-    # Generate the plots
-    print("Generating graphs...")
-    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
-
-    # Generate latex after running the profiler (depends on profile.json)
-    print("Generating line counts...")
-    generate_latex(str(data_dir))
-
-    os.chdir(script_dir)
-
-    # Update HTML index page
-    if resource_dir.exists():
-        for item in resource_dir.iterdir():
-            dest = output_dir / item.name
-            if item.is_dir():
-                shutil.copytree(item, dest, dirs_exist_ok=True)
-            else:
-                shutil.copy2(item, dest)
-
-    # Copy data over to output
-    if data_dir.exists():
-        shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
-
-    # Gzip all JSON and SVGs in the nightly dir (only in non-local mode)
-    if not is_local:
-        if profile_json.exists():
-            run_cmd(f'gzip "{profile_json}"')
-        run_cmd(f'find "{output_dir}" -name "*.svg" -exec gzip {{}} +')
-        run_cmd(f'find "{output_dir}" -name "*.ll" -exec gzip {{}} +')
-
-    print("Nightly script completed successfully!")
+    try:
+        run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, 
+                    output_dir, paper_dir, data_dir, output_data_dir, profile_json, is_local)
+    finally:
+        # Restore original stdout/stderr and close log file
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+        log_file_handle.close()
 
 if __name__ == "__main__":
     main()

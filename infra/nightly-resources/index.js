@@ -231,12 +231,14 @@ async function buildNightlyDropdown(element, previousRuns, initialIdx) {
 async function refreshLatexMacros(tableMacros) {
   const latexMacrosTextArea = document.getElementById("latex-macros-text");
   let latexMacros = "";
-  
+
   // Check if file exists first using HEAD request to avoid 404 error in console
-  const headResponse = await fetch("paper/nightlymacros.tex", { method: "HEAD" });
+  const headResponse = await fetch("paper/nightlymacros.tex", {
+    method: "HEAD",
+  });
   if (!headResponse.ok) {
     console.info(
-      "nightlymacros.tex not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS."
+      "nightlymacros.tex not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS.",
     );
   } else {
     try {
@@ -263,7 +265,7 @@ function addGraphs() {
     .then((headResponse) => {
       if (!headResponse.ok) {
         console.info(
-          "graphs.json not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS."
+          "graphs.json not found. This is expected if running without Gurobi (--use-gurobi) or with UNSAFE_TREATMENTS.",
         );
         return null;
       }
@@ -275,7 +277,7 @@ function addGraphs() {
     })
     .then((data) => {
       if (!data) return;
-      
+
       const sortedPlots = data.slice().sort((a, b) => a.localeCompare(b));
 
       const list = document.createElement("ul");

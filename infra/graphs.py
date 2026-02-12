@@ -950,8 +950,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   else:
     for suite_path in benchmark_suites:
       suite = os.path.basename(suite_path)
-      suite_benchmarks = benchmarks_in_folder(suite_path)
-      profile_for_suite = [b for b in data if b['benchmark'] in suite_benchmarks]
+      suite_benchmarks_all = benchmarks_in_folder(suite_path)
+      profile_for_suite = [b for b in data if b['benchmark'] in suite_benchmarks_all]
+      # Filter suite_benchmarks to only include benchmarks that have profile data
+      profiled_benchmarks = set(b['benchmark'] for b in profile_for_suite)
+      suite_benchmarks = [b for b in suite_benchmarks_all if b in profiled_benchmarks]
 
       width = 10
       height = 4

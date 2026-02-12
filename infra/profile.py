@@ -16,6 +16,8 @@ from generate_cfgs import make_cfgs
 
 # testing mode takes much fewer samples than the real eval in the paper
 IS_TESTING_MODE = True
+# whether to include Gurobi treatments (requires Gurobi to be installed)
+USE_GUROBI = False
 
 def eggcc_timeout_secs():
   if IS_TESTING_MODE:
@@ -48,7 +50,9 @@ TO_ABLATE = "" # change to a ruleset to ablate
 # use for running a subset of the treatments
 # disables checks that ensure the data is complete
 UNSAFE_TREATMENTS = False
-treatments = [
+
+# Base treatments that don't require Gurobi
+_base_treatments = [
   "rvsdg-round-trip-to-executable",
   "llvm-O0-O0",
   "llvm-O1-O0",
@@ -61,14 +65,32 @@ treatments = [
   "eggcc-O3-O3",
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
-  "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-CBC-O0-O0",
-  "eggcc-tiger-ILP-NOMIN-O0-O0",
   #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
+]
+
+# Treatments that require Gurobi (only run in paper mode)
+_gurobi_treatments = [
+  "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-NOMIN-O0-O0",
   # run both tiger and ILP on the same egraphs, keep this last in the list
   "eggcc-tiger-ILP-COMPARISON", 
 ]
+
+def get_treatments():
+  """Returns the list of treatments to run based on the current mode.
+  When USE_GUROBI is True, includes Gurobi treatments; otherwise only base treatments."""
+  result = _base_treatments.copy()
+  if TO_ABLATE != "":
+    result.extend([
+      "eggcc-ablation-O0-O0",
+      "eggcc-ablation-O3-O0",
+      "eggcc-ablation-O3-O3",
+    ])
+  if USE_GUROBI:
+    result.extend(_gurobi_treatments)
+  return result
 
 example_subset_treatments = [
   "llvm-O0-O0",
@@ -78,13 +100,6 @@ example_subset_treatments = [
   "eggcc-tiger-O0-O0"
 ]
 
-
-if TO_ABLATE != "":
-  treatments.extend([
-    "eggcc-ablation-O0-O0",
-    "eggcc-ablation-O3-O0",
-    "eggcc-ablation-O3-O3",
-  ])
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -488,16 +503,26 @@ if __name__ == '__main__':
   start_time = time.perf_counter()
   # expect two arguments
   if len(os.sys.argv) < 3:
-    print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper>")
+    print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper> <--use-gurobi>")
     exit(1)
 
   # check for paper flag
   for arg in os.sys.argv:
     if arg == "--paper":
       IS_TESTING_MODE = False
+      USE_GUROBI = True  # paper mode enables Gurobi by default
 
+  # check for use-gurobi flag (can be used independently of paper mode)
+  for arg in os.sys.argv:
+    if arg == "--use-gurobi":
+      USE_GUROBI = True
+
+  # Get treatments based on mode
+  treatments = get_treatments()
   if IS_TESTING_MODE:
     print("WARNING: Running in testing mode with reduced samples. Pass the --paper flag for the final paper results.")
+  if not USE_GUROBI:
+    print("INFO: Gurobi treatments disabled. Pass --use-gurobi or --paper to enable them.")
 
   # running benchmarks sequentially for more reliable results
   # can set this to true for testing

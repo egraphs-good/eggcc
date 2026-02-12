@@ -819,7 +819,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
+  # Only generate ILP-comparison graphs if Gurobi treatments were run
+  if profile.USE_GUROBI:
+    make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
+  else:
+    print("Skipping extraction-time-cdf graph (requires Gurobi treatments)")
 
   # if UNSAFE_TREATMENTS is true and TREATMENTS isn't a subset of treatments, exit
   if profile.UNSAFE_TREATMENTS and not set(NECESSARY_MODES).issubset(set(profile.treatments)):
@@ -828,9 +832,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
 
-  make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
-  make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
-  make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+  if profile.USE_GUROBI:
+    make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+    make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+    make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+  else:
+    print("Skipping region extract plots and extraction-time-histogram (requires Gurobi treatments)")
   #make_ilp_encoding_scatter(
   #  profile,
   #  f'{graphs_folder}/ilp-encoding-vs-egraph-size.pdf',
@@ -852,92 +859,96 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_gurobi = StatewalkTreatment(runtime="ilp_gurobi", liveness_on=False, satellite_on=False)
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
-  make_statewalk_width_histogram(
-    data,
-    f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
-    tiger_optimizations_on,
-    is_average=False,
-    max_width=statewalk_histogram_max_width,
-  )
-  make_statewalk_width_histogram(
-    data,
-    f'{graphs_folder}/statewalk-width-histogram.pdf',
-    tiger_optimizations_off,
-    is_average=False,
-    max_width=statewalk_histogram_max_width,
-  )
-  print_top_statewalk_width_samples(
-    data,
-    tiger_optimizations_off,
-    is_average=False,
-    max_width=statewalk_histogram_max_width,
-  )
+  # All statewalk and ILP-related graphs require eggcc-tiger-ILP-COMPARISON data
+  if profile.USE_GUROBI:
+    make_statewalk_width_histogram(
+      data,
+      f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
+      tiger_optimizations_on,
+      is_average=False,
+      max_width=statewalk_histogram_max_width,
+    )
+    make_statewalk_width_histogram(
+      data,
+      f'{graphs_folder}/statewalk-width-histogram.pdf',
+      tiger_optimizations_off,
+      is_average=False,
+      max_width=statewalk_histogram_max_width,
+    )
+    print_top_statewalk_width_samples(
+      data,
+      tiger_optimizations_off,
+      is_average=False,
+      max_width=statewalk_histogram_max_width,
+    )
 
-  make_statewalk_width_performance_scatter_multi(
-    data,
-    f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf',
-    [tiger_optimizations_off, tiger_optimizations_on],
-    is_average=False,
-    scale_by_egraph_size=False,
-    y_break=(0.6, 4.5),
-    y_break_runtimes={'tiger'},
-  )
-  make_statewalk_width_performance_scatter_multi(
-    data,
-    f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
-    [ilp_cbc, ilp_gurobi],
-    is_average=False,
-    scale_by_egraph_size=False,
-  )
-  
-  make_egraph_size_vs_statewalk_width_heatmap(
-    data,
-    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
-    tiger_optimizations_off,
-    is_average=False,
-    min_width=1,
-  )
-  make_egraph_size_vs_statewalk_width_heatmap(
-    data,
-    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
-    ilp_gurobi,
-    is_average=False,
-    min_width=1,
-  )
-  make_egraph_size_vs_statewalk_width_heatmap(
-    data,
-    f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
-    tiger_optimizations_off,
-    is_average=False,
-    min_width=1,
-    max_width=6000,
-  )
-  make_egraph_size_vs_statewalk_width_heatmap(
-    data,
-    f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
-    ilp_gurobi,
-    is_average=False,
-    min_width=1,
-    max_width=6000,
-  )
-  make_ilp_encoding_scatter(
-    data,
-    f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
-  )
-  make_ilp_encoding_time_scatter(
-    data,
-    f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
-  )
-  make_cbc_encoding_time_scatter(
-    data,
-    f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
-  )
-  make_peggy_comparison_graph(
-    data,
-    "./infra/peggy_data.csv",
-    f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
-    f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
-  )
+    make_statewalk_width_performance_scatter_multi(
+      data,
+      f'{graphs_folder}/statewalk-width-vs-tiger-time.pdf',
+      [tiger_optimizations_off, tiger_optimizations_on],
+      is_average=False,
+      scale_by_egraph_size=False,
+      y_break=(0.6, 4.5),
+      y_break_runtimes={'tiger'},
+    )
+    make_statewalk_width_performance_scatter_multi(
+      data,
+      f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
+      [ilp_cbc, ilp_gurobi],
+      is_average=False,
+      scale_by_egraph_size=False,
+    )
+    
+    make_egraph_size_vs_statewalk_width_heatmap(
+      data,
+      f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
+      tiger_optimizations_off,
+      is_average=False,
+      min_width=1,
+    )
+    make_egraph_size_vs_statewalk_width_heatmap(
+      data,
+      f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
+      ilp_gurobi,
+      is_average=False,
+      min_width=1,
+    )
+    make_egraph_size_vs_statewalk_width_heatmap(
+      data,
+      f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
+      tiger_optimizations_off,
+      is_average=False,
+      min_width=1,
+      max_width=6000,
+    )
+    make_egraph_size_vs_statewalk_width_heatmap(
+      data,
+      f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
+      ilp_gurobi,
+      is_average=False,
+      min_width=1,
+      max_width=6000,
+    )
+    make_ilp_encoding_scatter(
+      data,
+      f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
+    )
+    make_ilp_encoding_time_scatter(
+      data,
+      f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
+    )
+    make_cbc_encoding_time_scatter(
+      data,
+      f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
+    )
+    make_peggy_comparison_graph(
+      data,
+      "./infra/peggy_data.csv",
+      f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
+      f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
+    )
+  else:
+    print("Skipping statewalk and ILP-related graphs (requires Gurobi treatments)")
   
   for suite_path in benchmark_suites:
     suite = os.path.basename(suite_path)
@@ -955,6 +966,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       width = 6
       height = 5.0
 
+    # Choose treatments based on whether Gurobi is available
+    if profile.USE_GUROBI:
+      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
+    else:
+      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0", "llvm-O0-O0"]
+
     if suite == "bril":
       benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
       benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
@@ -962,7 +979,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       make_normalized_chart(
         profile_for_suite,
         f'{graphs_folder}/normalized-binary-perf-chart-under3-{suite}.pdf',
-        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        chart_treatments,
         y_max,
         width,
         height + 0.5,
@@ -974,7 +991,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       make_normalized_chart(
         profile_for_suite,
         f'{graphs_folder}/normalized-binary-perf-chart-over3-{suite}.pdf',
-        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        chart_treatments,
         20.0,
         2,
         height,
@@ -988,7 +1005,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       make_normalized_chart(
         profile_for_suite,
         f'{graphs_folder}/normalized-binary-perf-chart-{suite}.pdf',
-        ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"],
+        chart_treatments,
         y_max,
         width,
         height,

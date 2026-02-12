@@ -33,6 +33,11 @@ def num_samples():
     return 100
   return 200
 
+def percent_regions():
+  if IS_TESTING_MODE:
+    return 1.0
+  return 100.0
+
 
 def average(lst):
   return sum(lst) / len(lst)
@@ -193,7 +198,7 @@ def get_eggcc_options(benchmark):
     case "eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-COMPARISON":
-      return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --non-weakly-linear --time-ilp --percent-regions {percent_regions()}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-CBC-O0-O0":

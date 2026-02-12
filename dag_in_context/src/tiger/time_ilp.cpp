@@ -3,14 +3,17 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <optional>
+#include <random>
 #include <thread>
 #include <unordered_set>
 #include <iostream>
 
 #include "greedy.h"
 #include "ilp.h"
+#include "main.h"
 #include "regionalize.h"
 #include "tiger.h"
 
@@ -155,6 +158,28 @@ compute_extract_region_timings(const EGraph &g,
     prepared_regions.push_back(std::move(prepared));
   }
 
+  // Select a random subset of regions based on percent_regions
+  // Calculate the number of regions to run ILP on (rounded up)
+  size_t num_regions_to_run = static_cast<size_t>(
+    std::ceil(prepared_regions.size() * g_config.percent_regions / 100.0));
+  if (num_regions_to_run == 0 && !prepared_regions.empty()) {
+    num_regions_to_run = 1; // Always run at least one region if there are any
+  }
+
+  // Create indices and shuffle them to get random selection
+  vector<size_t> region_indices(prepared_regions.size());
+  for (size_t i = 0; i < prepared_regions.size(); ++i) {
+    region_indices[i] = i;
+  }
+  
+  // Only shuffle and subset if we're not running all regions
+  if (num_regions_to_run < prepared_regions.size()) {
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::shuffle(region_indices.begin(), region_indices.end(), rng);
+    region_indices.resize(num_regions_to_run);
+  }
+
   unsigned int hardware_threads = std::thread::hardware_concurrency();
   unsigned int usable_threads = hardware_threads == 0 ? 1 : hardware_threads;
 
@@ -164,22 +189,23 @@ compute_extract_region_timings(const EGraph &g,
   }
 
   
-  size_t worker_count = min<size_t>(usable_threads, prepared_regions.size());
+  size_t worker_count = min<size_t>(usable_threads, region_indices.size());
   if (worker_count == 0) {
     worker_count = 1;
   }
 
   std::atomic<size_t> next_index{0};
 
-  cerr << "Running ILP timing on regions, one dot per region:";
+  cerr << "Running ILP timing on " << region_indices.size() << "/" << prepared_regions.size() << " regions, one dot per region:";
   auto worker = [&]() {
     while (true) {
-      size_t idx = next_index.fetch_add(1, std::memory_order_relaxed);
-      if (idx >= prepared_regions.size()) {
+      size_t work_idx = next_index.fetch_add(1, std::memory_order_relaxed);
+      if (work_idx >= region_indices.size()) {
         break;
       }
       cerr << ".";
       cerr.flush();
+      size_t idx = region_indices[work_idx];
       const PreparedRegion &prepared = prepared_regions[idx];
       ExtractRegionTiming &sample = timings[prepared.index];
       compute_ilp_metrics(sample, prepared.egraph, prepared.root,

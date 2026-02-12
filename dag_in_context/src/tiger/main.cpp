@@ -33,6 +33,10 @@ int main(int argc, char *argv[]) {
             requested_ilp_no_minimize = true;
         } else if (strcmp(argv[i], "--time-ilp") == 0) {
             g_config.time_ilp = true;
+        } else if (strcmp(argv[i], "--percent-regions") == 0) {
+            assert(i + 1 < argc);
+            g_config.percent_regions = std::stod(argv[i + 1]);
+            ++i;
         } else if (strcmp(argv[i], "--ilp-solver") == 0) {
             assert(i + 1 < argc);
             const char *solver = argv[i + 1];

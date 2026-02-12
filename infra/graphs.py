@@ -960,11 +960,12 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       width = 6
       height = 5.0
 
-    # Choose treatments based on whether Gurobi is available
-    if config.use_gurobi:
-      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
-    else:
-      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0", "llvm-O0-O0"]
+    # Only generate normalized charts with ILP when Gurobi is available
+    if not config.use_gurobi:
+      print(f"Skipping normalized charts for {suite} (requires Gurobi treatments)")
+      continue
+
+    chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
 
     if suite == "bril":
       benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
@@ -1019,18 +1020,3 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       graph_names.append(filename)
   with open(f'{output_folder}/graphs.json', 'w') as f:
     json.dump(graph_names, f)
-
-if __name__ == '__main__':
-  # parse arguments: the output folder, graphs folder, profile.json file, and benchmark suite folder
-  # optionally --paper or --use-gurobi flags
-  if len(sys.argv) < 5:
-      print("Usage: python graphs.py <nightly_output_folder> <graphs_folder> <profile.json> <benchmark_suite_folder> [--paper] [--use-gurobi]")
-      sys.exit(1)
-
-  paper_mode = "--paper" in sys.argv
-  use_gurobi = "--use-gurobi" in sys.argv or paper_mode
-  config = NightlyConfig(paper_mode=paper_mode, use_gurobi=use_gurobi)
-  
-  make_graphs(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], config)
-
-

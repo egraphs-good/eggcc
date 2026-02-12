@@ -2,13 +2,9 @@
 """
 Runs profile.py, graphs.py, and generate_line_counts.py in sequence to produce the data and plots for the nightly paper.
 Moves the html over to the output folder, and gzips all JSON and SVG files for upload to the nightly-results server.
-
-Use the --update flag to only update the front end (output folder) without re-running the benchmarking.
-Use the --paper flag for production nightly runs (100% regions, Gurobi enabled, many samples).
-Use the --use-gurobi flag to enable Gurobi treatments without full paper mode.
-Use the --parallel flag to run benchmarks in parallel (benchmarking results may not be super trustworthy and have large variance).
 """
 
+import argparse
 import os
 import sys
 import subprocess
@@ -28,18 +24,43 @@ def run_cmd(cmd, cwd=None):
         sys.exit(result.returncode)
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Run eggcc nightly benchmarks and generate reports."
+    )
+    parser.add_argument(
+        "benchmark_dir",
+        nargs="?",
+        default="benchmarks/passing",
+        help="Directory or file containing benchmarks to run (default: benchmarks/passing)"
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Only update the front end (output folder) without re-running benchmarks"
+    )
+    parser.add_argument(
+        "--paper",
+        action="store_true",
+        help="Production mode: 100%% regions, Gurobi enabled, many samples"
+    )
+    parser.add_argument(
+        "--use-gurobi",
+        action="store_true",
+        help="Enable Gurobi treatments without full paper mode"
+    )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Run benchmarks in parallel (results may have higher variance)"
+    )
+    
+    args = parser.parse_args()
+
     print("Beginning eggcc nightly script...")
 
-    # Parse arguments
-    args = sys.argv[1:]
-    update_only = "--update" in args
-    paper_mode = "--paper" in args
-    use_gurobi_flag = "--use-gurobi" in args
-    parallel = "--parallel" in args
-
     # Build config - paper mode implies use_gurobi
-    use_gurobi = paper_mode or use_gurobi_flag
-    config = NightlyConfig(paper_mode=paper_mode, use_gurobi=use_gurobi)
+    use_gurobi = args.paper or args.use_gurobi
+    config = NightlyConfig(paper_mode=args.paper, use_gurobi=use_gurobi)
 
     # Determine directories
     script_dir = Path(__file__).resolve().parent
@@ -69,7 +90,7 @@ def main():
         run_cmd("cargo install tokei")
 
     # Clean previous nightly run
-    if update_only:
+    if args.update:
         print("Updating front end only (output folder) due to --update flag")
         if output_dir.exists():
             shutil.rmtree(output_dir)
@@ -87,25 +108,22 @@ def main():
     os.chdir(top_dir)
 
     # Run profiler
-    if update_only:
+    if args.update:
         print("Skipping profile.py, updating front end")
     else:
         if not is_local:
             os.environ["LLVM_SYS_180_PREFIX"] = "/usr/lib/llvm-18/"
             run_cmd("make runtime")
         
-        # Determine bril directory
-        bril_dir = "benchmarks/passing"
-        
-        print(f"Running profile with data_dir={data_dir}, bril_dir={bril_dir}, parallel={parallel}")
-        run_profile(str(data_dir), bril_dir, config, parallel=parallel)
+        print(f"Running profile with data_dir={data_dir}, bril_dir={args.benchmark_dir}, parallel={args.parallel}")
+        run_profile(str(data_dir), args.benchmark_dir, config, parallel=args.parallel)
 
     # Generate the plots
-    print(f"Generating graphs...")
+    print("Generating graphs...")
     make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
 
     # Generate latex after running the profiler (depends on profile.json)
-    print(f"Generating line counts...")
+    print("Generating line counts...")
     generate_latex(str(data_dir))
 
     os.chdir(script_dir)

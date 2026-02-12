@@ -9,7 +9,10 @@ fn parse_percent_regions(s: &str) -> Result<f64, String> {
         return Err(format!("Value must be finite, got: {}", s));
     }
     if !(0.0..=100.0).contains(&value) {
-        return Err(format!("Value must be between 0.0 and 100.0, got: {}", value));
+        return Err(format!(
+            "Value must be between 0.0 and 100.0, got: {}",
+            value
+        ));
     }
     Ok(value)
 }

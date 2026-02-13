@@ -146,11 +146,6 @@ def main():
     os.chdir(script_dir)
     print(f"Switching to nightly script directory: {script_dir}")
 
-    # Setup rustup and tokei if not local
-    if not is_local:
-        run_cmd("rustup update")
-        run_cmd("cargo install tokei")
-
     # Clean previous nightly run
     if args.update:
         print("Updating front end only (output folder) due to --update flag")

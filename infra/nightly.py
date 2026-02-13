@@ -34,7 +34,7 @@ class TeeWriter:
 def run_cmd(cmd, cwd=None):
     """Run a command and exit on failure."""
     print(f"+ {cmd}")
-    result = subprocess.run(cmd, shell=True, cwd=cwd)
+    result = subprocess.run(['bash', '-l', '-c', cmd], cwd=cwd)
     if result.returncode != 0:
         print(f"Command failed with exit code {result.returncode}")
         sys.exit(result.returncode)

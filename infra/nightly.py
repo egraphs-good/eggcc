@@ -139,7 +139,8 @@ def main():
         print("Updating rustup...")
         run_cmd("rustup update")
         print("Installing tokei...")
-        run_cmd("cargo install tokei")
+        # Install tokei v13.0.0 which works with Rust 1.87
+        run_cmd("cargo install tokei --version 13.0.0 --locked")
 
     # Build config - paper mode implies use_gurobi
     use_gurobi = args.paper or args.use_gurobi

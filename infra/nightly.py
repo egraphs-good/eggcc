@@ -115,10 +115,31 @@ def main():
         action="store_true",
         help="Run benchmarks in parallel (results may have higher variance)"
     )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Local mode: skip rustup update and tokei install"
+    )
     
     args = parser.parse_args()
 
     print("Beginning eggcc nightly script...")
+
+    # Use the flag instead of environment variable
+    is_local = args.local
+
+    # Set up PATH for cargo/rustup (needed before running rustup/cargo commands)
+    home_dir = os.path.expanduser("~")
+    cargo_bin = os.path.join(home_dir, ".cargo", "bin")
+    if cargo_bin not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = f"{cargo_bin}:{os.environ.get('PATH', '')}"
+
+    # Install/update rustup and tokei (skip in local mode)
+    if not is_local:
+        print("Updating rustup...")
+        run_cmd("rustup update")
+        print("Installing tokei...")
+        run_cmd("cargo install tokei")
 
     # Build config - paper mode implies use_gurobi
     use_gurobi = args.paper or args.use_gurobi
@@ -138,9 +159,6 @@ def main():
     llvm_dir = data_dir / "llvm"
     log_file = output_dir / "log.txt"
     profile_json = data_dir / "profile.json"
-
-    # Check environment
-    is_local = os.environ.get("LOCAL", "") != ""
 
     # Make sure we're in the right place
     os.chdir(script_dir)

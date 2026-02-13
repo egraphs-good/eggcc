@@ -12,12 +12,4 @@ while [ -L "$src" ]; do
 done
 MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 
-
-# locally, skip rustup and tokei install
-# todo idk why this doesn't work from python
-if [ "$LOCAL" == "" ]; then
-  rustup update
-  cargo install tokei
-fi
-
 "$MYDIR/nightly.py" "$@"

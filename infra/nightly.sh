@@ -12,4 +12,4 @@ while [ -L "$src" ]; do
 done
 MYDIR="$(cd -P "$(dirname "$src")" && pwd)"
 
-exec "$MYDIR/nightly.py" "$@"
+"$MYDIR/nightly.py" "$@"

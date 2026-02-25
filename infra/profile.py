@@ -12,26 +12,39 @@ import resource
 import concurrent.futures
 import time
 from generate_cfgs import make_cfgs
+from dataclasses import dataclass
 
 
-# testing mode takes much fewer samples than the real eval in the paper
-IS_TESTING_MODE = True
-
-def eggcc_timeout_secs():
-  if IS_TESTING_MODE:
-    return 10 * 60 # 10 minutes
-  else:
-    return 6 * 60 * 60 # 6 hours (ILP can take a long time, timing out on lots of regions after 5 min)
-
-def num_warmup_samples():
-  if IS_TESTING_MODE:
-    return 2
-  return 10
+@dataclass
+class NightlyConfig:
+  """Configuration for nightly runs."""
+  paper_mode: bool = False
+  use_gurobi: bool = False
   
-def num_samples():
-  if IS_TESTING_MODE:
-    return 100
-  return 200
+  @property
+  def eggcc_timeout_secs(self):
+    if not self.paper_mode:
+      return 10 * 60 # 10 minutes
+    else:
+      return 6 * 60 * 60 # 6 hours (ILP can take a long time, timing out on lots of regions after 5 min)
+
+  @property
+  def num_warmup_samples(self):
+    if not self.paper_mode:
+      return 2
+    return 10
+  
+  @property
+  def num_samples(self):
+    if not self.paper_mode:
+      return 100
+    return 200
+
+  @property
+  def percent_regions(self):
+    if not self.paper_mode:
+      return 1.0
+    return 100.0
 
 
 def average(lst):
@@ -43,7 +56,9 @@ TO_ABLATE = "" # change to a ruleset to ablate
 # use for running a subset of the treatments
 # disables checks that ensure the data is complete
 UNSAFE_TREATMENTS = False
-treatments = [
+
+# Base treatments that don't require Gurobi
+_base_treatments = [
   "rvsdg-round-trip-to-executable",
   "llvm-O0-O0",
   "llvm-O1-O0",
@@ -56,14 +71,32 @@ treatments = [
   "eggcc-O3-O3",
   "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
-  "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-CBC-O0-O0",
-  "eggcc-tiger-ILP-NOMIN-O0-O0",
   #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
+]
+
+# Treatments that require Gurobi (when --use-gurobi or --paper is passed)
+_gurobi_treatments = [
+  "eggcc-tiger-ILP-O0-O0",
+  "eggcc-tiger-ILP-NOMIN-O0-O0",
   # run both tiger and ILP on the same egraphs, keep this last in the list
   "eggcc-tiger-ILP-COMPARISON", 
 ]
+
+def get_treatments(config: NightlyConfig):
+  """Returns the list of treatments to run based on the config.
+  When config.use_gurobi is True, includes Gurobi treatments; otherwise only base treatments."""
+  result = _base_treatments.copy()
+  if TO_ABLATE != "":
+    result.extend([
+      "eggcc-ablation-O0-O0",
+      "eggcc-ablation-O3-O0",
+      "eggcc-ablation-O3-O3",
+    ])
+  if config.use_gurobi:
+    result.extend(_gurobi_treatments)
+  return result
 
 example_subset_treatments = [
   "llvm-O0-O0",
@@ -73,13 +106,6 @@ example_subset_treatments = [
   "eggcc-tiger-O0-O0"
 ]
 
-
-if TO_ABLATE != "":
-  treatments.extend([
-    "eggcc-ablation-O0-O0",
-    "eggcc-ablation-O3-O0",
-    "eggcc-ablation-O3-O3",
-  ])
 
 # Where to output files that are needed for nightly report
 DATA_DIR = None
@@ -193,7 +219,7 @@ def get_eggcc_options(benchmark):
     case "eggcc-tiger-O0-O0":
       return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-COMPARISON":
-      return (f'optimize --use-tiger --non-weakly-linear --time-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --use-tiger --non-weakly-linear --time-ilp --percent-regions {benchmark.config.percent_regions}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
       return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-CBC-O0-O0":
@@ -211,7 +237,7 @@ def get_eggcc_options(benchmark):
     
 
 class Benchmark:
-  def __init__(self, path, treatment, index, total):
+  def __init__(self, path, treatment, index, total, config: NightlyConfig):
     self.path = path
     # assert the file doesn't have any dots in the name besides the last
     if path.split("/")[-1].count(".") != 1:
@@ -224,6 +250,7 @@ class Benchmark:
     # total number of benchmarks being run
     self.total = total
     self.is_last_before_ilp = False
+    self.config = config
 
 def benchmark_profile_dir(name):
   return f'{TMP_DIR}/{name}'
@@ -266,16 +293,17 @@ def optimize(benchmark):
     }
 
   enforce_memory_limit = _should_enforce_memory_limit(benchmark.treatment)
+  timeout_secs = benchmark.config.eggcc_timeout_secs
   try:
     process = run_with_timeout_killing_tree(
       cmd1,
-      eggcc_timeout_secs(),
+      timeout_secs,
       apply_memory_limits=enforce_memory_limit,
     )
   except subprocess.TimeoutExpired:
     # Timeouts are failures
-    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {eggcc_timeout_secs()} seconds', flush=True)
-    failure_data["error"] = f'Timeout running {cmd1} after {eggcc_timeout_secs()} seconds'
+    print(f'[{benchmark.index}/{benchmark.total}] Timeout running {cmd1} after {timeout_secs} seconds', flush=True)
+    failure_data["error"] = f'Timeout running {cmd1} after {timeout_secs} seconds'
     return failure_data
 
   if _memory_limit_exceeded(process.returncode):
@@ -394,10 +422,10 @@ def bench(benchmark):
       resulting_num_cycles = []
 
       # take some warmup cycles
-      while len(warmup_cycles) < num_warmup_samples():
+      while len(warmup_cycles) < benchmark.config.num_warmup_samples:
         warmup_cycles.append(take_sample(cmd, benchmark))
 
-      num_to_run = num_samples()
+      num_to_run = benchmark.config.num_samples
 
       while True:
         resulting_num_cycles.append(take_sample(cmd, benchmark))
@@ -479,28 +507,21 @@ def build_eggcc():
     print("Failed to build eggcc")
     exit(1)
 
-if __name__ == '__main__':
+def run_profile(data_dir, bril_dir, config: NightlyConfig, parallel=False):
+  """Main entry point for running the profiler as a library."""
+  global DATA_DIR
+  DATA_DIR = data_dir
+  
   start_time = time.perf_counter()
-  # expect two arguments
-  if len(os.sys.argv) < 3:
-    print("Usage: profile.py <output_directory> <bril_directory> <--parallel> <--paper>")
-    exit(1)
 
-  # check for paper flag
-  for arg in os.sys.argv:
-    if arg == "--paper":
-      IS_TESTING_MODE = False
-
-  if IS_TESTING_MODE:
+  # Get treatments based on config
+  treatments = get_treatments(config)
+  if not config.paper_mode:
     print("WARNING: Running in testing mode with reduced samples. Pass the --paper flag for the final paper results.")
+  if not config.use_gurobi:
+    print("INFO: Gurobi treatments disabled. Pass --use-gurobi or --paper to enable them.")
 
-  # running benchmarks sequentially for more reliable results
-  # can set this to true for testing
-  isParallelBenchmark = False
-  # detect parallel flag
-  for arg in os.sys.argv:
-    if arg == "--parallel":
-      isParallelBenchmark = True
+  isParallelBenchmark = parallel
 
   # Create tmp directory for intermediate files
   try:
@@ -513,9 +534,6 @@ if __name__ == '__main__':
   # build eggcc
   build_eggcc()
 
-
-
-  DATA_DIR, bril_dir  = os.sys.argv[1:3]
   profiles = []
   # if it is a directory get all files
   if os.path.isdir(bril_dir):
@@ -537,7 +555,7 @@ if __name__ == '__main__':
   total = len(profiles) * len(treatments)
   for treatment in treatments:
     for benchmark_path in profiles:
-      to_run.append(Benchmark(benchmark_path, treatment, index, total))
+      to_run.append(Benchmark(benchmark_path, treatment, index, total, config))
       index += 1
 
   benchmark_names = set([benchmark.name for benchmark in to_run])
@@ -608,8 +626,8 @@ if __name__ == '__main__':
       bench_data[path] = _bench_data
 
   nightly_data = aggregate(compile_data, bench_data, paths)
-  with open(f"{DATA_DIR}/profile.json", "w") as profile:
-    json.dump(nightly_data, profile, indent=2)
+  with open(f"{DATA_DIR}/profile.json", "w") as profile_file:
+    json.dump(nightly_data, profile_file, indent=2)
 
   # Parallel CFG generation only for successful
   with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:

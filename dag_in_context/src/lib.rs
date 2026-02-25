@@ -376,6 +376,8 @@ pub struct EggccConfig {
     pub tiger_ilp: bool,
     /// When true, collect region timing samples by running both the tiger and ILP extractors.
     pub time_ilp: bool,
+    /// Percentage of regions to run ILP timing on (0.0 to 100.0). Regions are selected randomly.
+    pub percent_regions: f64,
     pub use_context: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
@@ -458,6 +460,7 @@ impl Default for EggccConfig {
             use_tiger: false,
             tiger_ilp: false,
             time_ilp: false,
+            percent_regions: 100.0,
             use_context: true,
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
@@ -593,6 +596,8 @@ fn run_tiger_pipeline(
 
     let extract_timing_file = if eggcc_config.time_ilp {
         tiger_args.push(OsString::from("--time-ilp"));
+        tiger_args.push(OsString::from("--percent-regions"));
+        tiger_args.push(OsString::from(eggcc_config.percent_regions.to_string()));
         let file = NamedTempFile::new()
             .map_err(|err| format!("failed to create extract timing tempfile: {err}"))
             .unwrap();

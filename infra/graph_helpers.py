@@ -56,8 +56,13 @@ SHAPE_MAP = {
   "eggcc-ablation-O0-O0": "o",
   "eggcc-ablation-O3-O0": "o",
   "eggcc-ablation-O3-O3": "o",
+  "eggcc-tiger-WL-O0-O0": "o",
   "eggcc-tiger-O0-O0": "o",
-  'eggcc-tiger-ILP-O0-O0': "^",
+  "eggcc-tiger-ILP-O0-O0": "^",
+  "eggcc-tiger-ILP-CBC-O0-O0": "^",
+  "eggcc-tiger-ILP-NOMIN-O0-O0": "^",
+  "eggcc-tiger-ILP-WITHCTX-O0-O0": "^",
+  "eggcc-WITHCTX-O0-O0": "o",
 }
 
 EXTRACTION_INSET_BOUNDS = (0.4, 0.3, 0.38 * 1.5, 0.35 * 1.5) # x y width height

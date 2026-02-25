@@ -53,13 +53,14 @@ def make_macros(profile, benchmark_suites, output_file):
     )
 
     if "polybench" not in suite_region_counts:
-      raise ValueError("No polybench suite benchmarks found when computing regionalized e-graphs per benchmark")
-    out.write(
-      format_latex_macro(
-        "AvgPolybenchRegionalizedEgraphsPerBenchmark",
-        f"{round(mean(suite_region_counts['polybench']))}",
+      print("WARNING: No polybench suite benchmarks found when computing regionalized e-graphs per benchmark")
+    else:
+      out.write(
+        format_latex_macro(
+          "AvgPolybenchRegionalizedEgraphsPerBenchmark",
+          f"{round(mean(suite_region_counts['polybench']))}",
+        )
       )
-    )
 
     # report number of benchmarks in each benchmark suite
     for suite in benchmark_suites:
@@ -158,32 +159,35 @@ def make_macros(profile, benchmark_suites, output_file):
       )
     )
 
-    raytrace_row = get_row(profile, "raytrace", "eggcc-tiger-ILP-COMPARISON")
-    raytrace_timings = raytrace_row["extractRegionTimings"]
-    out.write(
-      format_latex_macro("NumRaytraceRegionalizedEgraphs", len(raytrace_timings))
-    )
-    out.write(
-      format_latex_macro(
-        "MaxRaytraceRegionalizedEgraphTerms",
-        f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
+    if "raytrace" in benchmarks:
+      raytrace_row = get_row(profile, "raytrace", "eggcc-tiger-ILP-COMPARISON")
+      raytrace_timings = raytrace_row["extractRegionTimings"]
+      out.write(
+        format_latex_macro("NumRaytraceRegionalizedEgraphs", len(raytrace_timings))
       )
-    )
-    out.write(
-      format_latex_macro(
-        "MaxRaytraceTigerExtractionTimeSecs",
-        f"{max(
-          duration_to_seconds(sample['extract_time_liveon_satelliteon'])
-          for sample in raytrace_timings
-        ):.6f}",
+      out.write(
+        format_latex_macro(
+          "MaxRaytraceRegionalizedEgraphTerms",
+          f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
+        )
       )
-    )
-    out.write(
-      format_latex_macro(
-        "NumRaytraceILPRegionalizedEgraphTimeouts",
-        sum(1 for sample in raytrace_timings if sample["ilp_timed_out"]),
+      out.write(
+        format_latex_macro(
+          "MaxRaytraceTigerExtractionTimeSecs",
+          f"{max(
+            duration_to_seconds(sample['extract_time_liveon_satelliteon'])
+            for sample in raytrace_timings
+          ):.6f}",
+        )
       )
-    )
+      out.write(
+        format_latex_macro(
+          "NumRaytraceILPRegionalizedEgraphTimeouts",
+          sum(1 for sample in raytrace_timings if sample["ilp_timed_out"]),
+        )
+      )
+    else:
+      print("WARNING: No raytrace benchmark found; skipping raytrace macro generation")
 
     total_regionalized_egraphs = len(region_points)
     if total_regionalized_egraphs == 0:

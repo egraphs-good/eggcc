@@ -268,6 +268,14 @@
       ((union lhs (Bop (Sub) (Const (Int 0) ty ctx) x)))
       :ruleset interval-rewrite)
 
+(rule
+  (
+    (= lhs (Bop (Div) (Const (Int x) ty ctx) (Const (Int x) ty ctx)))
+    (!= x 0)
+  )
+  ((union lhs (Const (Int 1) ty ctx)))
+  :ruleset interval-rewrite)
+
 ; =================================
 ; Conditionals
 ; =================================

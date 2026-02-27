@@ -1,0 +1,70 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@foo(v0: int): int {
+  c1_: int = const 2;
+  v2_: int = div v0 c1_;
+  v3_: int = mul c1_ v2_;
+  ret v3_;
+}
+@bar(v0: ptr<int>, v1: ptr<int>) {
+  v2_: int = load v0;
+  c3_: int = const 2;
+  v4_: int = div c3_ c3_;
+  v5_: int = mul v2_ v4_;
+  store v1 v5_;
+  v6_: int = load v0;
+  v7_: int = load v1;
+  v8_: bool = eq v6_ v7_;
+  v9_: bool = not v8_;
+  v10_: ptr<int> = id v0;
+  br v9_ .b11_ .b12_;
+.b11_:
+  c13_: int = const 100;
+  print c13_;
+  v10_: ptr<int> = id v0;
+  v14_: int = load v0;
+  v15_: int = mul v14_ v4_;
+  store v0 v15_;
+  ret;
+  jmp .b16_;
+.b12_:
+  v14_: int = load v0;
+  v15_: int = mul v14_ v4_;
+  store v0 v15_;
+  ret;
+.b16_:
+}
+@main(v0: int, v1: int) {
+  c2_: int = const 2;
+  v3_: ptr<int> = alloc c2_;
+  v4_: int = div v0 c2_;
+  v5_: int = mul c2_ v4_;
+  v6_: bool = eq v0 v5_;
+  v7_: bool = not v6_;
+  c8_: int = const 1;
+  v9_: ptr<int> = ptradd v3_ c8_;
+  store v3_ v0;
+  store v9_ v5_;
+  v10_: ptr<int> = id v3_;
+  br v7_ .b11_ .b12_;
+.b11_:
+  c13_: int = const 100;
+  print c13_;
+  v10_: ptr<int> = id v3_;
+  v14_: int = load v3_;
+  v15_: int = div c2_ c2_;
+  v16_: int = mul v14_ v15_;
+  store v3_ v16_;
+  ret;
+  jmp .b17_;
+.b12_:
+  v14_: int = load v3_;
+  v15_: int = div c2_ c2_;
+  v16_: int = mul v14_ v15_;
+  store v3_ v16_;
+  ret;
+.b17_:
+}

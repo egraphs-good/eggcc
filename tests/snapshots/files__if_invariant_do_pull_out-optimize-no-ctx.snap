@@ -10,9 +10,9 @@ expression: visualization.result
 }
 @other_unrelated_fn(v0: int): int {
   c1_: int = const 3;
-  v2_: int = mul c1_ v0;
-  c3_: int = const 5;
-  v4_: int = div v2_ c3_;
+  c2_: int = const 5;
+  v3_: int = div v0 c2_;
+  v4_: int = mul c1_ v3_;
   ret v4_;
 }
 @main(v0: int) {
@@ -36,9 +36,9 @@ expression: visualization.result
   v15_: int = abs v0;
   v16_: int = add v15_ v5_;
   c17_: int = const 3;
-  v18_: int = mul c17_ v0;
-  c19_: int = const 5;
-  v20_: int = div v18_ c19_;
+  c18_: int = const 5;
+  v19_: int = div v0 c18_;
+  v20_: int = mul c17_ v19_;
   v21_: int = add v16_ v20_;
   v13_: int = id v21_;
   print v13_;

@@ -2,6 +2,9 @@
 
 (ruleset peepholes)
 
+(rewrite (Uop (Not) (Const (Bool true) ty ctx))  (Const (Bool false) ty ctx) :ruleset peepholes)
+(rewrite (Uop (Not) (Const (Bool false) ty ctx)) (Const (Bool true) ty ctx)  :ruleset peepholes)
+
 (rewrite (Bop (Mul) (Const (Int 0) ty ctx) e) (Const (Int 0) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Mul) e (Const (Int 0) ty ctx)) (Const (Int 0) ty ctx) :ruleset peepholes)
 (rewrite (Bop (Mul) (Const (Int 1) ty ctx) e) e :ruleset peepholes)
@@ -55,3 +58,14 @@
 (rewrite (Bop (PtrAdd) (Bop (PtrAdd) p x) y)
          (Bop (PtrAdd) p (Bop (Add) x y))
          :ruleset peepholes)
+
+(rewrite (Bop (Div) (Bop (Mul) a b) c) (Bop (Mul) a (Bop (Div) b c)) :ruleset peepholes)
+
+(rule
+  (
+    (= expr (Bop (Eq) a a))
+    (ContextOf expr ctx)
+    (HasArgType expr ty)
+  )
+  ((union expr (Const (Bool true) ty ctx)))
+  :ruleset peepholes)

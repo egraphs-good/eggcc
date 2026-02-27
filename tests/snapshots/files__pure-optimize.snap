@@ -1,0 +1,9 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 20
+@main(v0: int) {
+  print v0;
+  ret;
+}

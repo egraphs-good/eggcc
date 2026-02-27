@@ -1,0 +1,41 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@foo(v0: int): int {
+  ret v0;
+}
+@bar(v0: ptr<int>, v1: ptr<int>) {
+  v2_: int = load v0;
+  store v1 v2_;
+  v3_: int = load v0;
+  v4_: int = load v1;
+  v5_: bool = eq v3_ v4_;
+  v6_: bool = not v5_;
+  v7_: ptr<int> = id v0;
+  br v6_ .b8_ .b9_;
+.b8_:
+  c10_: int = const 100;
+  print c10_;
+  v7_: ptr<int> = id v0;
+  v11_: int = load v0;
+  store v0 v11_;
+  ret;
+  jmp .b12_;
+.b9_:
+  v11_: int = load v0;
+  store v0 v11_;
+  ret;
+.b12_:
+}
+@main(v0: int, v1: int) {
+  c2_: int = const 2;
+  v3_: ptr<int> = alloc c2_;
+  c4_: int = const 1;
+  v5_: ptr<int> = ptradd v3_ c4_;
+  store v3_ v0;
+  store v5_ v0;
+  store v3_ v0;
+  ret;
+}

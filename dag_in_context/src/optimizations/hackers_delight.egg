@@ -8,7 +8,7 @@
 (relation IsIsEven (Expr Expr))
 
 (rule (
-    (= two (Const (Int 2) ty ctx))
+    (= two (Const (Int 2) _ty _ctx))
     (= e (Bop (Eq) x (Bop (Mul) (Bop (Div) x two) two)))
 ) (
     (IsIsEven e x)
@@ -56,35 +56,4 @@
     (let lowbitn (Bop (Bitand) n (Uop (Neg) n)))
     (union (Get outerif j) lowbitn)
     (union (Get outerif i) (Bop (Div) n lowbitn))
-) :ruleset hacker)
-
-;; Try to do a state-edge-passthrough for loops
-;; NLZIterations guarantees termination for non-zero values
-;; lowbit(0) is undefined behavior
-
-(constructor DummyLoopContext (Expr Expr Expr) Assumption)
-
-(rule (
-    (NTZIterations anyif n i)
-    (= anyif (If cond inputs thenbr elsebr))
-    (= thenbr (DoWhile lpinputs pred_outputs))
-    (= (Get pred_outputs (+ j 1)) (Get (Arg arg_ty then_ctx) j))
-    (HasType (Get pred_outputs (+ j 1)) (Base (StateT)))
-) (
-    (let newlpinputs (TupleRemoveAt lpinputs j))
-    (let newpred_outputs (TupleRemoveAt pred_outputs (+ j 1)))
-    
-    (let newlpctx (DummyLoopContext newlpinputs newpred_outputs pred_outputs))
-
-    (let newbody (DropAt newlpctx j newpred_outputs))
-
-    (union newlpctx (InLoop newlpinputs newbody))
-
-    (let newlp (DoWhile newlpinputs newbody))
-    (let oldlp (TupleRemoveAt thenbr j))
-
-    (union newlp oldlp)
-
-    (union (Get thenbr j) (Get lpinputs j))
-
 ) :ruleset hacker)

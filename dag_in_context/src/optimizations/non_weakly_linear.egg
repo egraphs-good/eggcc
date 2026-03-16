@@ -68,3 +68,26 @@
   (set (LoopNumItersGuess new-loop-input new-loop-body) (- old_cost 1))
   )
  :ruleset non-weakly-linear)
+
+
+; A stronger pass through for if state edge arguments, requires tiger
+
+(rule (
+    (= outputs (If pred inputs then_ else_))
+    (= (Get then_ i) (Get (Arg arg_ty then_ctx) j))
+    (= (Get else_ i) (Get (Arg arg_ty else_ctx) j))
+    (HasType (Get then_ i) (Base (StateT)))
+) (
+    (union (Get outputs i) (Get inputs j))
+) :ruleset non-weakly-linear)
+
+; Pass through loop state edge arguments, requires tiger
+; Warning: This potentially eliminate infinite loops
+
+(rule (
+    (= lp (DoWhile inputs pred_outputs))
+    (= (Get pred_outputs (+ i 1)) (Get (Arg _ty _ctx) i))
+    (HasType (Get pred_outputs (+ i 1)) (Base (StateT)))
+) (
+    (union (Get lp i) (Get inputs i))
+) :ruleset non-weakly-linear)

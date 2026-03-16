@@ -228,8 +228,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     (repeat 3
       {helpers}
       passthrough
-      state-edge-passthrough
-      hacker)
+      state-edge-passthrough)
     (repeat 2
         {helpers}
         all-optimizations

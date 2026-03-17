@@ -57,7 +57,7 @@ pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
 
-pub fn prologue() -> String {
+fn prologue_for_config(config: &EggccConfig) -> String {
     [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
@@ -97,9 +97,13 @@ pub fn prologue() -> String {
         include_str!("utility/debug-helper.egg"),
         include_str!("optimizations/hackers_delight.egg"),
         include_str!("optimizations/non_weakly_linear.egg"),
-        &rulesets(),
+        &rulesets(config),
     ]
     .join("\n")
+}
+
+pub fn prologue() -> String {
+    prologue_for_config(&EggccConfig::default())
 }
 
 fn ablate_prologue(prologue: &str, ablate: &str) -> String {
@@ -202,6 +206,7 @@ pub fn build_program(
     schedule: &str,
     ablate: Option<&str>,
     use_context: bool,
+    disable_hacker_rules: bool,
 ) -> String {
     // inlining first before adding context
     let to_inline = inline_program.unwrap_or(program);
@@ -258,15 +263,17 @@ pub fn build_program(
         .unwrap();
     }
 
-    let prologue = prologue();
-    let (prologue, schedule) = if let Some(ablate) = ablate {
-        (
-            ablate_prologue(&prologue, ablate),
-            ablate_schedule(schedule, ablate),
-        )
-    } else {
-        (prologue, schedule.to_string())
+    let config_for_prologue = EggccConfig {
+        disable_hacker_rules,
+        ..EggccConfig::default()
     };
+    let mut prologue = prologue_for_config(&config_for_prologue);
+    let mut schedule = schedule.to_string();
+
+    if let Some(ablate) = ablate {
+        prologue = ablate_prologue(&prologue, ablate);
+        schedule = ablate_schedule(&schedule, ablate);
+    }
 
     let prologue = if !use_context {
         remove_new_contexts(&prologue)
@@ -314,7 +321,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "", None, true);
+    let egglog_prog = build_program(program, None, &fns, "", None, true, false);
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
@@ -379,6 +386,8 @@ pub struct EggccConfig {
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Regions are selected randomly.
     pub percent_regions: f64,
     pub use_context: bool,
+    /// If true, disable the hacker ruleset in hackers_delight.egg.
+    pub disable_hacker_rules: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
     pub ilp_solver: IlpSolver,
@@ -433,7 +442,7 @@ impl EggccConfig {
     pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
         match self.schedule {
             Schedule::Parallel => parallel_schedule(self),
-            Schedule::Sequential => schedule::mk_sequential_schedule(),
+            Schedule::Sequential => schedule::mk_sequential_schedule(self),
         }
     }
 
@@ -462,6 +471,7 @@ impl Default for EggccConfig {
             time_ilp: false,
             percent_regions: 100.0,
             use_context: true,
+            disable_hacker_rules: false,
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,
@@ -883,6 +893,7 @@ pub fn optimize(
                 schedule.egglog_schedule(),
                 eggcc_config.ablate.as_deref(),
                 eggcc_config.use_context,
+                eggcc_config.disable_hacker_rules,
             );
 
             log::info!("Running egglog program...");

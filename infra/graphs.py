@@ -10,6 +10,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 import numpy as np
 import sys
 import os
+from matplotlib.ticker import FuncFormatter
 
 from profile import NightlyConfig
 from graph_helpers import *
@@ -417,6 +418,57 @@ def make_extraction_time_histogram(data, output):
   plt.savefig(output)
 
 
+def make_fenwick_cycles_bar_chart(data, output):
+  benchmark = "fenwick_tree"
+  treatments = [
+    "eggcc-tiger-WITHCTX-O0-O0",
+    "eggcc-tiger-nohacker-WITHCTX-O0-O0",
+    "llvm-O3-O3",
+    "llvm-O3-O0",
+    "llvm-O0-O0",
+  ]
+  labels = [to_paper_names_treatment(treatment) for treatment in treatments]
+
+  means_millions = []
+  stddevs_millions = []
+  colors = []
+
+  for treatment in treatments:
+    row = get_row(data, benchmark, treatment)
+    cycles = row["cycles"]
+    if row["failed"] or not cycles:
+      print(f"WARNING: Skipping Fenwick cycles bar chart because {benchmark} {treatment} has no cycle data")
+      return
+
+    means_millions.append(float(np.mean(cycles)) / 1e6)
+    stddevs_millions.append(float(np.std(cycles)) / 1e6)
+    colors.append(COLOR_MAP.get(treatment, "gray"))
+
+  fig, ax = plt.subplots(figsize=(5.25, 6))
+  x_positions = np.arange(len(labels))
+  ax.bar(
+    x_positions,
+    means_millions,
+    yerr=stddevs_millions,
+    color=colors,
+    edgecolor="black",
+    capsize=8,
+    width=0.7,
+  )
+
+  ax.set_xticks(x_positions)
+  ax.set_xticklabels(labels, rotation=30, ha="right")
+  ax.set_ylabel("Cycles (Millions)")
+  ax.set_title("Fenwick Tree Runtime")
+  ax.yaxis.set_major_formatter(
+    FuncFormatter(lambda value, _pos: "0" if np.isclose(value, 0) else (f"{value:.0f}" if value >= 10 else f"{value:.1f}"))
+  )
+  ax.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.5)
+
+  plt.tight_layout()
+  plt.savefig(output)
+
+
 
 # Format x-axis labels to be in "k" format
 def format_k(x, pos):
@@ -708,6 +760,12 @@ def to_paper_names_treatment(treatment):
     return 'EQCC-O3-O3'
   if treatment == 'eggcc-WITHCTX-O0-O0':
     return 'EQCC-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
   if treatment == 'eggcc-tiger-O0-O0':
     return f'EQCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-WL-O0-O0':
@@ -825,6 +883,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     print("Skipping extraction-time-cdf graph (requires Gurobi treatments)")
 
   make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
+  make_fenwick_cycles_bar_chart(data, f'{graphs_folder}/fenwick-cycles-bar-chart.pdf')
 
   if config.use_gurobi:
     make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)

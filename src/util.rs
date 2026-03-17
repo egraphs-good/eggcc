@@ -762,6 +762,7 @@ impl Run {
                     "",
                     self.eggcc_config.ablate.as_deref(),
                     self.eggcc_config.use_context,
+                    self.eggcc_config.disable_hacker_rules,
                 );
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
@@ -848,6 +849,7 @@ impl Run {
                     last_schedule_step.egglog_schedule(),
                     eggcc_config.ablate.as_deref(),
                     eggcc_config.use_context,
+                    eggcc_config.disable_hacker_rules,
                 );
                 (
                     vec![Visualization {

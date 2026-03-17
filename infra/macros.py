@@ -20,6 +20,8 @@ def make_macros(profile, benchmark_suites, output_file):
     suite_region_counts = {}
     benchmark_suite_map = {}
 
+    write_fenwick_mean_cycle_speedup_macros(profile, out)
+
     region_points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", profile, benchmarks)
     print_fastest_ilp_benchmarks(profile, benchmarks)
 
@@ -359,6 +361,55 @@ def make_macros(profile, benchmark_suites, output_file):
       format_latex_macro(
         "MaxILPEncodingVarsPerEgraphSize",
         f"{encoding_max:.2f}",
+      )
+    )
+
+
+def write_fenwick_mean_cycle_speedup_macros(profile, out):
+  benchmark = "fenwick_tree"
+  treatments = [
+    "eggcc-tiger-WITHCTX-O0-O0",
+    "eggcc-tiger-nohacker-WITHCTX-O0-O0",
+    "llvm-O3-O3",
+    "llvm-O3-O0",
+    "llvm-O0-O0",
+  ]
+  target_treatment = "eggcc-tiger-WITHCTX-O0-O0"
+
+  mean_cycles_by_treatment = {}
+  for treatment in treatments:
+    try:
+      row = get_row(profile, benchmark, treatment)
+    except KeyError:
+      print(f"WARNING: Missing {benchmark} row for {treatment}; skipping Fenwick speedup macros")
+      return
+
+    cycles = row["cycles"]
+    if row["failed"] or not cycles:
+      print(
+        f"WARNING: Missing cycle data for {benchmark} {treatment}; skipping Fenwick speedup macros"
+      )
+      return
+
+    mean_cycles_by_treatment[treatment] = float(mean(cycles))
+
+  target_mean_cycles = mean_cycles_by_treatment[target_treatment]
+  if target_mean_cycles <= 0:
+    print(f"WARNING: Non-positive mean cycles for {benchmark} {target_treatment}; skipping Fenwick speedup macros")
+    return
+
+  for treatment in treatments:
+    baseline_mean_cycles = mean_cycles_by_treatment[treatment]
+    if baseline_mean_cycles <= 0:
+      print(f"WARNING: Non-positive mean cycles for {benchmark} {treatment}; skipping Fenwick speedup macro")
+      continue
+
+    # Speedup is always for eggcc-tiger-WITHCTX-O0-O0, with a rotating baseline treatment.
+    speedup = baseline_mean_cycles / target_mean_cycles
+    out.write(
+      format_latex_macro(
+        f"FenwickMeanCycleSpeedupEggcctigerWITHCTXO0O0Vs{treatment}",
+        f"{speedup:.2f}",
       )
     )
 

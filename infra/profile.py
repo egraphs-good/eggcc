@@ -57,6 +57,12 @@ TO_ABLATE = "" # change to a ruleset to ablate
 # disables checks that ensure the data is complete
 UNSAFE_TREATMENTS = False
 
+# Treatments that should only run on fenwick_tree in nightly profiling.
+FENWICK_ONLY_TREATMENTS = {
+  "eggcc-tiger-WITHCTX-O0-O0",
+  "eggcc-tiger-nohacker-WITHCTX-O0-O0",
+}
+
 # Base treatments that don't require Gurobi
 _base_treatments = [
   "rvsdg-round-trip-to-executable",
@@ -74,6 +80,8 @@ _base_treatments = [
   "eggcc-tiger-ILP-CBC-O0-O0",
   #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
+  "eggcc-tiger-WITHCTX-O0-O0",
+  "eggcc-tiger-nohacker-WITHCTX-O0-O0",
 ]
 
 # Treatments that require Gurobi (when --use-gurobi or --paper is passed)
@@ -232,6 +240,10 @@ def get_eggcc_options(benchmark):
     case "eggcc-WITHCTX-O0-O0":
       # run with the with-context flag
       return (f'optimize --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-WITHCTX-O0-O0":
+      return (f'optimize --use-tiger --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+    case "eggcc-tiger-nohacker-WITHCTX-O0-O0":
+      return (f'optimize --use-tiger --non-weakly-linear --with-context --no-hacker-rules', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     
@@ -551,12 +563,18 @@ def run_profile(data_dir, bril_dir, config: NightlyConfig, parallel=False):
     paths[name] = profile
 
   to_run = []
-  index = 1
-  total = len(profiles) * len(treatments)
+
+  selected_pairs = []
   for treatment in treatments:
     for benchmark_path in profiles:
-      to_run.append(Benchmark(benchmark_path, treatment, index, total, config))
-      index += 1
+      benchmark_suite = get_suite(benchmark_path)
+      if treatment in FENWICK_ONLY_TREATMENTS and benchmark_suite != "fenwick":
+        continue
+      selected_pairs.append((benchmark_path, treatment))
+
+  total = len(selected_pairs)
+  for index, (benchmark_path, treatment) in enumerate(selected_pairs, start=1):
+    to_run.append(Benchmark(benchmark_path, treatment, index, total, config))
 
   benchmark_names = set([benchmark.name for benchmark in to_run])
   for benchmark_name in benchmark_names:

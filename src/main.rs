@@ -111,6 +111,9 @@ struct Args {
     /// Using this flag enables all context-aware rules and adds context to the initial program.
     #[clap(long)]
     with_context: bool,
+    /// Disable the hacker ruleset in hackers_delight.egg.
+    #[clap(long)]
+    no_hacker_rules: bool,
     /// Disable the objective minimization when running the tiger ILP extractor.
     #[clap(long)]
     ilp_no_minimize: bool,
@@ -176,6 +179,7 @@ fn main() {
             time_ilp: args.time_ilp,
             percent_regions: args.percent_regions,
             use_context: args.with_context,
+            disable_hacker_rules: args.no_hacker_rules,
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,

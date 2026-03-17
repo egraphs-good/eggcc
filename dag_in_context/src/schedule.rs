@@ -101,20 +101,20 @@ pub(crate) fn helpers() -> String {
     )
 }
 
-fn cheap_optimizations() -> Vec<String> {
-    [
-        "hacker",
-        "interval-rewrite",
-        "always-switch-rewrite",
+fn cheap_optimizations(disable_hacker_rules: bool) -> Vec<String> {
+    let mut res = vec![
+        "interval-rewrite".to_string(),
+        "always-switch-rewrite".to_string(),
         // "memory", TODO right now we just run mem-simple
-        "peepholes",
-    ]
-    .iter()
-    .map(|opt| opt.to_string())
-    .collect()
+        "peepholes".to_string(),
+    ];
+    if !disable_hacker_rules {
+        res.insert(0, "hacker".to_string());
+    }
+    res
 }
 
-fn optimizations() -> Vec<String> {
+fn optimizations(disable_hacker_rules: bool) -> Vec<String> {
     [
         "select_opt",
         "loop-unroll",
@@ -126,13 +126,13 @@ fn optimizations() -> Vec<String> {
     ]
     .iter()
     .map(|opt| opt.to_string())
-    .chain(cheap_optimizations())
+    .chain(cheap_optimizations(disable_hacker_rules))
     .collect()
 }
 
-pub fn rulesets() -> String {
-    let all_optimizations = optimizations().join("\n");
-    let cheap_optimizations = cheap_optimizations().join("\n");
+pub fn rulesets(config: &EggccConfig) -> String {
+    let all_optimizations = optimizations(config.disable_hacker_rules).join("\n");
+    let cheap_optimizations = cheap_optimizations(config.disable_hacker_rules).join("\n");
     format!(
         "
 (unstable-combined-ruleset cheap-optimizations
@@ -146,7 +146,7 @@ pub fn rulesets() -> String {
     )
 }
 
-pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
+pub fn mk_sequential_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     let helpers = helpers();
 
     let mut res = vec![CompilerPass::Schedule(format!(
@@ -181,7 +181,7 @@ pub fn mk_sequential_schedule() -> Vec<CompilerPass> {
         "
 (run-schedule {helpers})"
     )));
-    res.extend(optimizations().iter().map(|optimization| {
+    res.extend(optimizations(config.disable_hacker_rules).iter().map(|optimization| {
         CompilerPass::Schedule(format!(
             "
 (run-schedule

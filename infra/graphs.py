@@ -420,12 +420,15 @@ def make_extraction_time_histogram(data, output):
 
 def make_fenwick_cycles_bar_chart(data, output):
   benchmark = "fenwick_tree"
+  title_fontsize = 18
+  axis_label_fontsize = 16
+  tick_fontsize = 13
   treatments = [
     "eggcc-tiger-WITHCTX-O0-O0",
-    "eggcc-tiger-nohacker-WITHCTX-O0-O0",
     "llvm-O3-O3",
     "llvm-O3-O0",
     "llvm-O0-O0",
+    "eggcc-tiger-nohacker-WITHCTX-O0-O0",
   ]
   labels = [to_paper_names_treatment(treatment) for treatment in treatments]
 
@@ -457,9 +460,10 @@ def make_fenwick_cycles_bar_chart(data, output):
   )
 
   ax.set_xticks(x_positions)
-  ax.set_xticklabels(labels, rotation=30, ha="right")
-  ax.set_ylabel("Cycles (Millions)")
-  ax.set_title("Fenwick Tree Runtime")
+  ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=tick_fontsize)
+  ax.set_ylabel("Cycles (Millions)", fontsize=axis_label_fontsize)
+  ax.set_title("Fenwick Tree Runtime", fontsize=title_fontsize)
+  ax.tick_params(axis="y", labelsize=tick_fontsize)
   ax.yaxis.set_major_formatter(
     FuncFormatter(lambda value, _pos: "0" if np.isclose(value, 0) else (f"{value:.0f}" if value >= 10 else f"{value:.1f}"))
   )

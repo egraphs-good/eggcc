@@ -39,6 +39,7 @@
   (HasType inputs inputs-ty)
   (= outputs-len (tuple-length outputs))
   (= old_cost (LoopNumItersGuess inputs outputs))
+  (LoopIsFinite inputs outputs)
   (<= old_cost 5)
   )
  (
@@ -66,6 +67,7 @@
       (Arg inputs-ty else-ctx)))
 
   (set (LoopNumItersGuess new-loop-input new-loop-body) (- old_cost 1))
+  (LoopIsFinite new-loop-input new-loop-body)
   )
  :ruleset non-weakly-linear)
 
@@ -86,6 +88,7 @@
 
 (rule (
     (= lp (DoWhile inputs pred_outputs))
+  (LoopIsFinite inputs pred_outputs)
     (= (Get pred_outputs (+ i 1)) (Get (Arg _ty _ctx) i))
     (HasType (Get pred_outputs (+ i 1)) (Base (StateT)))
 ) (

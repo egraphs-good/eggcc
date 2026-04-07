@@ -2,7 +2,7 @@ use eggcc::util::{Run, RunMode, TestProgram};
 use std::collections::HashMap;
 use std::io::Write;
 
-const INFINITE_LOOP_BRIL: &str = include_str!("testdata/infinite_loop_preserved.bril");
+const INFINITE_LOOP_BRIL: &str = include_str!("infinite_loop_preserved.bril");
 
 /// Returns true if the Bril text has a jump/branch target to an earlier label.
 fn has_back_edge(bril_text: &str) -> bool {

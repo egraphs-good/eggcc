@@ -13,7 +13,7 @@ expression: visualization.result
   v10_: int = mul v6_ v9_;
   print v10_;
   v11_: int = add v10_ v4_;
-  v12_: bool = lt v5_ v11_;
+  v12_: bool = gt v11_ v5_;
   v13_: bool = not v12_;
   v4_: int = id v11_;
   v5_: int = id v5_;

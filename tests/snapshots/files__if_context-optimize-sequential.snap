@@ -6,8 +6,17 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 3;
   v2_: bool = eq c1_ v0;
-  v3_: int = mul c1_ v0;
-  v4_: int = select v2_ v0 v3_;
-  print v4_;
+  v3_: int = id v0;
+  br v2_ .b4_ .b5_;
+.b4_:
+  print v3_;
   ret;
+  jmp .b6_;
+.b5_:
+  c7_: int = const 3;
+  v8_: int = mul c7_ v0;
+  v3_: int = id v8_;
+  print v3_;
+  ret;
+.b6_:
 }

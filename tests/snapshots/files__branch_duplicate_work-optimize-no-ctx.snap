@@ -6,9 +6,18 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 2;
   v2_: bool = lt v0 c1_;
-  v3_: int = add v0 v0;
-  v4_: int = mul c1_ v3_;
-  v5_: int = select v2_ v3_ v4_;
-  print v5_;
+  br v2_ .b3_ .b4_;
+.b3_:
+  v5_: int = add v0 v0;
+  v6_: int = id v5_;
+  print v6_;
   ret;
+  jmp .b7_;
+.b4_:
+  v8_: int = add v0 v0;
+  v9_: int = mul c1_ v8_;
+  v6_: int = id v9_;
+  print v6_;
+  ret;
+.b7_:
 }

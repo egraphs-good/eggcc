@@ -22,18 +22,30 @@ expression: visualization.result
 .b16_:
   print v12_;
   v17_: bool = lt v14_ v15_;
-  c18_: int = const 2;
-  v19_: int = select v17_ c18_ v11_;
-  v20_: int = add v13_ v19_;
-  v21_: int = add v12_ v13_;
-  v22_: bool = lt v21_ v14_;
-  v11_: int = id v20_;
-  v12_: int = id v21_;
+  v18_: int = id v11_;
+  v19_: int = id v12_;
+  v20_: int = id v13_;
+  v21_: int = id v14_;
+  v22_: int = id v15_;
+  br v17_ .b23_ .b24_;
+.b23_:
+  c25_: int = const 2;
+  v18_: int = id c25_;
+  v19_: int = id v12_;
+  v20_: int = id v13_;
+  v21_: int = id v14_;
+  v22_: int = id v15_;
+.b24_:
+  v26_: int = add v13_ v18_;
+  v27_: int = add v12_ v13_;
+  v28_: bool = lt v27_ v14_;
+  v11_: int = id v26_;
+  v12_: int = id v27_;
   v13_: int = id v13_;
   v14_: int = id v14_;
   v15_: int = id v15_;
-  br v22_ .b16_ .b23_;
-.b23_:
+  br v28_ .b16_ .b29_;
+.b29_:
   v4_: int = id v11_;
   v5_: int = id v12_;
   v6_: int = id v13_;
@@ -41,9 +53,9 @@ expression: visualization.result
   v8_: int = id v15_;
   print v4_;
   ret;
-  jmp .b24_;
+  jmp .b30_;
 .b10_:
   print v4_;
   ret;
-.b24_:
+.b30_:
 }

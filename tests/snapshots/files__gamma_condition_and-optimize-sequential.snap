@@ -6,7 +6,7 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 0;
   v2_: bool = lt v0 c1_;
-  v3_: bool = lt c1_ v0;
+  v3_: bool = gt v0 c1_;
   v4_: bool = and v2_ v3_;
   c5_: int = const 1;
   v6_: int = id c5_;
@@ -17,7 +17,7 @@ expression: visualization.result
   jmp .b9_;
 .b8_:
   v10_: bool = lt v0 c1_;
-  v11_: bool = lt c1_ v0;
+  v11_: bool = gt v0 c1_;
   v12_: bool = and v10_ v11_;
   c13_: int = const 3;
   v14_: int = id c13_;
@@ -29,7 +29,7 @@ expression: visualization.result
   v20_: int = id c5_;
 .b21_:
   v22_: int = add v18_ v20_;
-  v23_: bool = lt v19_ v22_;
+  v23_: bool = gt v22_ v19_;
   v24_: bool = not v23_;
   v18_: int = id v22_;
   v19_: int = id v19_;

@@ -103,11 +103,12 @@ where
 }
 
 /// Like [`run_cmd_line`], but enforces a maximum address space size when running on Unix.
+#[cfg_attr(target_os = "macos", allow(unused_variables))]
 pub fn run_cmd_line_with_memory_limit<S1, S2, I>(
     program: S1,
     args: I,
     input: &str,
-    _memory_limit_bytes: Option<u64>,
+    memory_limit_bytes: Option<u64>,
 ) -> std::io::Result<String>
 where
     S1: AsRef<OsStr>,
@@ -128,7 +129,7 @@ where
         .stderr(Stdio::piped());
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    if let Some(limit) = _memory_limit_bytes {
+    if let Some(limit) = memory_limit_bytes {
         let limit = limit as libc::rlim_t;
         unsafe {
             command.pre_exec(move || {

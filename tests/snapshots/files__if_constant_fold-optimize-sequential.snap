@@ -4,15 +4,9 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: bool = const false;
-  c2_: int = const 5;
-  c3_: int = const 6;
-  v4_: int = select c1_ c2_ c3_;
-  c5_: bool = const true;
-  c6_: int = const 3;
-  c7_: int = const 4;
-  v8_: int = select c5_ c6_ c7_;
-  print v8_;
-  print v4_;
+  c1_: int = const 6;
+  c2_: int = const 3;
+  print c2_;
+  print c1_;
   ret;
 }

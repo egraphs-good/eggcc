@@ -1,12 +1,31 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 21324
 @main(v0: int) {
   v1_: int = neg v0;
   v2_: int = bitand v0 v1_;
+  c3_: int = const 0;
+  v4_: bool = eq c3_ v0;
+  c5_: int = const 1;
+  c6_: int = const 2;
+  v7_: int = id c5_;
+  v8_: int = id c6_;
+  v9_: int = id v0;
+  br v4_ .b10_ .b11_;
+.b10_:
+  v12_: int = id c5_;
+  v13_: int = id c6_;
+  v14_: int = id v0;
+.b15_:
+  c16_: bool = const true;
+  v12_: int = id v12_;
+  v13_: int = id v13_;
+  v14_: int = id v14_;
+  jmp .b15_;
+.b11_:
   print v2_;
+  ret;
   ret;
 }

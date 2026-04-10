@@ -344,7 +344,7 @@ fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let fns = program.fns();
-    let schedule = format!("\n(run-schedule\n   {})", schedule::helpers());
+    let schedule = format!("\n(run-schedule\n   {})", schedule::types_only());
     let egglog_prog = build_program(program, None, &fns, &schedule, None, true, false);
 
     log::info!("Running egglog program...");

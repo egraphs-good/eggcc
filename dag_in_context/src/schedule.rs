@@ -248,11 +248,7 @@ pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     add-to-debug-expr
 )
 ",
-            if config.non_weakly_linear {
-                "non-weakly-linear"
-            } else {
-                ""
-            }
+            "non-weakly-linear"
         )),
     ]
 }

@@ -223,27 +223,27 @@ def get_eggcc_options(benchmark):
     case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
     case "eggcc-tiger-WL-O0-O0":
-      return (f'optimize --use-tiger', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-O0-O0":
-      return (f'optimize --use-tiger --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-COMPARISON":
-      return (f'optimize --use-tiger --non-weakly-linear --time-ilp --percent-regions {benchmark.config.percent_regions}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --time-ilp --percent-regions {benchmark.config.percent_regions}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-CBC-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-NOMIN-O0-O0":
-      return (f'optimize --use-tiger --tiger-ilp --non-weakly-linear --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
 
     case "eggcc-WITHCTX-O0-O0":
       # run with the with-context flag
       return (f'optimize --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-WITHCTX-O0-O0":
-      return (f'optimize --use-tiger --non-weakly-linear --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-nohacker-WITHCTX-O0-O0":
-      return (f'optimize --use-tiger --non-weakly-linear --with-context --no-hacker-rules', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --with-context --no-hacker-rules', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case _:
       raise Exception("Unexpected run mode: " + benchmark.treatment)
     

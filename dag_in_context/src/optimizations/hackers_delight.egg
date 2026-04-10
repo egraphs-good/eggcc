@@ -44,7 +44,8 @@
 ;; Two rules work together:
 ;; 1. State-edge passthrough with zero guard: handles the state output by
 ;;    wrapping in If(n==0, infinite_loop, passthrough). This is sound because
-;;    the NTZ loop diverges for n=0 and terminates for n!=0.
+;;    in our semantics we preserve infinite loops, and the NTZ loop diverges
+;;    for n=0 and terminates for n!=0. lowbit(0) is NOT undefined behavior.
 ;; 2. Data rewrite: unions the data outputs with n&(-n) and n/(n&(-n)).
 
 ;; Rule 1: Conditional state-edge passthrough for NTZ loops

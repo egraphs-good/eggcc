@@ -6,13 +6,14 @@ use std::rc::Rc;
 use egglog::{ast::Literal, match_term_app, Term};
 use indexmap::IndexMap;
 
-use crate::{
-    greedy_dag_extractor::is_dummy_ctx,
-    schema::{
-        Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
-        UnaryOp,
-    },
+use crate::schema::{
+    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
+    UnaryOp,
 };
+
+fn is_dummy_ctx(op: &str) -> bool {
+    op.starts_with("DumC")
+}
 
 pub struct FromEgglog<'a> {
     pub termdag: &'a egglog::TermDag,

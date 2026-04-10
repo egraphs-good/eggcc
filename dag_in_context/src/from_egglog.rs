@@ -7,8 +7,7 @@ use egglog::{ast::Literal, match_term_app, Term};
 use indexmap::IndexMap;
 
 use crate::schema::{
-    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type,
-    UnaryOp,
+    Assumption, BaseType, BinaryOp, Constant, Expr, RcExpr, TernaryOp, TreeProgram, Type, UnaryOp,
 };
 
 fn is_dummy_ctx(op: &str) -> bool {

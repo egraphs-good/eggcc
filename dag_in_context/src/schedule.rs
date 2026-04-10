@@ -210,7 +210,7 @@ pub fn mk_sequential_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     res
 }
 
-pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
+pub fn parallel_schedule(_config: &EggccConfig) -> Vec<CompilerPass> {
     let helpers = helpers();
 
     vec![

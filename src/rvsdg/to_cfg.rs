@@ -304,28 +304,89 @@ impl<'a> RvsdgToCfg<'a> {
         let mut instructions = vec![];
         assert_eq!(input_vars.len(), resulting_vars.len());
 
-        // assign to the variables, making sure the types line up
-        for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
-            match (ivar, rvar) {
-                (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
-                (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
-                    assert_eq!(oty, lty);
-                    instructions.push(Instruction::Value {
-                        dest: lname.clone(),
-                        op: ValueOps::Id,
-                        args: vec![oname.clone()],
-                        funcs: vec![],
-                        labels: vec![],
-                        pos: None,
-                        op_type: oty.clone(),
-                    });
+        // Check if any destination name appears in the sources (aliasing detection)
+        let has_aliasing = {
+            use std::collections::HashSet;
+            let dest_names: HashSet<&String> = resulting_vars
+                .iter()
+                .filter_map(|v| match v {
+                    RvsdgValue::BrilValue(name, _) => Some(name),
+                    _ => None,
+                })
+                .collect();
+            
+            input_vars
+                .iter()
+                .any(|v| match v {
+                    RvsdgValue::BrilValue(name, _) => dest_names.contains(name),
+                    _ => false,
+                })
+        };
+
+        if has_aliasing {
+            // Use parallel copy via temporaries to avoid clobbering on cycles
+            let mut staged: Vec<(String, String, Type)> = Vec::new();
+
+            for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
+                match (ivar, rvar) {
+                    (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
+                    (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
+                        assert_eq!(oty, lty);
+                        let tmp = self.get_fresh();
+                        instructions.push(Instruction::Value {
+                            dest: tmp.clone(),
+                            op: ValueOps::Id,
+                            args: vec![oname.clone()],
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                            op_type: oty.clone(),
+                        });
+                        staged.push((tmp, lname.clone(), oty.clone()));
+                    }
+                    _ => panic!(
+                        "Incompatible values in assign_to_vars: {:?} {:?}",
+                        ivar, rvar
+                    ),
                 }
-                _ => panic!(
-                    "Incompatible values in assign_to_vars: {:?} {:?}",
-                    ivar, rvar
-                ),
+            }
+
+            for (tmp, dst, ty) in staged {
+                instructions.push(Instruction::Value {
+                    dest: dst,
+                    op: ValueOps::Id,
+                    args: vec![tmp],
+                    funcs: vec![],
+                    labels: vec![],
+                    pos: None,
+                    op_type: ty,
+                });
+            }
+        } else {
+            // No aliasing: use simple sequential assignment
+            for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
+                match (ivar, rvar) {
+                    (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
+                    (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
+                        assert_eq!(oty, lty);
+                        instructions.push(Instruction::Value {
+                            dest: lname.clone(),
+                            op: ValueOps::Id,
+                            args: vec![oname.clone()],
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                            op_type: oty.clone(),
+                        });
+                    }
+                    _ => panic!(
+                        "Incompatible values in assign_to_vars: {:?} {:?}",
+                        ivar, rvar
+                    ),
+                }
             }
         }
+
         let block = self.make_block(instructions);
         TranslationResult {
             start: block,

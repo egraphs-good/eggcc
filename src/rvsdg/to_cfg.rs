@@ -304,34 +304,34 @@ impl<'a> RvsdgToCfg<'a> {
         let mut instructions = vec![];
         assert_eq!(input_vars.len(), resulting_vars.len());
 
-        // Check if any destination name appears in the sources (aliasing detection)
-        let has_aliasing = {
-            use std::collections::HashSet;
-            let dest_names: HashSet<&String> = resulting_vars
-                .iter()
-                .filter_map(|v| match v {
-                    RvsdgValue::BrilValue(name, _) => Some(name),
-                    _ => None,
-                })
-                .collect();
-            
-            input_vars
-                .iter()
-                .any(|v| match v {
-                    RvsdgValue::BrilValue(name, _) => dest_names.contains(name),
-                    _ => false,
-                })
-        };
+        // For each position, determine if it needs a temporary.
+        // A position needs a temp if its destination name appears in any source.
+        let needs_temp: Vec<bool> = resulting_vars
+            .iter()
+            .map(|rvar| {
+                if let RvsdgValue::BrilValue(dest_name, _) = rvar {
+                    input_vars.iter().any(|ivar| {
+                        if let RvsdgValue::BrilValue(src_name, _) = ivar {
+                            src_name == dest_name
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            })
+            .collect();
 
-        if has_aliasing {
-            // Use parallel copy via temporaries to avoid clobbering on cycles
-            let mut staged: Vec<(String, String, Type)> = Vec::new();
-
-            for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
-                match (ivar, rvar) {
-                    (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
-                    (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
-                        assert_eq!(oty, lty);
+        // First pass: create temps for inputs that need them or direct assignments otherwise
+        let mut temp_assignments: Vec<(String, String, Type)> = Vec::new();
+        for (idx, (ivar, rvar)) in input_vars.iter().zip(resulting_vars.iter()).enumerate() {
+            match (ivar, rvar) {
+                (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
+                (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
+                    assert_eq!(oty, lty);
+                    if needs_temp[idx] {
+                        // This destination is read by another assignment, use a temp
                         let tmp = self.get_fresh();
                         instructions.push(Instruction::Value {
                             dest: tmp.clone(),
@@ -342,33 +342,9 @@ impl<'a> RvsdgToCfg<'a> {
                             pos: None,
                             op_type: oty.clone(),
                         });
-                        staged.push((tmp, lname.clone(), oty.clone()));
-                    }
-                    _ => panic!(
-                        "Incompatible values in assign_to_vars: {:?} {:?}",
-                        ivar, rvar
-                    ),
-                }
-            }
-
-            for (tmp, dst, ty) in staged {
-                instructions.push(Instruction::Value {
-                    dest: dst,
-                    op: ValueOps::Id,
-                    args: vec![tmp],
-                    funcs: vec![],
-                    labels: vec![],
-                    pos: None,
-                    op_type: ty,
-                });
-            }
-        } else {
-            // No aliasing: use simple sequential assignment
-            for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
-                match (ivar, rvar) {
-                    (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
-                    (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
-                        assert_eq!(oty, lty);
+                        temp_assignments.push((tmp, lname.clone(), oty.clone()));
+                    } else {
+                        // No aliasing for this variable, direct assignment is safe
                         instructions.push(Instruction::Value {
                             dest: lname.clone(),
                             op: ValueOps::Id,
@@ -379,12 +355,25 @@ impl<'a> RvsdgToCfg<'a> {
                             op_type: oty.clone(),
                         });
                     }
-                    _ => panic!(
-                        "Incompatible values in assign_to_vars: {:?} {:?}",
-                        ivar, rvar
-                    ),
                 }
+                _ => panic!(
+                    "Incompatible values in assign_to_vars: {:?} {:?}",
+                    ivar, rvar
+                ),
             }
+        }
+
+        // Second pass: assign temps to their final destinations
+        for (tmp, dst, ty) in temp_assignments {
+            instructions.push(Instruction::Value {
+                dest: dst,
+                op: ValueOps::Id,
+                args: vec![tmp],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+                op_type: ty,
+            });
         }
 
         let block = self.make_block(instructions);

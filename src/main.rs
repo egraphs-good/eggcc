@@ -77,12 +77,6 @@ struct Args {
     #[clap(long)]
     stop_after_n_passes: Option<i64>,
 
-    /// Turn off enforcement that the output program uses
-    /// memory linearly. This can give an idea of what
-    /// extraction is doing.
-    /// WARNING: Produces unsound results!
-    #[clap(long)]
-    no_linearity: bool,
     #[clap(long)]
     optimize_function: Option<String>,
 
@@ -162,7 +156,6 @@ fn main() {
         eggcc_config: EggccConfig {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
-            linearity: !args.no_linearity,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
             tiger_ilp: args.tiger_ilp,

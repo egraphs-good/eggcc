@@ -353,7 +353,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
 
     let (serialized, _unextractables) = serialized_egraph(egraph);
     let config = EggccConfig::default();
-    let (res, _, _) = run_tiger_pipeline(&config, program, &fns, &serialized, true);
+    let (res, _, _) = run_tiger_pipeline(&config, program, &fns, &serialized);
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
     let (res_with_ctx, _) = res.add_dummy_ctx();
@@ -386,10 +386,6 @@ pub struct EggccConfig {
     /// If stop_after_n_passes is negative,
     /// run [0 ... schedule.len() + stop_after_n_passes] passes.
     pub stop_after_n_passes: i64,
-    /// For debugging, disable extraction with linearity
-    /// and just return the first program found.
-    /// This produces unsound results but is useful for seeing the intermediate extracted result.
-    pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
@@ -476,7 +472,6 @@ impl Default for EggccConfig {
         Self {
             schedule: Schedule::default(),
             stop_after_n_passes: i64::MAX,
-            linearity: true,
             optimize_functions: None,
             ablate: None,
             tiger_ilp: false,
@@ -591,7 +586,6 @@ fn run_tiger_pipeline(
     original_prog: &TreeProgram,
     batch: &[String],
     egraph: &egraph_serialize::EGraph,
-    _should_maintain_linearity: bool,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
     let json = serde_json::to_string_pretty(egraph)
         .map_err(|err| format!("failed to serialize egraph: {err}"))
@@ -802,15 +796,8 @@ fn extract(
     original_prog: &TreeProgram,
     batch: Vec<String>,
     egraph: &egraph_serialize::EGraph,
-    should_maintain_linearity: bool,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
-    run_tiger_pipeline(
-        eggcc_config,
-        original_prog,
-        &batch,
-        egraph,
-        should_maintain_linearity,
-    )
+    run_tiger_pipeline(eggcc_config, original_prog, &batch, egraph)
 }
 
 // Optimizes a tree program using the given schedule.
@@ -839,11 +826,6 @@ pub fn optimize(
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
-        let mut should_maintain_linearity = true;
-        if i == cutoff - 1 {
-            should_maintain_linearity = eggcc_config.linearity;
-        }
-
         log::info!("Running pass {}...", i);
         let fns = res.fns();
 
@@ -920,13 +902,8 @@ pub fn optimize(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (iter_result, region_timings, extract_time) = extract(
-                eggcc_config,
-                &res,
-                batch.clone(),
-                &serialized,
-                should_maintain_linearity,
-            );
+            let (iter_result, region_timings, extract_time) =
+                extract(eggcc_config, &res, batch.clone(), &serialized);
 
             eggcc_extraction_time += extract_time;
             eggcc_serialization_time += serialization_duration;

@@ -20,9 +20,12 @@ expression: visualization.result
   v14_: int = id v0;
 .b15_:
   c16_: bool = const true;
-  v12_: int = id v12_;
-  v13_: int = id v13_;
-  v14_: int = id v14_;
+  v17_: int = id v12_;
+  v18_: int = id v13_;
+  v19_: int = id v14_;
+  v12_: int = id v17_;
+  v13_: int = id v18_;
+  v14_: int = id v19_;
   jmp .b15_;
 .b11_:
   print v2_;

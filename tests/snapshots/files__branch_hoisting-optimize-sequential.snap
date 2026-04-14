@@ -28,20 +28,23 @@ expression: visualization.result
   v22_: bool = lt v21_ v7_;
   v3_: int = id v14_;
   v4_: int = id v21_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  v7_: int = id v7_;
-  br v22_ .b8_ .b23_;
+  v23_: int = id v5_;
+  v24_: int = id v6_;
+  v25_: int = id v7_;
+  v5_: int = id v23_;
+  v6_: int = id v24_;
+  v7_: int = id v25_;
+  br v22_ .b8_ .b26_;
 .b12_:
-  c24_: int = const 3;
-  v25_: int = mul c24_ v4_;
-  v14_: int = id v25_;
+  c27_: int = const 3;
+  v28_: int = mul c27_ v4_;
+  v14_: int = id v28_;
   v15_: int = id v4_;
   v16_: int = id v5_;
   v17_: int = id v6_;
   v18_: int = id v7_;
   jmp .b19_;
-.b23_:
+.b26_:
   print v3_;
   ret;
 }

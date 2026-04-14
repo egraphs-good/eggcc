@@ -33,10 +33,12 @@ expression: visualization.result
   v24_: bool = gt v23_ v20_;
   v25_: bool = not v24_;
   v19_: int = id v23_;
-  v20_: int = id v20_;
-  v21_: int = id v21_;
-  br v25_ .b22_ .b26_;
-.b26_:
+  v26_: int = id v20_;
+  v27_: int = id v21_;
+  v20_: int = id v26_;
+  v21_: int = id v27_;
+  br v25_ .b22_ .b28_;
+.b28_:
   v15_: int = id v19_;
   v7_: int = id v15_;
   print v7_;

@@ -11,9 +11,10 @@ expression: visualization.result
   v4_: int = add v1_ v2_;
   v5_: bool = lt v1_ v2_;
   v1_: int = id v4_;
-  v2_: int = id v2_;
-  br v5_ .b3_ .b6_;
-.b6_:
+  v6_: int = id v2_;
+  v2_: int = id v6_;
+  br v5_ .b3_ .b7_;
+.b7_:
   print v1_;
   ret;
 }

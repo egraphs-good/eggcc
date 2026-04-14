@@ -65,10 +65,13 @@ expression: visualization.result
   v15_: bool = id v33_;
   v16_: int = id v34_;
   v17_: int = id v35_;
-  v6_: ptr<int> = id v6_;
+  v48_: ptr<int> = id v6_;
   v7_: int = id v14_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
+  v49_: int = id v8_;
+  v50_: int = id v9_;
+  v6_: ptr<int> = id v48_;
+  v8_: int = id v49_;
+  v9_: int = id v50_;
   jmp .b10_;
 .b37_:
   v13_: ptr<int> = id v31_;
@@ -76,29 +79,35 @@ expression: visualization.result
   v15_: bool = id v33_;
   v16_: int = id v34_;
   v17_: int = id v35_;
-  v6_: ptr<int> = id v6_;
+  v48_: ptr<int> = id v6_;
   v7_: int = id v14_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-  v48_: ptr<int> = ptradd v6_ v7_;
-  c49_: int = const -1;
-  v50_: ptr<int> = ptradd v48_ c49_;
-  v51_: int = load v50_;
+  v49_: int = id v8_;
+  v50_: int = id v9_;
+  v6_: ptr<int> = id v48_;
+  v8_: int = id v49_;
+  v9_: int = id v50_;
+  v51_: ptr<int> = ptradd v6_ v7_;
+  c52_: int = const -1;
+  v53_: ptr<int> = ptradd v51_ c52_;
+  v54_: int = load v53_;
   free v6_;
-  print v51_;
+  print v54_;
   ret;
-  jmp .b52_;
+  jmp .b55_;
 .b19_:
-  v6_: ptr<int> = id v6_;
+  v48_: ptr<int> = id v6_;
   v7_: int = id v14_;
-  v8_: int = id v8_;
-  v9_: int = id v9_;
-  v48_: ptr<int> = ptradd v6_ v7_;
-  c49_: int = const -1;
-  v50_: ptr<int> = ptradd v48_ c49_;
-  v51_: int = load v50_;
+  v49_: int = id v8_;
+  v50_: int = id v9_;
+  v6_: ptr<int> = id v48_;
+  v8_: int = id v49_;
+  v9_: int = id v50_;
+  v51_: ptr<int> = ptradd v6_ v7_;
+  c52_: int = const -1;
+  v53_: ptr<int> = ptradd v51_ c52_;
+  v54_: int = load v53_;
   free v6_;
-  print v51_;
+  print v54_;
   ret;
-.b52_:
+.b55_:
 }

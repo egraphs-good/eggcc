@@ -12,10 +12,11 @@ expression: visualization.result
   c6_: int = const 10;
   v7_: bool = lt v2_ c6_;
   v2_: int = id v5_;
-  v3_: int = id v3_;
-  br v7_ .b4_ .b8_;
-.b8_:
-  v9_: int = add v0 v2_;
-  print v9_;
+  v8_: int = id v3_;
+  v3_: int = id v8_;
+  br v7_ .b4_ .b9_;
+.b9_:
+  v10_: int = add v0 v2_;
+  print v10_;
   ret;
 }

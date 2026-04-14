@@ -14,25 +14,33 @@ expression: visualization.result
   v8_: ptr<int> = id v2_;
   v9_: ptr<int> = id v6_;
   v10_: bool = id v0;
-  v7_: ptr<int> = id v8_;
-  v8_: ptr<int> = id v7_;
-  v9_: ptr<int> = id v9_;
-  v10_: bool = id v10_;
-.b11_:
-  br v10_ .b12_ .b13_;
-.b12_:
-  v7_: ptr<int> = id v8_;
-  v8_: ptr<int> = id v7_;
-  v9_: ptr<int> = id v9_;
-  v10_: bool = id v10_;
-  jmp .b11_;
-.b13_:
-  c14_: int = const 20;
-  c15_: int = const 10;
-  store v8_ c15_;
-  store v9_ c14_;
-  v16_: int = load v8_;
-  print v16_;
+  v11_: ptr<int> = id v8_;
+  v12_: ptr<int> = id v7_;
+  v13_: ptr<int> = id v9_;
+  v14_: bool = id v10_;
+  v7_: ptr<int> = id v11_;
+  v8_: ptr<int> = id v12_;
+  v9_: ptr<int> = id v13_;
+  v10_: bool = id v14_;
+.b15_:
+  br v10_ .b16_ .b17_;
+.b16_:
+  v11_: ptr<int> = id v8_;
+  v12_: ptr<int> = id v7_;
+  v13_: ptr<int> = id v9_;
+  v14_: bool = id v10_;
+  v7_: ptr<int> = id v11_;
+  v8_: ptr<int> = id v12_;
+  v9_: ptr<int> = id v13_;
+  v10_: bool = id v14_;
+  jmp .b15_;
+.b17_:
+  c18_: int = const 20;
+  c19_: int = const 10;
+  store v8_ c19_;
+  store v9_ c18_;
+  v20_: int = load v8_;
+  print v20_;
   free v7_;
   ret;
 }

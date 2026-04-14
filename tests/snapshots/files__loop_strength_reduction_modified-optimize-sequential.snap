@@ -43,13 +43,18 @@ expression: visualization.result
 .b26_:
   v28_: bool = lt v15_ v12_;
   v6_: int = id v15_;
-  v7_: int = id v7_;
+  v29_: int = id v7_;
   v8_: int = id v20_;
-  v9_: int = id v9_;
-  v10_: int = id v10_;
-  v11_: int = id v11_;
-  v12_: int = id v12_;
-  br v28_ .b13_ .b29_;
-.b29_:
+  v30_: int = id v9_;
+  v31_: int = id v10_;
+  v32_: int = id v11_;
+  v33_: int = id v12_;
+  v7_: int = id v29_;
+  v9_: int = id v30_;
+  v10_: int = id v31_;
+  v11_: int = id v32_;
+  v12_: int = id v33_;
+  br v28_ .b13_ .b34_;
+.b34_:
   ret;
 }

@@ -83,12 +83,11 @@
     (union (Get outputs i) (Get inputs j))
 ) :ruleset non-weakly-linear)
 
-; Pass through loop state edge arguments, requires tiger
-; Warning: This potentially eliminate infinite loops
-
+; Pass through loop state edge arguments (when finite)
+; Otherwise it may get rid of infinite loops
 (rule (
     (= lp (DoWhile inputs pred_outputs))
-  (LoopIsFinite inputs pred_outputs)
+    (LoopIsFinite inputs pred_outputs)
     (= (Get pred_outputs (+ i 1)) (Get (Arg _ty _ctx) i))
     (HasType (Get pred_outputs (+ i 1)) (Base (StateT)))
 ) (

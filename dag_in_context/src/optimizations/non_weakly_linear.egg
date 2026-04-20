@@ -69,7 +69,7 @@
   (set (LoopNumItersGuess new-loop-input new-loop-body) (- old_cost 1))
   (LoopIsFinite new-loop-input new-loop-body)
   )
- :ruleset non-weakly-linear)
+ :ruleset never)
 
 
 ; A stronger pass through for if state edge arguments, requires tiger

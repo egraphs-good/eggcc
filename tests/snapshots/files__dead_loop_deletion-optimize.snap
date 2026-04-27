@@ -5,6 +5,32 @@ expression: visualization.result
 # ARGS: 
 @main {
   c0_: int = const 2;
+  c1_: int = const 3;
+  c2_: int = const 0;
+  c3_: int = const 1;
+  c4_: int = const 40;
+  v5_: int = id c1_;
+  v6_: int = id c2_;
+  v7_: int = id c3_;
+  v8_: int = id c4_;
+.b9_:
+  v10_: int = add v5_ v7_;
+  v11_: int = add v10_ v7_;
+  v12_: int = add v11_ v7_;
+  v13_: int = add v12_ v7_;
+  v14_: int = add v6_ v7_;
+  v15_: int = add v14_ v7_;
+  v16_: int = add v15_ v7_;
+  v17_: int = add v16_ v7_;
+  v18_: bool = lt v17_ v8_;
+  v5_: int = id v13_;
+  v6_: int = id v17_;
+  v19_: int = id v7_;
+  v20_: int = id v8_;
+  v7_: int = id v19_;
+  v8_: int = id v20_;
+  br v18_ .b9_ .b21_;
+.b21_:
   print c0_;
   ret;
 }

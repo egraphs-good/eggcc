@@ -661,8 +661,8 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let tiger_bin = find_tiger_binary("tiger")
-        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
+    let tiger_bin = find_tiger_binary("tiger-rs")
+        .ok_or_else(|| "tiger-rs binary not found; build the tiger tools first".to_string())
         .unwrap();
 
     let mut tiger_args: Vec<OsString> = Vec::new();

@@ -1,0 +1,24 @@
+[package]
+name = "tiger"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tiger-rs"
+path = "src/main.rs"
+
+[dependencies]
+indexmap = "2.0"
+rand_mt = { version = "6.0", default-features = false }
+rustc-hash = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3"
+wait-timeout = "0.2"
+
+[features]
+default = []
+debug = []
+
+[profile.release]
+opt-level = 3

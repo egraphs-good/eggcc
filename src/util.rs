@@ -479,7 +479,19 @@ impl Run {
             optimize_brilift: None,
             optimize_bril_llvm: None,
             add_timing: false,
-            eggcc_config: EggccConfig::default(),
+            eggcc_config: Self::test_eggcc_config(),
+        }
+    }
+
+    /// EggccConfig used by the test harness. Disables `non_weakly_linear` so
+    /// CI tests don't pay the cost of the non-weakly-linear ruleset.
+    /// TODO: drop the override once non-weakly-linear is fast enough to run
+    /// in tests — keeping it on would give us stronger test coverage of the
+    /// production pipeline.
+    fn test_eggcc_config() -> EggccConfig {
+        EggccConfig {
+            non_weakly_linear: false,
+            ..EggccConfig::default()
         }
     }
 
@@ -500,7 +512,8 @@ impl Run {
             RunMode::CheckExtractIdentical,
             RunMode::TestPrettyPrint,
         ] {
-            let default = Run::new(prog.clone(), test_type);
+            let mut default = Run::new(prog.clone(), test_type);
+            default.eggcc_config = Self::test_eggcc_config();
             if test_type.produces_interpretable() {
                 let interp = Run {
                     interp: InterpMode::Interp,
@@ -513,11 +526,13 @@ impl Run {
         }
         // also test the sequential schedule
         let mut seq = Run::new(prog.clone(), RunMode::Optimize);
+        seq.eggcc_config = Self::test_eggcc_config();
         seq.eggcc_config.schedule = Schedule::Sequential;
         res.push(seq);
 
         // also test no context mode
         let mut no_ctx = Run::new(prog.clone(), RunMode::Optimize);
+        no_ctx.eggcc_config = Self::test_eggcc_config();
         no_ctx.eggcc_config.use_context = false;
         res.push(no_ctx);
 
@@ -543,7 +558,7 @@ impl Run {
                         optimize_brilift: None,
                         optimize_bril_llvm: Some(optimize_llvm),
                         add_timing: false,
-                        eggcc_config: EggccConfig::default(),
+                        eggcc_config: Self::test_eggcc_config(),
                     });
                 }
             }

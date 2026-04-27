@@ -163,6 +163,7 @@ fn main() {
             percent_regions: args.percent_regions,
             use_context: args.with_context,
             disable_hacker_rules: args.no_hacker_rules,
+            non_weakly_linear: true,
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,

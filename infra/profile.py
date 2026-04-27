@@ -75,7 +75,6 @@ _base_treatments = [
   "llvm-O3-O3",
   "eggcc-O3-O0",
   "eggcc-O3-O3",
-  "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0",
   "eggcc-tiger-ILP-CBC-O0-O0",
   #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
@@ -110,7 +109,6 @@ example_subset_treatments = [
   "llvm-O0-O0",
   "eggcc-O0-O0",
   "llvm-O3-O0",
-  "eggcc-tiger-WL-O0-O0",
   "eggcc-tiger-O0-O0"
 ]
 
@@ -222,8 +220,6 @@ def get_eggcc_options(benchmark):
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O0 --ablate {TO_ABLATE}')
     case "eggcc-ablation-O3-O3":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O3_O3 --ablate {TO_ABLATE}')
-    case "eggcc-tiger-WL-O0-O0":
-      return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-COMPARISON":

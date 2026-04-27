@@ -210,7 +210,7 @@ pub fn mk_sequential_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     res
 }
 
-pub fn parallel_schedule(_config: &EggccConfig) -> Vec<CompilerPass> {
+pub fn parallel_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
     let helpers = helpers();
 
     vec![
@@ -264,7 +264,11 @@ pub fn parallel_schedule(_config: &EggccConfig) -> Vec<CompilerPass> {
     add-to-debug-expr
 )
 ",
-            "non-weakly-linear"
+            if config.non_weakly_linear {
+                "non-weakly-linear"
+            } else {
+                ""
+            }
         )),
     ]
 }

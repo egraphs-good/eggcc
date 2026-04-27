@@ -398,6 +398,10 @@ pub struct EggccConfig {
     pub use_context: bool,
     /// If true, disable the hacker ruleset in hackers_delight.egg.
     pub disable_hacker_rules: bool,
+    /// When true, run the non-weakly-linear ruleset.
+    /// Defaults to true so the production pipeline behaves as on this branch;
+    /// tests opt out to keep CI fast.
+    pub non_weakly_linear: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
     pub ilp_solver: IlpSolver,
@@ -479,6 +483,7 @@ impl Default for EggccConfig {
             percent_regions: 100.0,
             use_context: true,
             disable_hacker_rules: false,
+            non_weakly_linear: true,
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,

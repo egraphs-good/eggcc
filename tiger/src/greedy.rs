@@ -3,8 +3,15 @@
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use std::hash::BuildHasherDefault;
 
 use indexmap::IndexMap;
+use rustc_hash::FxHasher;
+
+// SCost::bag is keyed by integer EClassId. SipHash (IndexMap's default) is
+// noticeably slower than FxHash on this hot path; the C++ side uses
+// `unordered_map<EClassId, Cost>` with a trivial integer hash. Mirror that.
+type FxBuildHasher = BuildHasherDefault<FxHasher>;
 
 use crate::egraphin::{
     compute_reverse_index, EClassId, EGraph, EGraphMapping, ENode, ENodeId, Extraction,
@@ -22,14 +29,14 @@ pub const INF: Cost = u64::MAX;
 #[derive(Clone)]
 pub struct SCost {
     pub sum: Cost,
-    pub bag: IndexMap<EClassId, Cost>,
+    pub bag: IndexMap<EClassId, Cost, FxBuildHasher>,
 }
 
 impl SCost {
     pub fn new(v: Cost) -> Self {
         SCost {
             sum: v,
-            bag: IndexMap::new(),
+            bag: IndexMap::with_hasher(FxBuildHasher::default()),
         }
     }
 

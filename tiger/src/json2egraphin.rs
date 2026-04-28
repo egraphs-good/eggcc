@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::io::{Read, Stdin};
+use std::io::Read;
 
 use indexmap::IndexMap;
 
@@ -27,27 +27,28 @@ thread_local! {
 }
 
 struct StdinReader {
-    stdin: Stdin,
-    // pushback for a single byte not yet consumed
-    peeked: Option<u8>,
+    buf: Vec<u8>,
+    pos: usize,
 }
 
 impl StdinReader {
     fn new() -> Self {
-        StdinReader { stdin: std::io::stdin(), peeked: None }
+        // Slurp all of stdin once. Mirrors C++ scanf's internal stdio buffering,
+        // but avoids the pthread_mutex_lock/unlock that std::io::Stdin::lock()
+        // performs on every read — that lock dominated the JSON parse profile.
+        let mut buf = Vec::new();
+        let _ = std::io::stdin().lock().read_to_end(&mut buf);
+        StdinReader { buf, pos: 0 }
     }
 
+    #[inline]
     fn read_byte(&mut self) -> Option<u8> {
-        if let Some(b) = self.peeked.take() {
-            return Some(b);
-        }
-        let mut buf = [0u8; 1];
-        // lock per-call; this binary is single-threaded.
-        let mut handle = self.stdin.lock();
-        match handle.read(&mut buf) {
-            Ok(0) => None,
-            Ok(_) => Some(buf[0]),
-            Err(_) => None,
+        if self.pos < self.buf.len() {
+            let b = self.buf[self.pos];
+            self.pos += 1;
+            Some(b)
+        } else {
+            None
         }
     }
 }
@@ -59,7 +60,9 @@ pub fn read_string() -> String {
     // 3. Return it
     STDIN_READER.with(|r| {
         let mut r = r.borrow_mut();
-        let mut s = String::new();
+        // Most tokens are short identifiers / small numbers; pre-allocating avoids
+        // the realloc churn (0→4→8→16) that showed up under `RawVec::grow_one`.
+        let mut s = String::with_capacity(32);
         // skip whitespace
         let mut b;
         loop {
@@ -485,8 +488,11 @@ pub fn mark_reachable(root: EClassId) {
 }
 
 // unordered_map<EClassId, EClassId> new_eclassidmp;
+// Integer-keyed: use FxHash to mirror the trivial integer hash used by
+// std::unordered_map<EClassId, EClassId> on the C++ side.
 thread_local! {
-    static NEW_ECLASSIDMP: RefCell<IndexMap<EClassId, EClassId>> = RefCell::new(IndexMap::new());
+    static NEW_ECLASSIDMP: RefCell<IndexMap<EClassId, EClassId, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>> =
+        RefCell::new(IndexMap::with_hasher(std::hash::BuildHasherDefault::<rustc_hash::FxHasher>::default()));
 }
 
 const EXTRACTABLEOP: &[&str] = &[

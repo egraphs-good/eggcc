@@ -294,10 +294,14 @@
 (bop-of-type (Sub) (Base (IntT)))
 (bop-of-type (Div) (Base (IntT)))
 (bop-of-type (Mul) (Base (IntT)))
+(bop-of-type (Smax) (Base (IntT)))
+(bop-of-type (Smin) (Base (IntT)))
 (bop-of-type (FAdd) (Base (FloatT)))
 (bop-of-type (FSub) (Base (FloatT)))
 (bop-of-type (FDiv) (Base (FloatT)))
 (bop-of-type (FMul) (Base (FloatT)))
+(bop-of-type (Fmax) (Base (FloatT)))
+(bop-of-type (Fmin) (Base (FloatT)))
 
 (rule (
         (= lhs (Bop op e1 e2))

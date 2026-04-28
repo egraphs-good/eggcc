@@ -584,6 +584,70 @@ fn extract_program_with_egglog(
 const TIGER_MEMORY_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
 const MEMORY_LIMIT_HUMAN: &str = "8 GiB";
 
+/// Persist the JSON we sent to tiger so the user can replay the failing
+/// invocation. Returns the path on success.
+fn dump_tiger_input_for_debug(json_input: &str) -> Option<PathBuf> {
+    let mut file = tempfile::Builder::new()
+        .prefix("tiger-crash-")
+        .suffix(".json")
+        .tempfile()
+        .ok()?;
+    use std::io::Write;
+    file.write_all(json_input.as_bytes()).ok()?;
+    let (_, path) = file.keep().ok()?;
+    Some(path)
+}
+
+/// Look for the most common cause of an unexplained tiger crash:
+/// a `Function` body whose eclass has no `HasType` node. Tiger needs the
+/// body to be marked with an effectful type to find the state-edge `Arg`
+/// during regionalization; if it's missing we'd rather report a real error
+/// here than let tiger SIGSEGV with empty stderr.
+fn diagnose_tiger_egraph(egraph: &egraph_serialize::EGraph, batch: &[String]) -> String {
+    let mut typed: HashSet<egraph_serialize::ClassId> = HashSet::new();
+    for node in egraph.nodes.values() {
+        if node.op == "HasType" && node.children.len() == 2 {
+            if let Some(child) = egraph.nodes.get(&node.children[0]) {
+                typed.insert(child.eclass.clone());
+            }
+        }
+    }
+
+    let mut untyped_bodies: Vec<(String, String)> = Vec::new();
+    for node in egraph.nodes.values() {
+        if node.op != "Function" || node.children.len() != 4 {
+            continue;
+        }
+        let name_node = match egraph.nodes.get(&node.children[0]) {
+            Some(n) => n,
+            None => continue,
+        };
+        let func_name = name_node.op.trim_matches('"').to_string();
+        if !batch.iter().any(|f| f == &func_name) {
+            continue;
+        }
+        let body_node = match egraph.nodes.get(&node.children[3]) {
+            Some(n) => n,
+            None => continue,
+        };
+        if !typed.contains(&body_node.eclass) {
+            untyped_bodies.push((func_name, body_node.eclass.to_string()));
+        }
+    }
+
+    if untyped_bodies.is_empty() {
+        return String::new();
+    }
+    let mut msg = String::from(
+        "\ndiagnostic: function body eclass has no HasType — tiger cannot regionalize. \
+         Likely a missing type-analysis rule for an op in the body. Affected:",
+    );
+    for (name, eclass) in untyped_bodies {
+        msg.push_str(&format!("\n  - function {name:?} body eclass {eclass}"));
+    }
+    msg
+}
+
 // Run tiger extractor pipeline using the tiger binaries built from c++.
 // See the build.rs file.
 fn run_tiger_pipeline(
@@ -661,7 +725,21 @@ fn run_tiger_pipeline(
                 println!("TIMEOUT");
                 std::process::exit(1);
             }
-            panic!("tiger invocation failed: {message}");
+            let dump_path = dump_tiger_input_for_debug(&json_input);
+            let dump_hint = match dump_path {
+                Some(path) => format!(
+                    "\ntiger input dumped to: {} (run: tiger --ilp-solver {} <{} )",
+                    path.display(),
+                    match eggcc_config.ilp_solver {
+                        IlpSolver::Gurobi => "gurobi",
+                        IlpSolver::Cbc => "cbc",
+                    },
+                    path.display()
+                ),
+                None => String::new(),
+            };
+            let diagnostic = diagnose_tiger_egraph(egraph, batch);
+            panic!("tiger invocation failed: {message}{diagnostic}{dump_hint}");
         }
     };
     let eggcc_extraction_time = extraction_start.elapsed();

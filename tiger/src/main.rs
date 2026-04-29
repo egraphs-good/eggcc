@@ -7,6 +7,14 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::too_many_arguments)]
 
+// Use mimalloc as the global allocator. The port allocates a fresh String for
+// every JSON token, which on Linux's glibc malloc is significantly slower than
+// the C++ side that reuses a `static char buf[505]`. mimalloc has small-object
+// fast paths comparable to macOS's allocator and brings Linux performance back
+// in line with the C++ binary.
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod egraphin;
 mod debug;
 mod persistent_btree;

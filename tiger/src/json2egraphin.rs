@@ -139,9 +139,10 @@ pub fn get_next_token() -> String {
     if TOKENBUF.with(|b| b.borrow().len()) == 0 {
         read_next_token();
     }
-    let ret = TOKENBUF.with(|b| b.borrow().front().unwrap().clone());
-    TOKENBUF.with(|b| { b.borrow_mut().pop_front(); });
-    ret
+    // Move out of the queue rather than clone-then-pop. The original C++ uses
+    // `tokenbuf.front(); tokenbuf.pop()` which moves; cloning + dropping was
+    // an unnecessary malloc/free per token.
+    TOKENBUF.with(|b| b.borrow_mut().pop_front().unwrap())
 }
 
 #[derive(Clone, Default)]

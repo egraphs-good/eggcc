@@ -1,9 +1,7 @@
 use clap::ValueEnum;
-use egglog::{ast::Symbol, Term, TermDag};
-use egraph_serialize::Cost;
-use greedy_dag_extractor::{
-    greedy_dag_extract, has_debug_exprs, serialized_egraph, DefaultCostModel,
-};
+use egglog::ast::Symbol;
+use egglog::SerializeConfig;
+use egglog::{Term, TermDag};
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use interpreter::Value;
@@ -35,10 +33,8 @@ mod config;
 pub mod dag2svg;
 pub mod dag_typechecker;
 pub mod from_egglog;
-mod greedy_dag_extractor;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
-mod linearity;
 mod optimizations;
 mod remove_context;
 mod remove_dead_code_nodes;
@@ -316,27 +312,48 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
     term1 == term2
 }
 
-/// Adds the program to the egraph and extracts it.
+pub fn serialized_egraph(
+    egglog_egraph: egglog::EGraph,
+) -> (egraph_serialize::EGraph, IndexSet<String>) {
+    let config = SerializeConfig::default();
+    let egraph = egglog_egraph.serialize(config);
+    let unextractables = egglog_egraph
+        .functions
+        .iter()
+        .filter_map(|(name, func)| {
+            if func.is_extractable() {
+                None
+            } else {
+                Some(name.to_string())
+            }
+        })
+        .collect();
+    (egraph, unextractables)
+}
+
+fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
+    for (_, node) in &serialized_egraph.nodes {
+        if node.op == "DebugExpr" {
+            return true;
+        }
+    }
+    false
+}
+
+/// Adds the program to the egraph and extracts it with tiger.
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
-    let mut termdag = egglog::TermDag::default();
     let fns = program.fns();
-    let egglog_prog = build_program(program, None, &fns, "", None, true, false);
+    let schedule = format!("\n(run-schedule\n   {})", schedule::types_only());
+    let egglog_prog = build_program(program, None, &fns, &schedule, None, true, false);
+
     log::info!("Running egglog program...");
     let mut egraph = egglog::EGraph::default();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
-    let (serialized, unextractables) = serialized_egraph(egraph);
-    let (_res_cost, res) = greedy_dag_extract(
-        program,
-        program.fns(),
-        serialized,
-        unextractables,
-        &mut termdag,
-        DefaultCostModel,
-        true,
-        false,
-    );
+    let (serialized, _unextractables) = serialized_egraph(egraph);
+    let config = EggccConfig::default();
+    let (res, _, _) = run_tiger_pipeline(&config, program, &fns, &serialized);
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
     let (res_with_ctx, _) = res.add_dummy_ctx();
@@ -369,17 +386,10 @@ pub struct EggccConfig {
     /// If stop_after_n_passes is negative,
     /// run [0 ... schedule.len() + stop_after_n_passes] passes.
     pub stop_after_n_passes: i64,
-    /// For debugging, disable extraction with linearity
-    /// and just return the first program found.
-    /// This produces unsound results but is useful for seeing the intermediate extracted result.
-    pub linearity: bool,
     /// When Some, optimize only the functions in this set.
     pub optimize_functions: Option<HashSet<String>>,
     pub ablate: Option<String>,
-    pub non_weakly_linear: bool,
-    /// If true, use the experimental tiger extractor format output instead of greedy extractor.
-    pub use_tiger: bool,
-    /// If use_tiger is true and tiger_ilp is true, use ILP extraction in tiger instead of greedy extraction.
+    /// Use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
     /// When true, collect region timing samples by running both the tiger and ILP extractors.
     pub time_ilp: bool,
@@ -388,6 +398,10 @@ pub struct EggccConfig {
     pub use_context: bool,
     /// If true, disable the hacker ruleset in hackers_delight.egg.
     pub disable_hacker_rules: bool,
+    /// When true, run the non-weakly-linear ruleset.
+    /// Defaults to true so the production pipeline behaves as on this branch;
+    /// tests opt out to keep CI fast.
+    pub non_weakly_linear: bool,
     /// When using the tiger ILP extractor, minimize the objective in the solver.
     pub ilp_minimize_objective: bool,
     pub ilp_solver: IlpSolver,
@@ -462,16 +476,14 @@ impl Default for EggccConfig {
         Self {
             schedule: Schedule::default(),
             stop_after_n_passes: i64::MAX,
-            linearity: true,
             optimize_functions: None,
             ablate: None,
-            non_weakly_linear: false,
-            use_tiger: false,
             tiger_ilp: false,
             time_ilp: false,
             percent_regions: 100.0,
             use_context: true,
             disable_hacker_rules: false,
+            non_weakly_linear: true,
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,
@@ -572,6 +584,70 @@ fn extract_program_with_egglog(
 const TIGER_MEMORY_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
 const MEMORY_LIMIT_HUMAN: &str = "8 GiB";
 
+/// Persist the JSON we sent to tiger so the user can replay the failing
+/// invocation. Returns the path on success.
+fn dump_tiger_input_for_debug(json_input: &str) -> Option<PathBuf> {
+    let mut file = tempfile::Builder::new()
+        .prefix("tiger-crash-")
+        .suffix(".json")
+        .tempfile()
+        .ok()?;
+    use std::io::Write;
+    file.write_all(json_input.as_bytes()).ok()?;
+    let (_, path) = file.keep().ok()?;
+    Some(path)
+}
+
+/// Look for the most common cause of an unexplained tiger crash:
+/// a `Function` body whose eclass has no `HasType` node. Tiger needs the
+/// body to be marked with an effectful type to find the state-edge `Arg`
+/// during regionalization; if it's missing we'd rather report a real error
+/// here than let tiger SIGSEGV with empty stderr.
+fn diagnose_tiger_egraph(egraph: &egraph_serialize::EGraph, batch: &[String]) -> String {
+    let mut typed: HashSet<egraph_serialize::ClassId> = HashSet::new();
+    for node in egraph.nodes.values() {
+        if node.op == "HasType" && node.children.len() == 2 {
+            if let Some(child) = egraph.nodes.get(&node.children[0]) {
+                typed.insert(child.eclass.clone());
+            }
+        }
+    }
+
+    let mut untyped_bodies: Vec<(String, String)> = Vec::new();
+    for node in egraph.nodes.values() {
+        if node.op != "Function" || node.children.len() != 4 {
+            continue;
+        }
+        let name_node = match egraph.nodes.get(&node.children[0]) {
+            Some(n) => n,
+            None => continue,
+        };
+        let func_name = name_node.op.trim_matches('"').to_string();
+        if !batch.iter().any(|f| f == &func_name) {
+            continue;
+        }
+        let body_node = match egraph.nodes.get(&node.children[3]) {
+            Some(n) => n,
+            None => continue,
+        };
+        if !typed.contains(&body_node.eclass) {
+            untyped_bodies.push((func_name, body_node.eclass.to_string()));
+        }
+    }
+
+    if untyped_bodies.is_empty() {
+        return String::new();
+    }
+    let mut msg = String::from(
+        "\ndiagnostic: function body eclass has no HasType — tiger cannot regionalize. \
+         Likely a missing type-analysis rule for an op in the body. Affected:",
+    );
+    for (name, eclass) in untyped_bodies {
+        msg.push_str(&format!("\n  - function {name:?} body eclass {eclass}"));
+    }
+    msg
+}
+
 // Run tiger extractor pipeline using the tiger binaries built from c++.
 // See the build.rs file.
 fn run_tiger_pipeline(
@@ -579,7 +655,6 @@ fn run_tiger_pipeline(
     original_prog: &TreeProgram,
     batch: &[String],
     egraph: &egraph_serialize::EGraph,
-    _should_maintain_linearity: bool,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
     let json = serde_json::to_string_pretty(egraph)
         .map_err(|err| format!("failed to serialize egraph: {err}"))
@@ -650,7 +725,21 @@ fn run_tiger_pipeline(
                 println!("TIMEOUT");
                 std::process::exit(1);
             }
-            panic!("tiger invocation failed: {message}");
+            let dump_path = dump_tiger_input_for_debug(&json_input);
+            let dump_hint = match dump_path {
+                Some(path) => format!(
+                    "\ntiger input dumped to: {} (run: tiger --ilp-solver {} <{} )",
+                    path.display(),
+                    match eggcc_config.ilp_solver {
+                        IlpSolver::Gurobi => "gurobi",
+                        IlpSolver::Cbc => "cbc",
+                    },
+                    path.display()
+                ),
+                None => String::new(),
+            };
+            let diagnostic = diagnose_tiger_egraph(egraph, batch);
+            panic!("tiger invocation failed: {message}{diagnostic}{dump_hint}");
         }
     };
     let eggcc_extraction_time = extraction_start.elapsed();
@@ -785,41 +874,13 @@ fn run_tiger_pipeline(
 }
 
 /// Returns the extracted program, timing information, and the total extraction duration.
-#[allow(clippy::too_many_arguments)]
 fn extract(
     eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
     batch: Vec<String>,
     egraph: &egraph_serialize::EGraph,
-    unextractables: &IndexSet<String>,
-    termdag: &mut TermDag,
-    should_maintain_linearity: bool,
-    extract_debug_exprs: bool,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
-    if eggcc_config.use_tiger {
-        run_tiger_pipeline(
-            eggcc_config,
-            original_prog,
-            &batch,
-            egraph,
-            should_maintain_linearity,
-        )
-    } else {
-        let extraction_start = Instant::now();
-        let result = greedy_dag_extract(
-            original_prog,
-            batch.clone(),
-            egraph.clone(),
-            unextractables.clone(),
-            termdag,
-            DefaultCostModel,
-            should_maintain_linearity,
-            extract_debug_exprs,
-        )
-        .1;
-        let extraction_duration = extraction_start.elapsed();
-        (result, Vec::new(), extraction_duration)
-    }
+    run_tiger_pipeline(eggcc_config, original_prog, &batch, egraph)
 }
 
 // Optimizes a tree program using the given schedule.
@@ -848,11 +909,6 @@ pub fn optimize(
 
     let cutoff = eggcc_config.get_normalized_cutoff(schedule_list.len());
     for (i, schedule) in schedule_list[..cutoff].iter().enumerate() {
-        let mut should_maintain_linearity = true;
-        if i == cutoff - 1 {
-            should_maintain_linearity = eggcc_config.linearity;
-        }
-
         log::info!("Running pass {}...", i);
         let fns = res.fns();
 
@@ -901,7 +957,7 @@ pub fn optimize(
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
             let serialization_start = Instant::now();
-            let (serialized, unextractables) = serialized_egraph(egraph);
+            let (serialized, _unextractables) = serialized_egraph(egraph);
             let serialization_duration = serialization_start.elapsed();
 
             if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
@@ -923,23 +979,14 @@ pub fn optimize(
                 });
             }
 
-            let mut termdag = egglog::TermDag::default();
             let has_debug_exprs = has_debug_exprs(&serialized);
             if has_debug_exprs {
                 log::info!(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
-            let (iter_result, region_timings, extract_time) = extract(
-                eggcc_config,
-                &res,
-                batch.clone(),
-                &serialized,
-                &unextractables,
-                &mut termdag,
-                should_maintain_linearity,
-                has_debug_exprs,
-            );
+            let (iter_result, region_timings, extract_time) =
+                extract(eggcc_config, &res, batch.clone(), &serialized);
 
             eggcc_extraction_time += extract_time;
             eggcc_serialization_time += serialization_duration;

@@ -29,36 +29,37 @@ expression: visualization.result
   c21_: int = const -1;
   v22_: ptr<int> = ptradd v20_ c21_;
   v23_: int = load v22_;
-  c24_: int = const 2;
-  v25_: int = add c24_ v23_;
-  v26_: int = add c17_ v23_;
-  store v20_ v26_;
+  v24_: int = add c17_ v23_;
+  v25_: int = add c17_ v24_;
+  store v20_ v24_;
   store v19_ v25_;
-  v27_: int = add c24_ v14_;
-  v28_: bool = lt v27_ v15_;
-  v13_: ptr<int> = id v13_;
-  v14_: int = id v27_;
-  v15_: int = id v15_;
-  br v28_ .b16_ .b29_;
-.b29_:
+  v26_: int = add c17_ v18_;
+  v27_: bool = lt v26_ v15_;
+  v28_: ptr<int> = id v13_;
+  v14_: int = id v26_;
+  v29_: int = id v15_;
+  v13_: ptr<int> = id v28_;
+  v15_: int = id v29_;
+  br v27_ .b16_ .b30_;
+.b30_:
   v8_: ptr<int> = id v13_;
   v9_: int = id v14_;
   v10_: int = id v15_;
-  v30_: ptr<int> = ptradd v8_ v9_;
-  c31_: int = const -1;
-  v32_: ptr<int> = ptradd v30_ c31_;
-  v33_: int = load v32_;
+  v31_: ptr<int> = ptradd v8_ v9_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
+  v34_: int = load v33_;
   free v8_;
-  print v33_;
+  print v34_;
   ret;
-  jmp .b34_;
+  jmp .b35_;
 .b12_:
-  v30_: ptr<int> = ptradd v8_ v9_;
-  c31_: int = const -1;
-  v32_: ptr<int> = ptradd v30_ c31_;
-  v33_: int = load v32_;
+  v31_: ptr<int> = ptradd v8_ v9_;
+  c32_: int = const -1;
+  v33_: ptr<int> = ptradd v31_ c32_;
+  v34_: int = load v33_;
   free v8_;
-  print v33_;
+  print v34_;
   ret;
-.b34_:
+.b35_:
 }

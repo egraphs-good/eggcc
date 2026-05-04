@@ -1,7 +1,6 @@
 ---
 source: tests/files.rs
 expression: visualization.result
-snapshot_kind: text
 ---
 # ARGS: 21324
 @main(v0: int) {
@@ -36,17 +35,13 @@ snapshot_kind: text
   v7_: int = id v12_;
   v8_: int = id v13_;
   v9_: int = id v14_;
-  v25_: int = neg v0;
-  v26_: int = bitand v0 v25_;
-  print v26_;
+  print v8_;
   print v7_;
   ret;
-  jmp .b27_;
+  jmp .b25_;
 .b11_:
-  v25_: int = neg v0;
-  v26_: int = bitand v0 v25_;
-  print v26_;
+  print v8_;
   print v7_;
   ret;
-.b27_:
+.b25_:
 }

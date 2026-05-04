@@ -30,6 +30,18 @@ pub(crate) fn types_and_indexing() -> String {
         .to_string()
 }
 
+/// Like types_and_indexing but without always-run, so no SubTuple/canonicalization
+/// rewrites fire that would merge structurally-equivalent forms.
+/// Used by check_roundtrip_egraph to ensure the only program in the egraph
+/// is the original one.
+pub(crate) fn types_only() -> String {
+    "
+    (saturate
+        (saturate type-helpers)
+        type-analysis)"
+        .to_string()
+}
+
 // Unfortunately due to substition, helpers cannot be saturated.
 pub(crate) fn helpers() -> String {
     let types_and_indexing = types_and_indexing();
@@ -181,16 +193,20 @@ pub fn mk_sequential_schedule(config: &EggccConfig) -> Vec<CompilerPass> {
         "
 (run-schedule {helpers})"
     )));
-    res.extend(optimizations(config.disable_hacker_rules).iter().map(|optimization| {
-        CompilerPass::Schedule(format!(
-            "
+    res.extend(
+        optimizations(config.disable_hacker_rules)
+            .iter()
+            .map(|optimization| {
+                CompilerPass::Schedule(format!(
+                    "
 (run-schedule
    {helpers}
    {optimization}
    {helpers})
 "
-        ))
-    }));
+                ))
+            }),
+    );
     res
 }
 

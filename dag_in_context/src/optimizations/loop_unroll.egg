@@ -12,7 +12,8 @@
 (rule 
   ((= loop (DoWhile inputs outputs))
    (= (Const (Bool false) ty ctx) (Get outputs 0)))
-  ((set (LoopNumItersGuess inputs outputs) 1))
+  ((set (LoopNumItersGuess inputs outputs) 1)
+   (LoopIsFinite inputs outputs))
 :ruleset loop-iters-analysis)
 
 ;; Figure out number of iterations for a loop with constant bounds and initial value
@@ -37,6 +38,7 @@
   )
   (
     (set (LoopNumItersGuess inputs outputs) (/ (- end_constant start_const) increment))
+    (LoopIsFinite inputs outputs)
   )
   :ruleset loop-iters-analysis)
 
@@ -62,6 +64,7 @@
   )
   (
     (set (LoopNumItersGuess inputs outputs) (+ (/ (- end_constant start_const) increment) 1))
+    (LoopIsFinite inputs outputs)
   )
   :ruleset loop-iters-analysis)
 
@@ -143,6 +146,7 @@
     (union (TmpCtx) actual-ctx)
 
     (set (LoopNumItersGuess inputs unrolled) (/ old_cost 4))
+    (LoopIsFinite inputs unrolled)
     (delete (TmpCtx))
   )
   :ruleset loop-unroll)

@@ -1,0 +1,36 @@
+@main() {
+.entry:
+  a: float = const 1.3;
+  b: float = const 2.0;
+  c: float = const 3.0;
+  limit: float = const 100.0;
+
+  jmp .loop;
+
+.loop:
+  cond: bool = flt b limit;
+  br cond .body .end;
+
+.body:
+  use_then: bool = flt a b;
+  br use_then .then .else;
+
+.then:
+  t1: float = fmul a a;
+  next_a: float = fadd t1 b;
+  jmp .join;
+
+.else:
+  next_a: float = fadd a c;
+  jmp .join;
+
+.join:
+  c: float = id b;
+  b: float = id a;
+  a: float = id next_a;
+  jmp .loop;
+
+.end:
+  print b;
+  ret;
+}

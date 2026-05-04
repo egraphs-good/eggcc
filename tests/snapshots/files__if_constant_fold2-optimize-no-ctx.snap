@@ -7,12 +7,28 @@ expression: visualization.result
   c1_: int = const 5;
   v2_: bool = eq c1_ v0;
   c3_: int = const 4;
-  v4_: int = mul c3_ v0;
-  v5_: bool = eq c3_ v0;
-  v6_: int = mul c1_ v0;
-  c7_: int = const 20;
-  v8_: int = select v5_ v6_ c7_;
-  v9_: int = select v2_ v4_ v8_;
-  print v9_;
+  c4_: int = const 20;
+  br v2_ .b5_ .b6_;
+.b5_:
+  v7_: int = mul c3_ v0;
+  v8_: int = id v7_;
+  print v8_;
   ret;
+  jmp .b9_;
+.b6_:
+  v10_: bool = eq c3_ v0;
+  v11_: int = id c4_;
+  br v10_ .b12_ .b13_;
+.b12_:
+  v14_: int = mul c1_ v0;
+  v11_: int = id v14_;
+  v8_: int = id v11_;
+  print v8_;
+  ret;
+  jmp .b9_;
+.b13_:
+  v8_: int = id v11_;
+  print v8_;
+  ret;
+.b9_:
 }

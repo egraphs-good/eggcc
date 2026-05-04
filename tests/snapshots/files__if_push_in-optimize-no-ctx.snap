@@ -6,20 +6,35 @@ expression: visualization.result
 @main(v0: int) {
   c1_: int = const 0;
   v2_: bool = gt v0 c1_;
-  c3_: int = const 5;
-  c4_: int = const 2;
-  v5_: int = mul c4_ v0;
-  v6_: int = mul c3_ v5_;
-  c7_: int = const 3;
-  v8_: int = neg c7_;
-  v9_: int = mul v5_ v8_;
-  v10_: int = select v2_ v6_ v9_;
-  v11_: bool = ge v10_ c1_;
-  c12_: int = const 10;
-  v13_: int = mul c12_ v10_;
-  c14_: int = const 37;
-  v15_: int = mul c14_ v10_;
-  v16_: int = select v11_ v13_ v15_;
+  c3_: int = const 2;
+  v4_: int = mul c3_ v0;
+  br v2_ .b5_ .b6_;
+.b5_:
+  c7_: int = const 5;
+  v8_: int = mul c7_ v4_;
+  v9_: int = id v8_;
+.b10_:
+  v11_: bool = ge v9_ c1_;
+  br v11_ .b12_ .b13_;
+.b12_:
+  c14_: int = const 10;
+  v15_: int = mul c14_ v9_;
+  v16_: int = id v15_;
   print v16_;
   ret;
+  jmp .b17_;
+.b13_:
+  c18_: int = const 37;
+  v19_: int = mul c18_ v9_;
+  v16_: int = id v19_;
+  print v16_;
+  ret;
+  jmp .b17_;
+.b6_:
+  c20_: int = const 3;
+  v21_: int = neg c20_;
+  v22_: int = mul v21_ v4_;
+  v9_: int = id v22_;
+  jmp .b10_;
+.b17_:
 }

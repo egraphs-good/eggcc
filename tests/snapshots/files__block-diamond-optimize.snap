@@ -4,14 +4,34 @@ expression: visualization.result
 ---
 # ARGS: 1
 @main(v0: int) {
-  c1_: int = const 1;
-  c2_: int = const 2;
-  v3_: bool = lt v0 c2_;
-  c4_: int = const 4;
-  v5_: int = select v3_ c4_ c1_;
-  v6_: int = add c2_ v5_;
-  v7_: int = select v3_ v5_ v6_;
-  v8_: int = add c1_ v7_;
-  print v8_;
+  c1_: int = const 2;
+  v2_: bool = lt v0 c1_;
+  c3_: int = const 0;
+  c4_: int = const 1;
+  c5_: int = const 5;
+  v6_: int = id c4_;
+  v7_: int = id c4_;
+  v8_: int = id c1_;
+  br v2_ .b9_ .b10_;
+.b9_:
+  c11_: int = const 4;
+  v6_: int = id c11_;
+  v7_: int = id c4_;
+  v8_: int = id c1_;
+  v12_: int = id v7_;
+  v13_: int = id v6_;
+  v14_: int = add c4_ v13_;
+  print v14_;
   ret;
+  jmp .b15_;
+.b10_:
+  v12_: int = id v7_;
+  v13_: int = id v6_;
+  v16_: int = add v6_ v8_;
+  v12_: int = id v7_;
+  v13_: int = id v16_;
+  v14_: int = add c4_ v13_;
+  print v14_;
+  ret;
+.b15_:
 }

@@ -304,21 +304,57 @@ impl<'a> RvsdgToCfg<'a> {
         let mut instructions = vec![];
         assert_eq!(input_vars.len(), resulting_vars.len());
 
-        // assign to the variables, making sure the types line up
-        for (ivar, rvar) in input_vars.iter().zip(resulting_vars.iter()) {
+        // For each position, determine if it needs a temporary.
+        // A position needs a temp if its destination name appears in any source.
+        let needs_temp: Vec<bool> = resulting_vars
+            .iter()
+            .map(|rvar| {
+                if let RvsdgValue::BrilValue(dest_name, _) = rvar {
+                    input_vars.iter().any(|ivar| {
+                        if let RvsdgValue::BrilValue(src_name, _) = ivar {
+                            src_name == dest_name
+                        } else {
+                            false
+                        }
+                    })
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        // First pass: create temps for inputs that need them or direct assignments otherwise
+        let mut temp_assignments: Vec<(String, String, Type)> = Vec::new();
+        for (idx, (ivar, rvar)) in input_vars.iter().zip(resulting_vars.iter()).enumerate() {
             match (ivar, rvar) {
                 (RvsdgValue::StateEdge, RvsdgValue::StateEdge) => {}
                 (RvsdgValue::BrilValue(oname, oty), RvsdgValue::BrilValue(lname, lty)) => {
                     assert_eq!(oty, lty);
-                    instructions.push(Instruction::Value {
-                        dest: lname.clone(),
-                        op: ValueOps::Id,
-                        args: vec![oname.clone()],
-                        funcs: vec![],
-                        labels: vec![],
-                        pos: None,
-                        op_type: oty.clone(),
-                    });
+                    if needs_temp[idx] {
+                        // This destination is read by another assignment, use a temp
+                        let tmp = self.get_fresh();
+                        instructions.push(Instruction::Value {
+                            dest: tmp.clone(),
+                            op: ValueOps::Id,
+                            args: vec![oname.clone()],
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                            op_type: oty.clone(),
+                        });
+                        temp_assignments.push((tmp, lname.clone(), oty.clone()));
+                    } else {
+                        // No aliasing for this variable, direct assignment is safe
+                        instructions.push(Instruction::Value {
+                            dest: lname.clone(),
+                            op: ValueOps::Id,
+                            args: vec![oname.clone()],
+                            funcs: vec![],
+                            labels: vec![],
+                            pos: None,
+                            op_type: oty.clone(),
+                        });
+                    }
                 }
                 _ => panic!(
                     "Incompatible values in assign_to_vars: {:?} {:?}",
@@ -326,6 +362,20 @@ impl<'a> RvsdgToCfg<'a> {
                 ),
             }
         }
+
+        // Second pass: assign temps to their final destinations
+        for (tmp, dst, ty) in temp_assignments {
+            instructions.push(Instruction::Value {
+                dest: dst,
+                op: ValueOps::Id,
+                args: vec![tmp],
+                funcs: vec![],
+                labels: vec![],
+                pos: None,
+                op_type: ty,
+            });
+        }
+
         let block = self.make_block(instructions);
         TranslationResult {
             start: block,

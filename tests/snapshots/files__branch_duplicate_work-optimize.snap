@@ -7,8 +7,16 @@ expression: visualization.result
   c1_: int = const 2;
   v2_: bool = lt v0 c1_;
   v3_: int = add v0 v0;
-  v4_: int = mul c1_ v3_;
-  v5_: int = select v2_ v3_ v4_;
-  print v5_;
+  v4_: int = id v3_;
+  br v2_ .b5_ .b6_;
+.b5_:
+  print v4_;
   ret;
+  jmp .b7_;
+.b6_:
+  v8_: int = mul c1_ v3_;
+  v4_: int = id v8_;
+  print v4_;
+  ret;
+.b7_:
 }

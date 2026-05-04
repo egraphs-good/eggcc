@@ -9,16 +9,23 @@ expression: visualization.result
   v2_: int = id c0_;
 .b3_:
   v4_: bool = eq v1_ v2_;
-  c5_: int = const 1;
-  v6_: int = add c5_ v1_;
-  v7_: int = select v4_ v1_ v6_;
-  v8_: int = add c5_ v2_;
-  v9_: int = select v4_ v2_ v8_;
-  v10_: bool = not v4_;
-  v1_: int = id v7_;
-  v2_: int = id v9_;
-  br v10_ .b3_ .b11_;
-.b11_:
+  v5_: int = id v1_;
+  v6_: bool = id v4_;
+  v7_: int = id v2_;
+  br v4_ .b8_ .b9_;
+.b9_:
+  c10_: int = const 1;
+  v11_: int = add c10_ v1_;
+  v12_: int = add c10_ v2_;
+  v5_: int = id v11_;
+  v6_: bool = id v4_;
+  v7_: int = id v12_;
+.b8_:
+  v13_: bool = not v4_;
+  v1_: int = id v5_;
+  v2_: int = id v7_;
+  br v13_ .b3_ .b14_;
+.b14_:
   print v1_;
   ret;
 }

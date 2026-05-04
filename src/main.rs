@@ -77,25 +77,11 @@ struct Args {
     #[clap(long)]
     stop_after_n_passes: Option<i64>,
 
-    /// Turn off enforcement that the output program uses
-    /// memory linearly. This can give an idea of what
-    /// extraction is doing.
-    /// WARNING: Produces unsound results!
-    #[clap(long)]
-    no_linearity: bool,
-    /// Allow rules that don't obey weak linearity.
-    /// With the two pass extractor, this will probably error out.
-    #[clap(long)]
-    non_weakly_linear: bool,
-
     #[clap(long)]
     optimize_function: Option<String>,
 
     #[clap(long)]
     ablate: Option<String>,
-
-    #[clap(long)]
-    use_tiger: bool,
 
     #[clap(long)]
     tiger_ilp: bool,
@@ -170,16 +156,14 @@ fn main() {
         eggcc_config: EggccConfig {
             schedule: args.eggcc_schedule.unwrap_or(Schedule::default()),
             stop_after_n_passes: args.stop_after_n_passes.unwrap_or(i64::MAX),
-            linearity: !args.no_linearity,
-            non_weakly_linear: args.non_weakly_linear,
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
-            use_tiger: args.use_tiger,
             tiger_ilp: args.tiger_ilp,
             time_ilp: args.time_ilp,
             percent_regions: args.percent_regions,
             use_context: args.with_context,
             disable_hacker_rules: args.no_hacker_rules,
+            non_weakly_linear: true,
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,

@@ -7,43 +7,70 @@ expression: visualization.result
   c1_: int = const 1;
   c2_: int = const 2;
   v3_: bool = lt v0 c2_;
-  c4_: int = const 5;
-  v5_: bool = lt v0 c4_;
-  c6_: bool = const true;
-  c7_: bool = const false;
-  v8_: bool = select v5_ c6_ c7_;
-  v9_: bool = select v3_ v8_ c7_;
-  c10_: int = const 0;
-  br v3_ .b11_ .b12_;
-.b11_:
-  v13_: bool = lt v0 c4_;
-  v14_: int = add c10_ c2_;
-  v15_: int = add c2_ v14_;
-  v16_: int = select v13_ v15_ v14_;
-  c17_: bool = const true;
-  c18_: bool = const false;
-  v19_: bool = select v13_ c17_ c18_;
-  v20_: int = id v16_;
-  v21_: int = id c1_;
-  v22_: int = id c2_;
-  v23_: bool = id v19_;
-  v24_: int = add c2_ v20_;
-  v25_: int = select v9_ v20_ v24_;
-  v26_: int = add c1_ v25_;
-  print v26_;
+  c4_: int = const 0;
+  c5_: int = const 5;
+  br v3_ .b6_ .b7_;
+.b6_:
+  v8_: bool = lt v0 c5_;
+  v9_: int = add c2_ c4_;
+  c10_: bool = const false;
+  v11_: int = id v9_;
+  v12_: int = id c1_;
+  v13_: int = id c2_;
+  v14_: bool = id c10_;
+  br v8_ .b15_ .b16_;
+.b15_:
+  v17_: int = add c2_ v9_;
+  c18_: bool = const true;
+  v11_: int = id v17_;
+  v12_: int = id c1_;
+  v13_: int = id c2_;
+  v14_: bool = id c18_;
+  v19_: int = id v11_;
+  v20_: int = id v12_;
+  v21_: int = id v13_;
+  v22_: bool = id v14_;
+  v23_: int = id c1_;
+  v24_: int = id v19_;
+  v25_: int = add c1_ v24_;
+  print v25_;
   ret;
-  jmp .b27_;
-.b12_:
-  v28_: int = add c10_ c1_;
+  jmp .b26_;
+.b16_:
+  v19_: int = id v11_;
+  v20_: int = id v12_;
+  v21_: int = id v13_;
+  v22_: bool = id v14_;
+  v23_: int = id c1_;
+  v24_: int = id v19_;
+  v27_: int = add c2_ v19_;
+  v23_: int = id c1_;
+  v24_: int = id v27_;
+  v25_: int = add c1_ v24_;
+  print v25_;
+  ret;
+  jmp .b26_;
+.b7_:
+  v28_: int = add c1_ c4_;
   c29_: bool = const false;
-  v20_: int = id v28_;
-  v21_: int = id c1_;
-  v22_: int = id c2_;
-  v23_: bool = id c29_;
-  v24_: int = add c2_ v20_;
-  v25_: int = select v9_ v20_ v24_;
-  v26_: int = add c1_ v25_;
-  print v26_;
+  v19_: int = id v28_;
+  v20_: int = id c1_;
+  v21_: int = id c2_;
+  v22_: bool = id c29_;
+  v23_: int = id c1_;
+  v24_: int = id v19_;
+  br v22_ .b30_ .b31_;
+.b30_:
+  v25_: int = add c1_ v24_;
+  print v25_;
   ret;
-.b27_:
+  jmp .b26_;
+.b31_:
+  v27_: int = add c2_ v19_;
+  v23_: int = id c1_;
+  v24_: int = id v27_;
+  v25_: int = add c1_ v24_;
+  print v25_;
+  ret;
+.b26_:
 }

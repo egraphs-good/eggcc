@@ -103,6 +103,7 @@ where
 }
 
 /// Like [`run_cmd_line`], but enforces a maximum address space size when running on Unix.
+#[cfg_attr(target_os = "macos", allow(unused_variables))]
 pub fn run_cmd_line_with_memory_limit<S1, S2, I>(
     program: S1,
     args: I,

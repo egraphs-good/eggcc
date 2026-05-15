@@ -5,7 +5,15 @@ expression: visualization.result
 # ARGS: 20 30
 @main(v0: int, v1: int) {
   v2_: bool = lt v0 v1;
-  v3_: int = select v2_ v0 v1;
+  v3_: int = id v1;
+  br v2_ .b4_ .b5_;
+.b4_:
+  v3_: int = id v0;
   print v3_;
   ret;
+  jmp .b6_;
+.b5_:
+  print v3_;
+  ret;
+.b6_:
 }

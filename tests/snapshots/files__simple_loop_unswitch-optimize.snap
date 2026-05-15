@@ -26,11 +26,14 @@ expression: visualization.result
   v19_: bool = lt v18_ v14_;
   v11_: int = id v17_;
   v12_: int = id v18_;
-  v13_: int = id v13_;
-  v14_: int = id v14_;
-  v15_: int = id v15_;
-  br v19_ .b16_ .b20_;
-.b20_:
+  v20_: int = id v13_;
+  v21_: int = id v14_;
+  v22_: int = id v15_;
+  v13_: int = id v20_;
+  v14_: int = id v21_;
+  v15_: int = id v22_;
+  br v19_ .b16_ .b23_;
+.b23_:
   v4_: int = id v11_;
   v5_: int = id v12_;
   v6_: int = id v13_;
@@ -38,9 +41,9 @@ expression: visualization.result
   v8_: int = id v15_;
   print v4_;
   ret;
-  jmp .b21_;
+  jmp .b24_;
 .b10_:
   print v4_;
   ret;
-.b21_:
+.b24_:
 }

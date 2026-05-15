@@ -40,6 +40,8 @@ COLOR_MAP = {
   "eggcc-tiger-ILP-CBC-O0-O0": "olive",
   "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
   "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
+  "eggcc-tiger-WITHCTX-O0-O0": "lightblue",
+  "eggcc-tiger-nohacker-WITHCTX-O0-O0": "#009E73",
 }
 
 SHAPE_MAP = {
@@ -63,6 +65,8 @@ SHAPE_MAP = {
   "eggcc-tiger-ILP-NOMIN-O0-O0": "^",
   "eggcc-tiger-ILP-WITHCTX-O0-O0": "^",
   "eggcc-WITHCTX-O0-O0": "o",
+  "eggcc-tiger-WITHCTX-O0-O0": "o",
+  "eggcc-tiger-nohacker-WITHCTX-O0-O0": "o",
 }
 
 EXTRACTION_INSET_BOUNDS = (0.4, 0.3, 0.38 * 1.5, 0.35 * 1.5) # x y width height

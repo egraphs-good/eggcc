@@ -29,25 +29,51 @@ expression: visualization.result
   v23_: int = mul v22_ v7_;
   v24_: int = sub v6_ v23_;
   v25_: bool = eq v10_ v24_;
-  v26_: int = mul v6_ v9_;
-  v27_: int = add v26_ v8_;
-  v28_: int = select v25_ v22_ v27_;
+  br v25_ .b26_ .b27_;
+.b26_:
+  c28_: bool = const true;
+  v29_: int = div v6_ v7_;
+  v30_: int = id v21_;
+  v31_: bool = id c28_;
+  v32_: int = id v29_;
+  v33_: int = id v7_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
   v13_: int = id v21_;
-  v14_: int = id v28_;
+  v14_: int = id v32_;
   v15_: int = id v7_;
   v16_: int = id v8_;
   v17_: int = id v9_;
   v18_: int = id v10_;
 .b19_:
-  v29_: bool = not v12_;
+  v37_: bool = not v12_;
   v5_: int = id v13_;
   v6_: int = id v14_;
   v7_: int = id v15_;
   v8_: int = id v16_;
   v9_: int = id v17_;
   v10_: int = id v18_;
-  br v29_ .b11_ .b30_;
-.b30_:
+  br v37_ .b11_ .b38_;
+.b27_:
+  c39_: bool = const true;
+  v40_: int = mul v6_ v9_;
+  v41_: int = add v40_ v8_;
+  v30_: int = id v21_;
+  v31_: bool = id c39_;
+  v32_: int = id v41_;
+  v33_: int = id v7_;
+  v34_: int = id v8_;
+  v35_: int = id v9_;
+  v36_: int = id v10_;
+  v13_: int = id v21_;
+  v14_: int = id v32_;
+  v15_: int = id v7_;
+  v16_: int = id v8_;
+  v17_: int = id v9_;
+  v18_: int = id v10_;
+  jmp .b19_;
+.b38_:
   print v5_;
   ret;
 }

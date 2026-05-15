@@ -18,10 +18,12 @@ expression: visualization.result
   v12_: bool = lt v4_ v6_;
   v3_: int = id v9_;
   v4_: int = id v11_;
-  v5_: int = id v5_;
-  v6_: int = id v6_;
-  br v12_ .b7_ .b13_;
-.b13_:
+  v13_: int = id v5_;
+  v14_: int = id v6_;
+  v5_: int = id v13_;
+  v6_: int = id v14_;
+  br v12_ .b7_ .b15_;
+.b15_:
   print v3_;
   ret;
 }

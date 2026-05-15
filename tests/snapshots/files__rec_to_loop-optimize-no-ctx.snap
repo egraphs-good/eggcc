@@ -6,50 +6,79 @@ expression: visualization.result
 @recPrint(v0: int): int {
   c1_: int = const 0;
   v2_: bool = eq c1_ v0;
-  v3_: bool = not v2_;
-  v4_: int = id v0;
-  br v3_ .b5_ .b6_;
+  c3_: int = const 0;
+  v4_: int = id c3_;
+  br v2_ .b5_ .b6_;
 .b5_:
-  v7_: int = id v0;
-.b8_:
-  print v7_;
-  c9_: int = const 1;
-  v10_: int = sub v7_ c9_;
-  c11_: int = const 0;
-  v12_: bool = eq c11_ v10_;
-  v13_: bool = not v12_;
-  v7_: int = id v10_;
-  br v13_ .b8_ .b14_;
-.b14_:
-  v4_: int = id v7_;
-  ret c1_;
-  jmp .b15_;
+  ret v4_;
+  jmp .b7_;
 .b6_:
-  ret c1_;
+  c8_: int = const 1;
+  v9_: int = sub v0 c8_;
+  c10_: int = const 0;
+  v11_: bool = eq c10_ v9_;
+  print v0;
+  c12_: int = const 0;
+  v13_: int = id c12_;
+  br v11_ .b14_ .b15_;
+.b14_:
+  v4_: int = id v13_;
+  ret v4_;
+  jmp .b7_;
 .b15_:
+  c16_: int = const 1;
+  v17_: int = sub v9_ c16_;
+  c18_: int = const 0;
+  v19_: bool = eq c18_ v17_;
+  print v9_;
+  c20_: int = const 0;
+  v21_: int = id c20_;
+  br v19_ .b22_ .b23_;
+.b22_:
+  v13_: int = id v21_;
+  v4_: int = id v13_;
+  ret v4_;
+  jmp .b7_;
+.b23_:
+  c24_: int = const 1;
+  v25_: int = sub v17_ c24_;
+  print v17_;
+  v26_: int = call @recPrint v25_;
+  v21_: int = id v26_;
+  v13_: int = id v21_;
+  v4_: int = id v13_;
+  ret v4_;
+.b7_:
 }
 @main(v0: int) {
   c1_: int = const 0;
   v2_: bool = eq c1_ v0;
-  v3_: bool = not v2_;
-  v4_: int = id v0;
-  br v3_ .b5_ .b6_;
+  c3_: int = const 0;
+  v4_: int = id c3_;
+  br v2_ .b5_ .b6_;
 .b5_:
-  v7_: int = id v0;
-.b8_:
-  print v7_;
-  c9_: int = const 1;
-  v10_: int = sub v7_ c9_;
-  c11_: int = const 0;
-  v12_: bool = eq c11_ v10_;
-  v13_: bool = not v12_;
-  v7_: int = id v10_;
-  br v13_ .b8_ .b14_;
-.b14_:
-  v4_: int = id v7_;
   ret;
-  jmp .b15_;
+  jmp .b7_;
 .b6_:
+  c8_: int = const 1;
+  v9_: int = sub v0 c8_;
+  c10_: int = const 0;
+  v11_: bool = eq c10_ v9_;
+  print v0;
+  c12_: int = const 0;
+  v13_: int = id c12_;
+  br v11_ .b14_ .b15_;
+.b14_:
+  v4_: int = id v13_;
   ret;
+  jmp .b7_;
 .b15_:
+  c16_: int = const 1;
+  v17_: int = sub v9_ c16_;
+  print v9_;
+  v18_: int = call @recPrint v17_;
+  v13_: int = id v18_;
+  v4_: int = id v13_;
+  ret;
+.b7_:
 }

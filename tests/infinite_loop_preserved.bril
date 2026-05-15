@@ -1,0 +1,19 @@
+@main: int {
+  one: int = const 1;
+  five: int = const 5;
+  p: ptr<int> = alloc one;
+  i: int = id five;
+  j: int = const 0;
+
+.loop_test:
+  cond: bool = eq i five;
+  br cond .loop_body .loop_end;
+
+.loop_body:
+  store p j;
+  j: int = add j one;
+  jmp .loop_test;
+
+.loop_end:
+  ret j;
+}

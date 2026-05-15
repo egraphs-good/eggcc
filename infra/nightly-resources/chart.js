@@ -20,6 +20,8 @@ const COLORS = {
   "eggcc-tiger-ILP-NOMIN-O0-O0": "darkgreen",
   "eggcc-tiger-ILP-WITHCTX-O0-O0": "orange",
   "eggcc-WITHCTX-O0-O0": "gray",
+  "eggcc-tiger-WITHCTX-O0-O0": "lightblue",
+  "eggcc-tiger-nohacker-WITHCTX-O0-O0": "#009E73",
   "eggcc-tiger-ILP-COMPARISON": "blue",
 };
 

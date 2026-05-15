@@ -4,23 +4,23 @@ expression: visualization.result
 ---
 # ARGS: 20
 @main(v0: int) {
-  c1_: int = const 5;
-  v2_: int = mul c1_ v0;
-  c3_: int = const 0;
-  v4_: bool = lt c3_ v0;
-  br v4_ .b5_ .b6_;
+  c1_: int = const 0;
+  v2_: bool = lt c1_ v0;
+  c3_: int = const 5;
+  v4_: int = mul c3_ v0;
+  br v2_ .b5_ .b6_;
 .b5_:
   c7_: int = const 20;
   print c7_;
-  v8_: int = id v2_;
-  print v2_;
+  v8_: int = id v4_;
+  print v8_;
   ret;
   jmp .b9_;
 .b6_:
   c10_: int = const 20;
   print c10_;
-  v8_: int = id v2_;
-  print v2_;
+  v8_: int = id v4_;
+  print v8_;
   ret;
 .b9_:
 }

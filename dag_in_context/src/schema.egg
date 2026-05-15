@@ -299,6 +299,9 @@
 ;; The minimum possible guess is 1 because of do-while loops
 (function LoopNumItersGuess (Expr Expr) i64 :merge (max 1 (min old new)))
 
+;; inputs, outputs -> the loop is proven to terminate
+(relation LoopIsFinite (Expr Expr))
+
 
 ;; A hint for no-context mode that this rule
 ;; fundamentally relies on context and can't be fixed using dummy contexts

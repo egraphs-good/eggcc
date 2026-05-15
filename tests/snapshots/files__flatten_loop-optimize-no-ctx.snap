@@ -38,21 +38,25 @@ expression: visualization.result
   print v32_;
   v33_: int = add v26_ v27_;
   v34_: bool = lt v33_ v28_;
-  v25_: int = id v25_;
-  v26_: int = id v26_;
+  v35_: int = id v25_;
+  v36_: int = id v26_;
   v27_: int = id v33_;
-  v28_: int = id v28_;
-  v29_: int = id v29_;
-  br v34_ .b30_ .b35_;
-.b35_:
+  v37_: int = id v28_;
+  v38_: int = id v29_;
+  v25_: int = id v35_;
+  v26_: int = id v36_;
+  v28_: int = id v37_;
+  v29_: int = id v38_;
+  br v34_ .b30_ .b39_;
+.b39_:
   v18_: int = id v25_;
   v19_: int = id v26_;
   v20_: int = id v27_;
   v21_: int = id v28_;
   v22_: int = id v29_;
 .b24_:
-  v36_: int = add v4_ v5_;
-  v10_: int = id v36_;
+  v40_: int = add v4_ v5_;
+  v10_: int = id v40_;
   v11_: int = id v5_;
   v12_: int = id v6_;
   v13_: int = id v7_;

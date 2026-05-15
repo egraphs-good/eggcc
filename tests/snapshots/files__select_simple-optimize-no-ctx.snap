@@ -7,7 +7,15 @@ expression: visualization.result
   v2_: int = mul v0 v1;
   c3_: int = const 20;
   v4_: bool = lt v2_ c3_;
-  v5_: int = select v4_ v0 v1;
+  v5_: int = id v1;
+  br v4_ .b6_ .b7_;
+.b6_:
+  v5_: int = id v0;
   print v5_;
   ret;
+  jmp .b8_;
+.b7_:
+  print v5_;
+  ret;
+.b8_:
 }

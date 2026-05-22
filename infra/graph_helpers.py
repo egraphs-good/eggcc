@@ -262,3 +262,8 @@ def geometric_mean(values):
     raise ValueError("geometric_mean() requires at least one positive value")
   return math.exp(log_sum / count)
 
+
+def cycles_to_ms(cycles):
+    hz = 4000000000
+    ms = cycles * 1000 / hz
+    return round(ms * 100.0) / 100.0

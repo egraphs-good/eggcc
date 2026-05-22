@@ -267,3 +267,21 @@ def cycles_to_ms(cycles):
     hz = 4000000000
     ms = cycles * 1000 / hz
     return round(ms * 100.0) / 100.0
+
+
+def cycles_to_us(cycles):
+    hz = 4000000000
+    us = cycles * 1000000 / hz
+    return round(us * 100.0) / 100.0
+
+
+def format_cycles_with_stddev(mean_cycles, std_cycles):
+    """Format mean +- stddev (both in cycles) with a unit chosen by the mean.
+
+    Uses microseconds when the mean is below 1.0 ms, otherwise milliseconds.
+    Returns a string like "5.3 ms +- 0.2" or "8.4 us +- 0.1".
+    """
+    mean_ms = cycles_to_ms(mean_cycles)
+    if mean_ms < 1.0:
+        return f"{cycles_to_us(mean_cycles)} us +- {cycles_to_us(std_cycles)}"
+    return f"{mean_ms} ms +- {cycles_to_ms(std_cycles)}"

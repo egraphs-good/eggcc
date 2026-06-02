@@ -23,7 +23,7 @@ expression: visualization.result
   v5_: int = mul c4_ v3_;
   br v2_ .b6_ .b7_;
 .b6_:
-  v8_: int = add v3_ v5_;
+  v8_: int = add v0 v5_;
   c9_: int = const 4;
   v10_: int = div v0 c9_;
   v11_: int = add v10_ v8_;
@@ -32,13 +32,14 @@ expression: visualization.result
   ret;
   jmp .b13_;
 .b7_:
-  v14_: int = add v3_ v5_;
-  c15_: int = const 3;
-  v16_: int = mul c15_ v0;
-  c17_: int = const 5;
-  v18_: int = div v16_ c17_;
-  v19_: int = add v14_ v18_;
-  v12_: int = id v19_;
+  v14_: int = abs v0;
+  v15_: int = add v14_ v5_;
+  c16_: int = const 3;
+  v17_: int = mul c16_ v0;
+  c18_: int = const 5;
+  v19_: int = div v17_ c18_;
+  v20_: int = add v15_ v19_;
+  v12_: int = id v20_;
   print v12_;
   ret;
 .b13_:

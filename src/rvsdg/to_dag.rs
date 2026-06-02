@@ -55,7 +55,7 @@ struct StoredValue {
 impl StoredValue {
     fn to_single_expr(&self) -> RcExpr {
         if self.is_tuple {
-            panic!("Cannot convert tuple to single expr. Got {:?}", self)
+            panic!("Cannot convert tuple to single expr. Got {self:?}")
         } else {
             self.expr.clone()
         }
@@ -68,11 +68,7 @@ impl StoredValue {
                 expr: get(self.expr.clone(), index),
             }
         } else {
-            assert_eq!(
-                index, 0,
-                "Tried to access index {} of non-tuple value",
-                index
-            );
+            assert_eq!(index, 0, "Tried to access index {index} of non-tuple value");
             self.clone()
         }
     }
@@ -271,7 +267,7 @@ impl<'a> DagTranslator<'a> {
                     (ValueOps::Load, [a, b]) => load(a.clone(), b.clone()),
                     (ValueOps::Alloc, [a, b]) => {
                         let bril_rs::Type::Pointer(_inner) = &ty else {
-                            panic!("Alloc should return a pointer type, found {:?}", ty);
+                            panic!("Alloc should return a pointer type, found {ty:?}");
                         };
                         let alloc_id = self.next_alloc_id;
                         self.next_alloc_id += 1;
@@ -342,7 +338,7 @@ impl<'a> DagTranslator<'a> {
                 self.cache_single(expr, id)
             }
             BasicExpr::Effect(effect_op, _args) => {
-                panic!("Unrecognized effect op {:?}", effect_op)
+                panic!("Unrecognized effect op {effect_op:?}")
             }
         }
     }
@@ -414,25 +410,21 @@ fn dag_translation_test(
     let (found_val, found_printlog) = interpret_dag_prog(&expected, &input_val);
     assert_eq!(
         expected_val, found_val,
-        "Reference program produced incorrect result. Expected {:?}, found {:?}",
-        expected_val, found_val
+        "Reference program produced incorrect result. Expected {expected_val:?}, found {found_val:?}"
     );
     assert_eq!(
         expected_printlog, found_printlog,
-        "Reference program produced incorrect print log. Expected {:?}, found {:?}",
-        expected_printlog, found_printlog
+        "Reference program produced incorrect print log. Expected {expected_printlog:?}, found {found_printlog:?}"
     );
 
     let (found_val, found_printlog) = interpret_dag_prog(&result, &input_val);
     assert_eq!(
         expected_val, found_val,
-        "Resulting program produced incorrect result. Expected {:?}, found {:?}",
-        expected_val, found_val
+        "Resulting program produced incorrect result. Expected {expected_val:?}, found {found_val:?}"
     );
     assert_eq!(
         expected_printlog, found_printlog,
-        "Resulting program produced incorrect print log. Expected {:?}, found {:?}",
-        expected_printlog, found_printlog
+        "Resulting program produced incorrect print log. Expected {expected_printlog:?}, found {found_printlog:?}"
     );
 }
 

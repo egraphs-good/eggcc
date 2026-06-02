@@ -8,20 +8,20 @@ expression: visualization.result
   v2_: bool = lt c1_ v0;
   br v2_ .b3_ .b4_;
 .b3_:
-  c5_: int = const 20;
-  print c5_;
-  c6_: int = const 5;
-  v7_: int = mul c6_ v0;
-  v8_: int = id v7_;
+  c5_: int = const 5;
+  v6_: int = mul c5_ v0;
+  c7_: int = const 20;
+  print c7_;
+  v8_: int = id v6_;
   print v8_;
   ret;
   jmp .b9_;
 .b4_:
-  c10_: int = const 20;
-  print c10_;
-  c11_: int = const 5;
-  v12_: int = mul c11_ v0;
-  v8_: int = id v12_;
+  c10_: int = const 5;
+  v11_: int = mul c10_ v0;
+  c12_: int = const 20;
+  print c12_;
+  v8_: int = id v11_;
   print v8_;
   ret;
 .b9_:

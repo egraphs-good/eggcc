@@ -74,7 +74,12 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
 
     # Copy data over to output
     if data_dir.exists():
-        shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
+        # in local mode copy over
+        if is_local:
+            shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
+        else:
+            # otherwise move
+            shutil.move(str(data_dir), str(output_data_dir))
 
     # Gzip all JSON and SVGs in the nightly dir (only in non-local mode)
     if not is_local:

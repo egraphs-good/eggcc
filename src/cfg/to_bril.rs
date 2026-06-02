@@ -23,7 +23,7 @@ impl SimpleCfgProgram {
 
 impl SimpleCfgFunction {
     pub(crate) fn label_name(block_name: &BlockName) -> String {
-        format!("{}", block_name)
+        format!("{block_name}")
     }
 
     /// Converts the cfg function into a bril program.

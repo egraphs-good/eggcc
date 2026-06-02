@@ -293,7 +293,7 @@ fn test_subst_identity() -> crate::Result {
         "{expression}\n{}\n(let substituted (Subst {ctx} {replace_with} {expression}))",
         expression_cache.get_unions(),
     );
-    let check = format!("(check (= substituted {}))", expression);
+    let check = format!("(check (= substituted {expression}))");
     crate::egglog_test(
         &build.to_string(),
         &check.to_string(),

@@ -134,20 +134,20 @@
   )
   (
     (let one-iter (SubTuple outputs 1 num-inputs))
+    (let fresh-ctx (unstable-fresh! Assumption))
     (let unrolled
-        (Subst (TmpCtx) one-iter
-          (Subst (TmpCtx) one-iter
-            (Subst (TmpCtx) one-iter
+        (Subst fresh-ctx one-iter
+          (Subst fresh-ctx one-iter
+            (Subst fresh-ctx one-iter
                outputs))))
     (union lhs
       (DoWhile inputs
         unrolled))
     (let actual-ctx (InLoop inputs unrolled))
-    (union (TmpCtx) actual-ctx)
+    (union fresh-ctx actual-ctx)
 
     (set (LoopNumItersGuess inputs unrolled) (/ old_cost 4))
     (LoopIsFinite inputs unrolled)
-    (delete (TmpCtx))
   )
   :ruleset loop-unroll)
 

@@ -54,10 +54,10 @@
 
   (let new-loop-input
     (Arg inputs-ty then-ctx))
+  (let fresh-ctx (unstable-fresh! Assumption))
   (let new-loop-body
-    (Subst (TmpCtx) (Arg inputs-ty (TmpCtx)) outputs))
-  (union (InLoop new-loop-input new-loop-body) (TmpCtx))
-  (delete (TmpCtx))
+    (Subst fresh-ctx (Arg inputs-ty fresh-ctx) outputs))
+  (union (InLoop new-loop-input new-loop-body) fresh-ctx)
 
   (union lhs
     ;; check if we need to continue executing the loop

@@ -356,10 +356,7 @@ impl<'a> RvsdgToCfg<'a> {
                         });
                     }
                 }
-                _ => panic!(
-                    "Incompatible values in assign_to_vars: {:?} {:?}",
-                    ivar, rvar
-                ),
+                _ => panic!("Incompatible values in assign_to_vars: {ivar:?} {rvar:?}"),
             }
         }
 

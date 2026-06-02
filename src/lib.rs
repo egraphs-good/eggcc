@@ -88,7 +88,7 @@ impl Optimizer {
                 } else if arg == "false" {
                     Value::Const(Constant::Bool(false))
                 } else {
-                    panic!("Invalid argument to bril program: {}", arg);
+                    panic!("Invalid argument to bril program: {arg}");
                 }
             })
             .collect()
@@ -127,7 +127,7 @@ impl Optimizer {
                 let output_err = String::from_utf8(output.stderr).unwrap();
                 let error_code = output.status.code().unwrap();
                 if error_code != 0 {
-                    panic!("Error code: {}", error_code);
+                    panic!("Error code: {error_code}");
                 }
                 (output_str, Some(output_err.trim().parse().unwrap()))
             }

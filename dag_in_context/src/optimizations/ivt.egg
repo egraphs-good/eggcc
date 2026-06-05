@@ -2,19 +2,17 @@
 
 (ruleset ivt-analysis)
 
-(sort IVTRes)
-;;                              perm passthrough-perm passthrough-type passthrough-type-len
-(constructor IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes)
-(constructor IVTMin (IVTRes IVTRes) IVTRes)
+(sort IVTPayload)
+;;                                      perm passthrough-perm passthrough-type
+(constructor IVTAnalysisPayload (Expr Expr             TypeList) IVTPayload)
+(sort IVTRes (Pair IVTPayload i64))
 
-(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
-       (<= len1 len2))
-      ((union lhs (IVTAnalysisRes _a _b _c len1)))
-        :ruleset ivt-analysis)
-(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
-       (> len1 len2))
-      ((union lhs (IVTAnalysisRes _d _e _f len2)))
-        :ruleset ivt-analysis)
+;;                                  perm passthrough-perm passthrough-type passthrough-type-len
+(primitive IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes
+  (pair (IVTAnalysisPayload _0 _1 _2) _3))
+
+(primitive IVTMin (IVTRes IVTRes) IVTRes
+  (unstable-if (unstable-fn "<=" (pair-second _0) (pair-second _1)) _0 _1))
 
 
 ;; use an analysis to avoid exploring all combinations of passthrough vs not passed through values. Always prefer not passed through
@@ -55,7 +53,9 @@
 
 ;; recursive case for accessing the if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Concat (Single (Get if-eclass ith)) rest))
 ) (
@@ -66,7 +66,9 @@
 
 ;; recursive case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
@@ -84,7 +86,9 @@
 
 ; base case for accessing if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body (Single last) ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body (Single last) ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= last (Get if-eclass ith))
 ) (
@@ -94,7 +98,9 @@
 
 ; base case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Single (Get (Arg ty ctx) ith)))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
@@ -114,7 +120,7 @@
 
 (rule (
     (= loop (DoWhile inpW outW))
-    (= (IVTNewInputsAnalysis outW ifnode) (IVTAnalysisRes perm pperm passthrough-tys _len))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first (IVTNewInputsAnalysis outW ifnode)))
     (= ifnode (IfNode if if-cond if-inputs then else))
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))

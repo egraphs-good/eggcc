@@ -9,7 +9,7 @@ name = "files"
 
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental.git", branch = "codex/experimental-body-primitive", package = "egglog-experimental" }
 egraph-serialize = "0.3.0"
 log = "0.4.19"
 thiserror = "1"
@@ -63,3 +63,8 @@ write-intermediates = []
 # Runs tests relying on LLVM. This may not be available on all systems.
 llvm = []
 default = ["llvm"]
+
+[patch."https://github.com/saulshanabrook/egg-smol.git"]
+egglog = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }
+egglog-ast = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }
+egglog-reports = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental.git", branch = "codex/experimental-body-primitive", package = "egglog-experimental" }
 smallvec = "1.11.1"
 strum = "0.25"
 strum_macros = "0.25"
@@ -33,3 +33,8 @@ clap = { version = "4.4.7", features = ["derive"] }
 tempfile = "3.10"
 libc = "0.2"
 rayon = "1"
+
+[patch."https://github.com/saulshanabrook/egg-smol.git"]
+egglog = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }
+egglog-ast = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }
+egglog-reports = { git = "https://github.com/egraphs-good/egglog.git", branch = "codex/eager-merge-containers" }

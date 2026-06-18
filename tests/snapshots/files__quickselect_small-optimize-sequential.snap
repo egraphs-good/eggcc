@@ -1,0 +1,806 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 3650000
+@pack(v0: int, v1: int, v2: int, v3: int, v4: int, v5: int, v6: int): ptr<int> {
+  v7_: ptr<int> = alloc v0;
+  c8_: int = const 5;
+  v9_: ptr<int> = ptradd v7_ c8_;
+  c10_: int = const 4;
+  v11_: ptr<int> = ptradd v7_ c10_;
+  c12_: int = const 3;
+  v13_: ptr<int> = ptradd v7_ c12_;
+  c14_: int = const 2;
+  v15_: ptr<int> = ptradd v7_ c14_;
+  c16_: int = const 1;
+  v17_: ptr<int> = ptradd v7_ c16_;
+  c18_: int = const 0;
+  v19_: ptr<int> = ptradd v7_ c18_;
+  store v19_ v1;
+  store v17_ v2;
+  store v15_ v3;
+  store v13_ v4;
+  store v11_ v5;
+  store v9_ v6;
+  ret v7_;
+}
+@print_array(v0: ptr<int>, v1: int): int {
+  c2_: int = const 0;
+  v3_: bool = lt c2_ v1;
+  c4_: int = const 1;
+  v5_: int = id c2_;
+  v6_: int = id c2_;
+  v7_: int = id c4_;
+  v8_: ptr<int> = id v0;
+  v9_: int = id v1;
+  br v3_ .b10_ .b11_;
+.b10_:
+  v12_: int = id c2_;
+  v13_: int = id c2_;
+  v14_: int = id c4_;
+  v15_: ptr<int> = id v0;
+  v16_: int = id v1;
+.b17_:
+  v18_: ptr<int> = ptradd v15_ v13_;
+  v19_: int = load v18_;
+  v20_: int = mul v13_ v19_;
+  v21_: int = add v12_ v20_;
+  v22_: int = add v13_ v14_;
+  v23_: bool = lt v22_ v16_;
+  v12_: int = id v21_;
+  v13_: int = id v22_;
+  v24_: int = id v14_;
+  v25_: ptr<int> = id v15_;
+  v26_: int = id v16_;
+  v14_: int = id v24_;
+  v15_: ptr<int> = id v25_;
+  v16_: int = id v26_;
+  br v23_ .b17_ .b27_;
+.b27_:
+  v5_: int = id v12_;
+  v6_: int = id v13_;
+  v7_: int = id v14_;
+  v8_: ptr<int> = id v15_;
+  v9_: int = id v16_;
+  ret v5_;
+  jmp .b28_;
+.b11_:
+  ret v5_;
+.b28_:
+}
+@partition(v0: ptr<int>, v1: int, v2: int): int {
+  v3_: bool = lt v1 v2;
+  v4_: ptr<int> = ptradd v0 v2;
+  v5_: int = load v4_;
+  c6_: int = const 1;
+  v7_: int = id v1;
+  v8_: ptr<int> = id v4_;
+  v9_: int = id v5_;
+  v10_: ptr<int> = id v0;
+  v11_: int = id v1;
+  v12_: int = id c6_;
+  v13_: int = id v2;
+  br v3_ .b14_ .b15_;
+.b14_:
+  v16_: int = id v1;
+  v17_: ptr<int> = id v4_;
+  v18_: int = id v5_;
+  v19_: ptr<int> = id v0;
+  v20_: int = id v1;
+  v21_: int = id c6_;
+  v22_: int = id v2;
+.b23_:
+  v24_: ptr<int> = ptradd v19_ v20_;
+  v25_: int = load v24_;
+  v26_: bool = le v25_ v18_;
+  v27_: int = id v16_;
+  v28_: ptr<int> = id v17_;
+  v29_: int = id v18_;
+  v30_: ptr<int> = id v19_;
+  v31_: int = id v20_;
+  v32_: int = id v21_;
+  v33_: int = id v22_;
+  br v26_ .b34_ .b35_;
+.b34_:
+  v36_: ptr<int> = ptradd v19_ v16_;
+  v37_: int = load v36_;
+  store v24_ v37_;
+  store v36_ v25_;
+  v38_: int = add v16_ v21_;
+  v27_: int = id v38_;
+  v28_: ptr<int> = id v17_;
+  v29_: int = id v18_;
+  v30_: ptr<int> = id v19_;
+  v31_: int = id v20_;
+  v32_: int = id v21_;
+  v33_: int = id v22_;
+.b35_:
+  v39_: int = add v20_ v21_;
+  v40_: bool = lt v39_ v22_;
+  v16_: int = id v27_;
+  v41_: ptr<int> = id v17_;
+  v42_: int = id v18_;
+  v43_: ptr<int> = id v19_;
+  v20_: int = id v39_;
+  v44_: int = id v21_;
+  v45_: int = id v22_;
+  v17_: ptr<int> = id v41_;
+  v18_: int = id v42_;
+  v19_: ptr<int> = id v43_;
+  v21_: int = id v44_;
+  v22_: int = id v45_;
+  br v40_ .b23_ .b46_;
+.b46_:
+  v7_: int = id v16_;
+  v8_: ptr<int> = id v17_;
+  v9_: int = id v18_;
+  v10_: ptr<int> = id v19_;
+  v11_: int = id v20_;
+  v12_: int = id v21_;
+  v13_: int = id v22_;
+  v47_: ptr<int> = ptradd v10_ v7_;
+  v48_: int = load v47_;
+  store v47_ v5_;
+  store v8_ v48_;
+  ret v7_;
+  jmp .b49_;
+.b15_:
+  v47_: ptr<int> = ptradd v10_ v7_;
+  v48_: int = load v47_;
+  store v47_ v5_;
+  store v8_ v48_;
+  ret v7_;
+.b49_:
+}
+@quickselect(v0: ptr<int>, v1: int, v2: int, v3: int): int {
+  v4_: bool = lt v1 v2;
+  v5_: ptr<int> = ptradd v0 v2;
+  v6_: int = load v5_;
+  c7_: int = const 1;
+  v8_: int = id v1;
+  v9_: ptr<int> = id v5_;
+  v10_: int = id v6_;
+  v11_: ptr<int> = id v0;
+  v12_: int = id v1;
+  v13_: int = id c7_;
+  v14_: int = id v2;
+  br v4_ .b15_ .b16_;
+.b15_:
+  v17_: int = id v1;
+  v18_: ptr<int> = id v5_;
+  v19_: int = id v6_;
+  v20_: ptr<int> = id v0;
+  v21_: int = id v1;
+  v22_: int = id c7_;
+  v23_: int = id v2;
+.b24_:
+  v25_: ptr<int> = ptradd v20_ v21_;
+  v26_: int = load v25_;
+  v27_: bool = le v26_ v19_;
+  v28_: int = id v17_;
+  v29_: ptr<int> = id v18_;
+  v30_: int = id v19_;
+  v31_: ptr<int> = id v20_;
+  v32_: int = id v21_;
+  v33_: int = id v22_;
+  v34_: int = id v23_;
+  br v27_ .b35_ .b36_;
+.b35_:
+  v37_: ptr<int> = ptradd v20_ v17_;
+  v38_: int = load v37_;
+  store v25_ v38_;
+  store v37_ v26_;
+  v39_: int = add v17_ v22_;
+  v28_: int = id v39_;
+  v29_: ptr<int> = id v18_;
+  v30_: int = id v19_;
+  v31_: ptr<int> = id v20_;
+  v32_: int = id v21_;
+  v33_: int = id v22_;
+  v34_: int = id v23_;
+.b36_:
+  v40_: int = add v21_ v22_;
+  v41_: bool = lt v40_ v23_;
+  v17_: int = id v28_;
+  v42_: ptr<int> = id v18_;
+  v43_: int = id v19_;
+  v44_: ptr<int> = id v20_;
+  v21_: int = id v40_;
+  v45_: int = id v22_;
+  v46_: int = id v23_;
+  v18_: ptr<int> = id v42_;
+  v19_: int = id v43_;
+  v20_: ptr<int> = id v44_;
+  v22_: int = id v45_;
+  v23_: int = id v46_;
+  br v41_ .b24_ .b47_;
+.b47_:
+  v8_: int = id v17_;
+  v9_: ptr<int> = id v18_;
+  v10_: int = id v19_;
+  v11_: ptr<int> = id v20_;
+  v12_: int = id v21_;
+  v13_: int = id v22_;
+  v14_: int = id v23_;
+.b16_:
+  v48_: int = sub v8_ v1;
+  v49_: int = sub v3 c7_;
+  v50_: bool = eq v48_ v49_;
+  v51_: ptr<int> = ptradd v11_ v8_;
+  v52_: int = load v51_;
+  store v51_ v6_;
+  store v9_ v52_;
+  br v50_ .b53_ .b54_;
+.b53_:
+  v55_: ptr<int> = ptradd v0 v8_;
+  v56_: int = load v55_;
+  v57_: int = id v56_;
+  ret v57_;
+  jmp .b58_;
+.b54_:
+  v59_: bool = lt v49_ v48_;
+  br v59_ .b60_ .b61_;
+.b60_:
+  v62_: int = sub v8_ c7_;
+  v63_: bool = lt v1 v62_;
+  v64_: ptr<int> = ptradd v0 v62_;
+  v65_: int = load v64_;
+  v66_: int = id v1;
+  v67_: ptr<int> = id v64_;
+  v68_: int = id v65_;
+  v69_: ptr<int> = id v0;
+  v70_: int = id v1;
+  v71_: int = id c7_;
+  v72_: int = id v62_;
+  br v63_ .b73_ .b74_;
+.b73_:
+  v75_: int = id v1;
+  v76_: ptr<int> = id v64_;
+  v77_: int = id v65_;
+  v78_: ptr<int> = id v0;
+  v79_: int = id v1;
+  v80_: int = id c7_;
+  v81_: int = id v62_;
+.b82_:
+  v83_: ptr<int> = ptradd v78_ v79_;
+  v84_: int = load v83_;
+  v85_: bool = le v84_ v77_;
+  v86_: int = id v75_;
+  v87_: ptr<int> = id v76_;
+  v88_: int = id v77_;
+  v89_: ptr<int> = id v78_;
+  v90_: int = id v79_;
+  v91_: int = id v80_;
+  v92_: int = id v81_;
+  br v85_ .b93_ .b94_;
+.b93_:
+  v95_: ptr<int> = ptradd v78_ v75_;
+  v96_: int = load v95_;
+  store v83_ v96_;
+  store v95_ v84_;
+  v97_: int = add v75_ v80_;
+  v86_: int = id v97_;
+  v87_: ptr<int> = id v76_;
+  v88_: int = id v77_;
+  v89_: ptr<int> = id v78_;
+  v90_: int = id v79_;
+  v91_: int = id v80_;
+  v92_: int = id v81_;
+.b94_:
+  v98_: int = add v79_ v80_;
+  v99_: bool = lt v98_ v81_;
+  v75_: int = id v86_;
+  v100_: ptr<int> = id v76_;
+  v101_: int = id v77_;
+  v102_: ptr<int> = id v78_;
+  v79_: int = id v98_;
+  v103_: int = id v80_;
+  v104_: int = id v81_;
+  v76_: ptr<int> = id v100_;
+  v77_: int = id v101_;
+  v78_: ptr<int> = id v102_;
+  v80_: int = id v103_;
+  v81_: int = id v104_;
+  br v99_ .b82_ .b105_;
+.b105_:
+  v66_: int = id v75_;
+  v67_: ptr<int> = id v76_;
+  v68_: int = id v77_;
+  v69_: ptr<int> = id v78_;
+  v70_: int = id v79_;
+  v71_: int = id v80_;
+  v72_: int = id v81_;
+.b74_:
+  v106_: int = sub v66_ v1;
+  v107_: int = sub v3 c7_;
+  v108_: bool = eq v106_ v107_;
+  v109_: ptr<int> = ptradd v69_ v66_;
+  v110_: int = load v109_;
+  store v109_ v65_;
+  store v67_ v110_;
+  br v108_ .b111_ .b112_;
+.b111_:
+  v113_: ptr<int> = ptradd v0 v66_;
+  v114_: int = load v113_;
+  v115_: int = id v114_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b112_:
+  v117_: bool = lt v107_ v106_;
+  br v117_ .b118_ .b119_;
+.b118_:
+  v120_: int = sub v66_ c7_;
+  v121_: int = call @partition v0 v1 v120_;
+  v122_: int = sub v121_ v1;
+  v123_: int = sub v3 c7_;
+  v124_: bool = eq v122_ v123_;
+  br v124_ .b125_ .b126_;
+.b125_:
+  v127_: ptr<int> = ptradd v0 v121_;
+  v128_: int = load v127_;
+  v129_: int = id v128_;
+  v130_: int = id v129_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b126_:
+  v131_: bool = lt v123_ v122_;
+  br v131_ .b132_ .b133_;
+.b132_:
+  v134_: int = sub v121_ c7_;
+  v135_: int = call @quickselect v0 v1 v134_ v3;
+  v136_: int = id v135_;
+  v129_: int = id v136_;
+  v130_: int = id v129_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b133_:
+  v137_: int = add c7_ v121_;
+  v138_: int = sub v3 v121_;
+  v139_: int = sub v1 c7_;
+  v140_: int = add v138_ v139_;
+  v141_: int = call @quickselect v0 v137_ v120_ v140_;
+  v136_: int = id v141_;
+  v129_: int = id v136_;
+  v130_: int = id v129_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b119_:
+  v142_: int = sub v3 v66_;
+  v143_: int = sub v142_ c7_;
+  v144_: int = add v1 v143_;
+  v145_: int = sub v144_ c7_;
+  v146_: int = add c7_ v66_;
+  v147_: int = call @partition v0 v146_ v62_;
+  v148_: int = sub v147_ v146_;
+  v149_: bool = eq v145_ v148_;
+  br v149_ .b150_ .b151_;
+.b150_:
+  v152_: ptr<int> = ptradd v0 v147_;
+  v153_: int = load v152_;
+  v154_: int = id v153_;
+  v130_: int = id v154_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b151_:
+  v155_: bool = lt v145_ v148_;
+  br v155_ .b156_ .b157_;
+.b156_:
+  v158_: int = sub v147_ c7_;
+  v159_: int = call @quickselect v0 v146_ v158_ v144_;
+  v160_: int = id v159_;
+  v154_: int = id v160_;
+  v130_: int = id v154_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b157_:
+  v161_: int = add c7_ v147_;
+  v162_: int = sub v144_ v147_;
+  v163_: int = sub v146_ c7_;
+  v164_: int = add v162_ v163_;
+  v165_: int = call @quickselect v0 v161_ v62_ v164_;
+  v160_: int = id v165_;
+  v154_: int = id v160_;
+  v130_: int = id v154_;
+  v115_: int = id v130_;
+  v116_: int = id v115_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b61_:
+  v166_: int = sub v3 v8_;
+  v167_: int = add v1 v166_;
+  v168_: int = sub v167_ c7_;
+  v169_: int = sub v168_ c7_;
+  v170_: int = add c7_ v8_;
+  v171_: bool = lt v170_ v2;
+  v172_: ptr<int> = ptradd v0 v2;
+  v173_: int = load v172_;
+  v174_: int = id v170_;
+  v175_: ptr<int> = id v172_;
+  v176_: int = id v173_;
+  v177_: ptr<int> = id v0;
+  v178_: int = id v170_;
+  v179_: int = id c7_;
+  v180_: int = id v2;
+  br v171_ .b181_ .b182_;
+.b181_:
+  v183_: int = id v170_;
+  v184_: ptr<int> = id v172_;
+  v185_: int = id v173_;
+  v186_: ptr<int> = id v0;
+  v187_: int = id v170_;
+  v188_: int = id c7_;
+  v189_: int = id v2;
+.b190_:
+  v191_: ptr<int> = ptradd v186_ v187_;
+  v192_: int = load v191_;
+  v193_: bool = le v192_ v185_;
+  v194_: int = id v183_;
+  v195_: ptr<int> = id v184_;
+  v196_: int = id v185_;
+  v197_: ptr<int> = id v186_;
+  v198_: int = id v187_;
+  v199_: int = id v188_;
+  v200_: int = id v189_;
+  br v193_ .b201_ .b202_;
+.b201_:
+  v203_: ptr<int> = ptradd v186_ v183_;
+  v204_: int = load v203_;
+  store v191_ v204_;
+  store v203_ v192_;
+  v205_: int = add v183_ v188_;
+  v194_: int = id v205_;
+  v195_: ptr<int> = id v184_;
+  v196_: int = id v185_;
+  v197_: ptr<int> = id v186_;
+  v198_: int = id v187_;
+  v199_: int = id v188_;
+  v200_: int = id v189_;
+.b202_:
+  v206_: int = add v187_ v188_;
+  v207_: bool = lt v206_ v189_;
+  v183_: int = id v194_;
+  v208_: ptr<int> = id v184_;
+  v209_: int = id v185_;
+  v210_: ptr<int> = id v186_;
+  v187_: int = id v206_;
+  v211_: int = id v188_;
+  v212_: int = id v189_;
+  v184_: ptr<int> = id v208_;
+  v185_: int = id v209_;
+  v186_: ptr<int> = id v210_;
+  v188_: int = id v211_;
+  v189_: int = id v212_;
+  br v207_ .b190_ .b213_;
+.b213_:
+  v174_: int = id v183_;
+  v175_: ptr<int> = id v184_;
+  v176_: int = id v185_;
+  v177_: ptr<int> = id v186_;
+  v178_: int = id v187_;
+  v179_: int = id v188_;
+  v180_: int = id v189_;
+.b182_:
+  v214_: int = sub v174_ v170_;
+  v215_: bool = eq v169_ v214_;
+  v216_: ptr<int> = ptradd v177_ v174_;
+  v217_: int = load v216_;
+  store v216_ v173_;
+  store v175_ v217_;
+  br v215_ .b218_ .b219_;
+.b218_:
+  v220_: ptr<int> = ptradd v0 v174_;
+  v221_: int = load v220_;
+  v222_: int = id v221_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b219_:
+  v223_: bool = lt v169_ v214_;
+  br v223_ .b224_ .b225_;
+.b224_:
+  v226_: int = sub v174_ c7_;
+  v227_: int = call @partition v0 v170_ v226_;
+  v228_: int = sub v227_ v170_;
+  v229_: int = sub v168_ c7_;
+  v230_: bool = eq v228_ v229_;
+  br v230_ .b231_ .b232_;
+.b231_:
+  v233_: ptr<int> = ptradd v0 v227_;
+  v234_: int = load v233_;
+  v235_: int = id v234_;
+  v236_: int = id v235_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b232_:
+  v237_: bool = lt v229_ v228_;
+  br v237_ .b238_ .b239_;
+.b238_:
+  v240_: int = sub v227_ c7_;
+  v241_: int = call @quickselect v0 v170_ v240_ v168_;
+  v242_: int = id v241_;
+  v235_: int = id v242_;
+  v236_: int = id v235_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b239_:
+  v243_: int = add c7_ v227_;
+  v244_: int = sub v168_ v227_;
+  v245_: int = sub v170_ c7_;
+  v246_: int = add v244_ v245_;
+  v247_: int = call @quickselect v0 v243_ v226_ v246_;
+  v242_: int = id v247_;
+  v235_: int = id v242_;
+  v236_: int = id v235_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b225_:
+  v248_: int = sub v168_ v174_;
+  v249_: int = sub v248_ c7_;
+  v250_: int = add v170_ v249_;
+  v251_: int = sub v250_ c7_;
+  v252_: int = add c7_ v174_;
+  v253_: int = call @partition v0 v252_ v2;
+  v254_: int = sub v253_ v252_;
+  v255_: bool = eq v251_ v254_;
+  br v255_ .b256_ .b257_;
+.b256_:
+  v258_: ptr<int> = ptradd v0 v253_;
+  v259_: int = load v258_;
+  v260_: int = id v259_;
+  v236_: int = id v260_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b257_:
+  v261_: bool = lt v251_ v254_;
+  br v261_ .b262_ .b263_;
+.b262_:
+  v264_: int = sub v253_ c7_;
+  v265_: int = call @quickselect v0 v252_ v264_ v250_;
+  v266_: int = id v265_;
+  v260_: int = id v266_;
+  v236_: int = id v260_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+  jmp .b58_;
+.b263_:
+  v267_: int = add c7_ v253_;
+  v268_: int = sub v250_ v253_;
+  v269_: int = sub v252_ c7_;
+  v270_: int = add v268_ v269_;
+  v271_: int = call @quickselect v0 v267_ v2 v270_;
+  v266_: int = id v271_;
+  v260_: int = id v266_;
+  v236_: int = id v260_;
+  v222_: int = id v236_;
+  v116_: int = id v222_;
+  v57_: int = id v116_;
+  ret v57_;
+.b58_:
+}
+@main(v0: int) {
+  c1_: int = const 6;
+  v2_: ptr<int> = alloc c1_;
+  c3_: int = const 5;
+  v4_: ptr<int> = ptradd v2_ c3_;
+  c5_: int = const 116;
+  c6_: int = const 4;
+  v7_: ptr<int> = ptradd v2_ c6_;
+  c8_: int = const 114;
+  c9_: int = const 3;
+  v10_: ptr<int> = ptradd v2_ c9_;
+  c11_: int = const 101;
+  c12_: int = const 2;
+  v13_: ptr<int> = ptradd v2_ c12_;
+  c14_: int = const 98;
+  c15_: int = const 1;
+  v16_: ptr<int> = ptradd v2_ c15_;
+  c17_: int = const 108;
+  c18_: int = const 0;
+  v19_: ptr<int> = ptradd v2_ c18_;
+  c20_: int = const 97;
+  store v19_ c20_;
+  store v16_ c17_;
+  store v13_ c14_;
+  store v10_ c11_;
+  store v7_ c8_;
+  store v4_ c5_;
+  v21_: int = id c18_;
+  v22_: ptr<int> = id v4_;
+  v23_: int = id c5_;
+  v24_: ptr<int> = id v2_;
+  v25_: int = id c18_;
+  v26_: int = id c15_;
+  v27_: int = id c3_;
+.b28_:
+  v29_: ptr<int> = ptradd v24_ v25_;
+  v30_: int = load v29_;
+  v31_: bool = le v30_ v23_;
+  v32_: int = id v21_;
+  v33_: ptr<int> = id v22_;
+  v34_: int = id v23_;
+  v35_: ptr<int> = id v24_;
+  v36_: int = id v25_;
+  v37_: int = id v26_;
+  v38_: int = id v27_;
+  br v31_ .b39_ .b40_;
+.b39_:
+  v41_: ptr<int> = ptradd v24_ v21_;
+  v42_: int = load v41_;
+  store v29_ v42_;
+  store v41_ v30_;
+  v43_: int = add v21_ v26_;
+  v32_: int = id v43_;
+  v33_: ptr<int> = id v22_;
+  v34_: int = id v23_;
+  v35_: ptr<int> = id v24_;
+  v36_: int = id v25_;
+  v37_: int = id v26_;
+  v38_: int = id v27_;
+.b40_:
+  v44_: int = add v25_ v26_;
+  v45_: bool = lt v44_ v27_;
+  v21_: int = id v32_;
+  v46_: ptr<int> = id v22_;
+  v47_: int = id v23_;
+  v48_: ptr<int> = id v24_;
+  v25_: int = id v44_;
+  v49_: int = id v26_;
+  v50_: int = id v27_;
+  v22_: ptr<int> = id v46_;
+  v23_: int = id v47_;
+  v24_: ptr<int> = id v48_;
+  v26_: int = id v49_;
+  v27_: int = id v50_;
+  br v45_ .b28_ .b51_;
+.b51_:
+  v52_: int = sub v21_ c18_;
+  v53_: bool = eq c9_ v52_;
+  v54_: ptr<int> = ptradd v24_ v21_;
+  v55_: int = load v54_;
+  store v54_ c5_;
+  store v22_ v55_;
+  br v53_ .b56_ .b57_;
+.b56_:
+  v58_: ptr<int> = ptradd v2_ v21_;
+  v59_: int = load v58_;
+  v60_: int = id v59_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b57_:
+  v63_: bool = lt c9_ v52_;
+  br v63_ .b64_ .b65_;
+.b64_:
+  v66_: int = sub c6_ c15_;
+  v67_: int = sub v21_ c15_;
+  v68_: int = call @partition v2_ c18_ v67_;
+  v69_: int = sub v68_ c18_;
+  v70_: bool = eq v66_ v69_;
+  br v70_ .b71_ .b72_;
+.b71_:
+  v73_: ptr<int> = ptradd v2_ v68_;
+  v74_: int = load v73_;
+  v75_: int = id v74_;
+  v76_: int = id v75_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b72_:
+  v77_: bool = lt v66_ v69_;
+  br v77_ .b78_ .b79_;
+.b78_:
+  v80_: int = sub v68_ c15_;
+  v81_: int = call @quickselect v2_ c18_ v80_ c6_;
+  v82_: int = id v81_;
+  v75_: int = id v82_;
+  v76_: int = id v75_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b79_:
+  v83_: int = add c15_ v68_;
+  v84_: int = sub c6_ v68_;
+  v85_: int = sub v84_ c15_;
+  v86_: int = call @quickselect v2_ v83_ v67_ v85_;
+  v82_: int = id v86_;
+  v75_: int = id v82_;
+  v76_: int = id v75_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b65_:
+  v87_: int = sub c6_ v21_;
+  v88_: int = sub v87_ c15_;
+  v89_: int = sub v88_ c15_;
+  v90_: int = add c15_ v21_;
+  v91_: int = call @partition v2_ v90_ c3_;
+  v92_: int = sub v91_ v90_;
+  v93_: bool = eq v89_ v92_;
+  br v93_ .b94_ .b95_;
+.b94_:
+  v96_: ptr<int> = ptradd v2_ v91_;
+  v97_: int = load v96_;
+  v98_: int = id v97_;
+  v76_: int = id v98_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b95_:
+  v99_: bool = lt v89_ v92_;
+  br v99_ .b100_ .b101_;
+.b100_:
+  v102_: int = sub v91_ c15_;
+  v103_: int = call @quickselect v2_ v90_ v102_ v88_;
+  v104_: int = id v103_;
+  v98_: int = id v104_;
+  v76_: int = id v98_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+  jmp .b62_;
+.b101_:
+  v105_: int = add c15_ v91_;
+  v106_: int = sub v88_ v91_;
+  v107_: int = sub v90_ c15_;
+  v108_: int = add v106_ v107_;
+  v109_: int = call @quickselect v2_ v105_ c3_ v108_;
+  v104_: int = id v109_;
+  v98_: int = id v104_;
+  v76_: int = id v98_;
+  v60_: int = id v76_;
+  v61_: int = add v0 v60_;
+  free v2_;
+  print v61_;
+  ret;
+.b62_:
+}

@@ -403,8 +403,12 @@
       :ruleset memory-helpers)
 
 ; If we load and we already know what the pointer points to
-; TODO this rule breaks the weakly linear invariant
-; when a previous load may not be on the path
+; NOTE: this store-to-load-forwarding rule is sound now that we no longer
+; maintain weak linearity, but the alloc-based points-to analysis it depends on
+; (the `memory`/`memory-helpers` rulesets) is currently not scheduled because it
+; is too expensive on array-heavy code -- running it per-pass blew up mvt_small
+; from ~5s to ~500s, and a single-invocation placement did not reproduce the
+; forwarding. Re-enabling it needs dedicated performance work on the analysis.
 ;(rule ((= e (Bop (Load) addr state))
 ;       (= v (PointsToExpr state addr)))
 ;      ((union (Get e 0) v)

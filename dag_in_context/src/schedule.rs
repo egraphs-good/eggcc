@@ -98,8 +98,6 @@ pub(crate) fn helpers() -> String {
     ;; cicm index
     (saturate cicm-index)
 
-    ;; TODO right now we don't run memory-helpers, we run mem-simple instead
-
     ;; finally, subsume now that helpers are done
     subsume-after-helpers
 

@@ -62,6 +62,42 @@
       :ruleset mem-simple)
 
 ; ============================
+; Lesser analysis
+; ============================
+; (Lesser a b) means `a` is provably strictly less than `b` as an i64 value.
+; It generalizes the syntactic offset reasoning above: any two PtrAdds off the
+; same base whose offsets are provably ordered (hence distinct) cannot alias.
+;
+; Lesser is demand-driven via LesserDemand so the relation only materializes for
+; offset pairs that actually feed PtrAdds sharing a base. This keeps it bounded
+; by the number of such PtrAdd pairs instead of exploding over all Expr pairs.
+
+(relation Lesser (Expr Expr))
+(relation LesserDemand (Expr Expr))
+
+; Demand: two PtrAdds on the same base -- we care whether their offsets are ordered.
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p j)))
+      ((LesserDemand i j))
+      :ruleset mem-simple)
+
+; Lesser from disjoint interval bounds: hi(a) < lo(b) => a < b.
+(rule ((LesserDemand a b)
+       (= (IntB ha) (hi-bound a))
+       (= (IntB lb) (lo-bound b))
+       (< ha lb))
+      ((Lesser a b))
+      :ruleset mem-simple)
+
+; PtrAdds off the same base with provably-ordered (hence distinct) offsets
+; point to different addresses.
+(rule ((= p1 (Bop (PtrAdd) p i))
+       (= p2 (Bop (PtrAdd) p j))
+       (Lesser i j))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+; ============================
 ; Memory optimizations
 ; ============================
 
@@ -81,8 +117,6 @@
       :ruleset mem-simple)
 
 ; A load then a write to different addresses can be swapped
-; Actually, does this break WeaklyLinear if the stored value depends on the
-; loaded value? Commenting this out for now.
 ; (rule ((NoAlias load-addr write-addr)
 ;        (= load (Bop (Load) load-addr state))
 ;        (= write (Top (Write) write-addr write-val (Get load 1))))
@@ -127,7 +161,6 @@
       :ruleset mem-simple)
 
 ; A load doesn't change the state
-; TODO: why does this break weaklylinear?
 ; (rule ((= load (Bop (Load) addr state)))
 ;       ((union (Get load 1) state))
 ;       :ruleset mem-simple)

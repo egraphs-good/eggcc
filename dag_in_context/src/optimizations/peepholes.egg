@@ -55,3 +55,43 @@
 (rewrite (Bop (PtrAdd) (Bop (PtrAdd) p x) y)
          (Bop (PtrAdd) p (Bop (Add) x y))
          :ruleset peepholes)
+
+; ================================================================
+; Additional algebraic identities (all valid under i64 wraparound)
+; ================================================================
+
+; x - 0 = x
+(rewrite (Bop (Sub) e (Const (Int 0) ty ctx)) e :ruleset peepholes)
+; x / 1 = x
+(rewrite (Bop (Div) e (Const (Int 1) ty ctx)) e :ruleset peepholes)
+
+; bitwise-and idempotence and annihilation
+(rewrite (Bop (Bitand) e e) e :ruleset peepholes)
+(rewrite (Bop (Bitand) e (Const (Int 0) ty ctx)) (Const (Int 0) ty ctx) :ruleset peepholes)
+(rewrite (Bop (Bitand) (Const (Int 0) ty ctx) e) (Const (Int 0) ty ctx) :ruleset peepholes)
+
+; logical idempotence (And/Or are boolean operators)
+(rewrite (Bop (And) e e) e :ruleset peepholes)
+(rewrite (Bop (Or) e e) e :ruleset peepholes)
+
+; double negation
+(rewrite (Uop (Not) (Uop (Not) e)) e :ruleset peepholes)
+(rewrite (Uop (Neg) (Uop (Neg) e)) e :ruleset peepholes)
+; -(a - b) = b - a
+(rewrite (Uop (Neg) (Bop (Sub) a b)) (Bop (Sub) b a) :ruleset peepholes)
+
+; min/max with self
+(rewrite (Bop (Smin) x x) x :ruleset peepholes)
+(rewrite (Bop (Smax) x x) x :ruleset peepholes)
+
+; self-comparisons (integer comparisons, always defined)
+(rule ((= expr (Bop (Eq) x x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (LessThan) x x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool false) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (GreaterThan) x x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool false) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (LessEq) x x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (GreaterEq) x x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)

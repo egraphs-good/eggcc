@@ -62,13 +62,13 @@ expression: visualization.result
 .b30_:
 }
 @rand(v0: ptr<int>) {
-  v1_: int = load v0;
-  c2_: int = const 2;
+  c1_: int = const 2;
+  v2_: int = load v0;
   c3_: int = const 0;
   c4_: int = const 1;
   c5_: int = const 11;
-  v6_: int = id v1_;
-  v7_: int = id c2_;
+  v6_: int = id v2_;
+  v7_: int = id c1_;
   v8_: int = id c3_;
   v9_: int = id c4_;
   v10_: int = id c5_;
@@ -87,8 +87,8 @@ expression: visualization.result
   br v14_ .b11_ .b18_;
 .b18_:
   c19_: int = const 13;
-  v20_: int = id v1_;
-  v21_: int = id c2_;
+  v20_: int = id v2_;
+  v21_: int = id c1_;
   v22_: int = id c3_;
   v23_: int = id c4_;
   v24_: int = id c19_;
@@ -107,8 +107,8 @@ expression: visualization.result
   br v28_ .b25_ .b32_;
 .b32_:
   c33_: int = const 14;
-  v34_: int = id v1_;
-  v35_: int = id c2_;
+  v34_: int = id v2_;
+  v35_: int = id c1_;
   v36_: int = id c3_;
   v37_: int = id c4_;
   v38_: int = id c33_;
@@ -126,72 +126,68 @@ expression: visualization.result
   v38_: int = id v45_;
   br v42_ .b39_ .b46_;
 .b46_:
-  c47_: int = const 16;
-  v48_: int = id v1_;
-  v49_: int = id c2_;
-  v50_: int = id c3_;
-  v51_: int = id c4_;
-  v52_: int = id c47_;
-.b53_:
-  v54_: int = div v48_ v49_;
-  v55_: int = add v50_ v51_;
-  v56_: bool = lt v55_ v52_;
-  v48_: int = id v54_;
-  v57_: int = id v49_;
-  v50_: int = id v55_;
-  v58_: int = id v51_;
-  v59_: int = id v52_;
-  v49_: int = id v57_;
-  v51_: int = id v58_;
-  v52_: int = id v59_;
-  br v56_ .b53_ .b60_;
-.b60_:
-  v61_: int = div v48_ c2_;
-  v62_: int = mul c2_ v61_;
-  v63_: bool = eq v48_ v62_;
-  v64_: bool = not v63_;
-  v65_: bool = not v64_;
-  v66_: int = div v34_ c2_;
-  v67_: int = mul c2_ v66_;
-  v68_: bool = eq v34_ v67_;
-  v69_: bool = not v68_;
-  v70_: bool = not v69_;
-  v71_: int = div v20_ c2_;
-  v72_: int = mul c2_ v71_;
-  v73_: bool = eq v20_ v72_;
-  v74_: bool = not v73_;
-  v75_: bool = not v74_;
-  v76_: int = div v6_ c2_;
-  v77_: int = mul c2_ v76_;
-  v78_: bool = eq v6_ v77_;
-  v79_: bool = not v78_;
-  v80_: bool = and v75_ v79_;
-  v81_: bool = not v79_;
-  v82_: bool = and v74_ v81_;
-  v83_: bool = or v80_ v82_;
-  v84_: bool = and v70_ v83_;
-  v85_: bool = not v83_;
-  v86_: bool = and v69_ v85_;
-  v87_: bool = or v84_ v86_;
-  v88_: bool = and v65_ v87_;
-  v89_: bool = not v87_;
-  v90_: bool = and v64_ v89_;
-  v91_: bool = or v88_ v90_;
-  v92_: int = mul c2_ v1_;
-  v93_: int = id v92_;
-  v94_: ptr<int> = id v0;
-  br v91_ .b95_ .b96_;
-.b95_:
-  v97_: int = add c4_ v92_;
-  v93_: int = id v97_;
-  v94_: ptr<int> = id v0;
-  store v0 v93_;
+  v47_: int = div v34_ c1_;
+  v48_: int = mul c1_ v47_;
+  v49_: bool = eq v34_ v48_;
+  v50_: int = div v20_ c1_;
+  v51_: int = mul c1_ v50_;
+  v52_: bool = eq v20_ v51_;
+  v53_: int = div v6_ c1_;
+  v54_: int = mul c1_ v53_;
+  v55_: bool = eq v54_ v6_;
+  v56_: bool = not v55_;
+  v57_: bool = and v52_ v56_;
+  v58_: bool = not v52_;
+  v59_: bool = and v55_ v58_;
+  v60_: bool = or v57_ v59_;
+  v61_: bool = and v49_ v60_;
+  v62_: bool = not v49_;
+  v63_: bool = not v60_;
+  v64_: bool = and v62_ v63_;
+  v65_: bool = or v61_ v64_;
+  c66_: int = const 16;
+  v67_: int = id v2_;
+  v68_: int = id c1_;
+  v69_: int = id c3_;
+  v70_: int = id c4_;
+  v71_: int = id c66_;
+.b72_:
+  v73_: int = div v67_ v68_;
+  v74_: int = add v69_ v70_;
+  v75_: bool = lt v74_ v71_;
+  v67_: int = id v73_;
+  v76_: int = id v68_;
+  v69_: int = id v74_;
+  v77_: int = id v70_;
+  v78_: int = id v71_;
+  v68_: int = id v76_;
+  v70_: int = id v77_;
+  v71_: int = id v78_;
+  br v75_ .b72_ .b79_;
+.b79_:
+  v80_: int = div v67_ c1_;
+  v81_: int = mul c1_ v80_;
+  v82_: bool = eq v67_ v81_;
+  v83_: bool = and v65_ v82_;
+  v84_: bool = not v65_;
+  v85_: bool = not v82_;
+  v86_: bool = and v84_ v85_;
+  v87_: bool = or v83_ v86_;
+  v88_: int = mul c1_ v2_;
+  v89_: int = id v88_;
+  v90_: ptr<int> = id v0;
+  br v87_ .b91_ .b92_;
+.b91_:
+  v93_: int = add c4_ v88_;
+  v89_: int = id v93_;
+  v90_: ptr<int> = id v0;
+  store v0 v89_;
   ret;
-  jmp .b98_;
-.b96_:
-  store v0 v93_;
+  jmp .b94_;
+.b92_:
+  store v0 v89_;
   ret;
-.b98_:
+.b94_:
 }
 @mod(v0: int, v1: int): int {
   v2_: int = div v0 v1;
@@ -337,13 +333,13 @@ expression: visualization.result
   v98_: int = id v7_;
 .b99_:
   v100_: ptr<int> = ptradd v96_ v94_;
-  v101_: int = load v93_;
-  c102_: int = const 2;
+  c101_: int = const 2;
+  v102_: int = load v93_;
   c103_: int = const 0;
   c104_: int = const 1;
   c105_: int = const 11;
-  v106_: int = id v101_;
-  v107_: int = id c102_;
+  v106_: int = id v102_;
+  v107_: int = id c101_;
   v108_: int = id c103_;
   v109_: int = id c104_;
   v110_: int = id c105_;
@@ -362,8 +358,8 @@ expression: visualization.result
   br v114_ .b111_ .b118_;
 .b118_:
   c119_: int = const 13;
-  v120_: int = id v101_;
-  v121_: int = id c102_;
+  v120_: int = id v102_;
+  v121_: int = id c101_;
   v122_: int = id c103_;
   v123_: int = id c104_;
   v124_: int = id c119_;
@@ -382,8 +378,8 @@ expression: visualization.result
   br v128_ .b125_ .b132_;
 .b132_:
   c133_: int = const 14;
-  v134_: int = id v101_;
-  v135_: int = id c102_;
+  v134_: int = id v102_;
+  v135_: int = id c101_;
   v136_: int = id c103_;
   v137_: int = id c104_;
   v138_: int = id c133_;
@@ -401,86 +397,82 @@ expression: visualization.result
   v138_: int = id v145_;
   br v142_ .b139_ .b146_;
 .b146_:
-  c147_: int = const 16;
-  v148_: int = id v101_;
-  v149_: int = id c102_;
-  v150_: int = id c103_;
-  v151_: int = id c104_;
-  v152_: int = id c147_;
-.b153_:
-  v154_: int = div v148_ v149_;
-  v155_: int = add v150_ v151_;
-  v156_: bool = lt v155_ v152_;
-  v148_: int = id v154_;
-  v157_: int = id v149_;
-  v150_: int = id v155_;
-  v158_: int = id v151_;
-  v159_: int = id v152_;
-  v149_: int = id v157_;
-  v151_: int = id v158_;
-  v152_: int = id v159_;
-  br v156_ .b153_ .b160_;
-.b160_:
-  v161_: int = div v148_ c102_;
-  v162_: int = mul c102_ v161_;
-  v163_: bool = eq v148_ v162_;
-  v164_: bool = not v163_;
-  v165_: bool = not v164_;
-  v166_: int = div v134_ c102_;
-  v167_: int = mul c102_ v166_;
-  v168_: bool = eq v134_ v167_;
-  v169_: bool = not v168_;
-  v170_: bool = not v169_;
-  v171_: int = div v120_ c102_;
-  v172_: int = mul c102_ v171_;
-  v173_: bool = eq v120_ v172_;
-  v174_: bool = not v173_;
-  v175_: bool = not v174_;
-  v176_: int = div v106_ c102_;
-  v177_: int = mul c102_ v176_;
-  v178_: bool = eq v106_ v177_;
-  v179_: bool = not v178_;
-  v180_: bool = and v175_ v179_;
-  v181_: bool = not v179_;
-  v182_: bool = and v174_ v181_;
-  v183_: bool = or v180_ v182_;
-  v184_: bool = and v170_ v183_;
-  v185_: bool = not v183_;
-  v186_: bool = and v169_ v185_;
-  v187_: bool = or v184_ v186_;
-  v188_: bool = and v165_ v187_;
-  v189_: bool = not v187_;
-  v190_: bool = and v164_ v189_;
-  v191_: bool = or v188_ v190_;
-  v192_: int = mul c102_ v101_;
-  v193_: int = id v192_;
-  v194_: ptr<int> = id v93_;
-  br v191_ .b195_ .b196_;
-.b195_:
-  v197_: int = add c104_ v192_;
-  v193_: int = id v197_;
-  v194_: ptr<int> = id v93_;
-.b196_:
-  v198_: int = div v193_ v97_;
-  v199_: int = mul v198_ v97_;
-  v200_: int = sub v193_ v199_;
-  store v93_ v193_;
-  store v100_ v200_;
-  v201_: int = add v94_ v95_;
-  v202_: bool = lt v201_ v98_;
-  v203_: ptr<int> = id v93_;
-  v94_: int = id v201_;
-  v204_: int = id v95_;
-  v205_: ptr<int> = id v96_;
-  v206_: int = id v97_;
-  v207_: int = id v98_;
-  v93_: ptr<int> = id v203_;
-  v95_: int = id v204_;
-  v96_: ptr<int> = id v205_;
-  v97_: int = id v206_;
-  v98_: int = id v207_;
-  br v202_ .b99_ .b208_;
-.b208_:
+  v147_: int = div v134_ c101_;
+  v148_: int = mul c101_ v147_;
+  v149_: bool = eq v134_ v148_;
+  v150_: int = div v120_ c101_;
+  v151_: int = mul c101_ v150_;
+  v152_: bool = eq v120_ v151_;
+  v153_: int = div v106_ c101_;
+  v154_: int = mul c101_ v153_;
+  v155_: bool = eq v106_ v154_;
+  v156_: bool = not v155_;
+  v157_: bool = and v152_ v156_;
+  v158_: bool = not v152_;
+  v159_: bool = and v155_ v158_;
+  v160_: bool = or v157_ v159_;
+  v161_: bool = and v149_ v160_;
+  v162_: bool = not v149_;
+  v163_: bool = not v160_;
+  v164_: bool = and v162_ v163_;
+  v165_: bool = or v161_ v164_;
+  c166_: int = const 16;
+  v167_: int = id v102_;
+  v168_: int = id c101_;
+  v169_: int = id c103_;
+  v170_: int = id c104_;
+  v171_: int = id c166_;
+.b172_:
+  v173_: int = div v167_ v168_;
+  v174_: int = add v169_ v170_;
+  v175_: bool = lt v174_ v171_;
+  v167_: int = id v173_;
+  v176_: int = id v168_;
+  v169_: int = id v174_;
+  v177_: int = id v170_;
+  v178_: int = id v171_;
+  v168_: int = id v176_;
+  v170_: int = id v177_;
+  v171_: int = id v178_;
+  br v175_ .b172_ .b179_;
+.b179_:
+  v180_: int = div v167_ c101_;
+  v181_: int = mul c101_ v180_;
+  v182_: bool = eq v167_ v181_;
+  v183_: bool = and v165_ v182_;
+  v184_: bool = not v165_;
+  v185_: bool = not v182_;
+  v186_: bool = and v184_ v185_;
+  v187_: bool = or v183_ v186_;
+  v188_: int = mul c101_ v102_;
+  v189_: int = id v188_;
+  v190_: ptr<int> = id v93_;
+  br v187_ .b191_ .b192_;
+.b191_:
+  v193_: int = add c104_ v188_;
+  v189_: int = id v193_;
+  v190_: ptr<int> = id v93_;
+.b192_:
+  v194_: int = div v189_ v97_;
+  v195_: int = mul v194_ v97_;
+  v196_: int = sub v189_ v195_;
+  store v93_ v189_;
+  store v100_ v196_;
+  v197_: int = add v94_ v95_;
+  v198_: bool = lt v197_ v98_;
+  v199_: ptr<int> = id v93_;
+  v94_: int = id v197_;
+  v200_: int = id v95_;
+  v201_: ptr<int> = id v96_;
+  v202_: int = id v97_;
+  v203_: int = id v98_;
+  v93_: ptr<int> = id v199_;
+  v95_: int = id v200_;
+  v96_: ptr<int> = id v201_;
+  v97_: int = id v202_;
+  v98_: int = id v203_;
+  br v198_ .b99_ .b204_;
+.b204_:
   v85_: ptr<int> = id v93_;
   v86_: int = id v94_;
   v87_: int = id v95_;
@@ -489,11 +481,11 @@ expression: visualization.result
   v90_: int = id v98_;
   free v85_;
   ret;
-  jmp .b209_;
+  jmp .b205_;
 .b92_:
   free v85_;
   ret;
-.b209_:
+.b205_:
 }
 @gen_vec(v0: int, v1: ptr<int>) {
   c2_: int = const 0;
@@ -519,13 +511,13 @@ expression: visualization.result
   v21_: int = id v0;
 .b22_:
   v23_: ptr<int> = ptradd v19_ v17_;
-  v24_: int = load v16_;
-  c25_: int = const 2;
+  c24_: int = const 2;
+  v25_: int = load v16_;
   c26_: int = const 0;
   c27_: int = const 1;
   c28_: int = const 11;
-  v29_: int = id v24_;
-  v30_: int = id c25_;
+  v29_: int = id v25_;
+  v30_: int = id c24_;
   v31_: int = id c26_;
   v32_: int = id c27_;
   v33_: int = id c28_;
@@ -544,8 +536,8 @@ expression: visualization.result
   br v37_ .b34_ .b41_;
 .b41_:
   c42_: int = const 13;
-  v43_: int = id v24_;
-  v44_: int = id c25_;
+  v43_: int = id v25_;
+  v44_: int = id c24_;
   v45_: int = id c26_;
   v46_: int = id c27_;
   v47_: int = id c42_;
@@ -564,8 +556,8 @@ expression: visualization.result
   br v51_ .b48_ .b55_;
 .b55_:
   c56_: int = const 14;
-  v57_: int = id v24_;
-  v58_: int = id c25_;
+  v57_: int = id v25_;
+  v58_: int = id c24_;
   v59_: int = id c26_;
   v60_: int = id c27_;
   v61_: int = id c56_;
@@ -583,86 +575,82 @@ expression: visualization.result
   v61_: int = id v68_;
   br v65_ .b62_ .b69_;
 .b69_:
-  c70_: int = const 16;
-  v71_: int = id v24_;
-  v72_: int = id c25_;
-  v73_: int = id c26_;
-  v74_: int = id c27_;
-  v75_: int = id c70_;
-.b76_:
-  v77_: int = div v71_ v72_;
-  v78_: int = add v73_ v74_;
-  v79_: bool = lt v78_ v75_;
-  v71_: int = id v77_;
-  v80_: int = id v72_;
-  v73_: int = id v78_;
-  v81_: int = id v74_;
-  v82_: int = id v75_;
-  v72_: int = id v80_;
-  v74_: int = id v81_;
-  v75_: int = id v82_;
-  br v79_ .b76_ .b83_;
-.b83_:
-  v84_: int = div v71_ c25_;
-  v85_: int = mul c25_ v84_;
-  v86_: bool = eq v71_ v85_;
-  v87_: bool = not v86_;
-  v88_: bool = not v87_;
-  v89_: int = div v57_ c25_;
-  v90_: int = mul c25_ v89_;
-  v91_: bool = eq v57_ v90_;
-  v92_: bool = not v91_;
-  v93_: bool = not v92_;
-  v94_: int = div v43_ c25_;
-  v95_: int = mul c25_ v94_;
-  v96_: bool = eq v43_ v95_;
-  v97_: bool = not v96_;
-  v98_: bool = not v97_;
-  v99_: int = div v29_ c25_;
-  v100_: int = mul c25_ v99_;
-  v101_: bool = eq v100_ v29_;
-  v102_: bool = not v101_;
-  v103_: bool = and v102_ v98_;
-  v104_: bool = not v102_;
-  v105_: bool = and v104_ v97_;
-  v106_: bool = or v103_ v105_;
-  v107_: bool = and v106_ v93_;
-  v108_: bool = not v106_;
-  v109_: bool = and v108_ v92_;
-  v110_: bool = or v107_ v109_;
-  v111_: bool = and v110_ v88_;
-  v112_: bool = not v110_;
-  v113_: bool = and v112_ v87_;
-  v114_: bool = or v111_ v113_;
-  v115_: int = mul c25_ v24_;
-  v116_: int = id v115_;
-  v117_: ptr<int> = id v16_;
-  br v114_ .b118_ .b119_;
-.b118_:
-  v120_: int = add c27_ v115_;
-  v116_: int = id v120_;
-  v117_: ptr<int> = id v16_;
-.b119_:
-  v121_: int = div v116_ v20_;
-  v122_: int = mul v121_ v20_;
-  v123_: int = sub v116_ v122_;
-  store v16_ v116_;
-  store v23_ v123_;
-  v124_: int = add v17_ v18_;
-  v125_: bool = lt v124_ v21_;
-  v126_: ptr<int> = id v16_;
-  v17_: int = id v124_;
-  v127_: int = id v18_;
-  v128_: ptr<int> = id v19_;
-  v129_: int = id v20_;
-  v130_: int = id v21_;
-  v16_: ptr<int> = id v126_;
-  v18_: int = id v127_;
-  v19_: ptr<int> = id v128_;
-  v20_: int = id v129_;
-  v21_: int = id v130_;
-  br v125_ .b22_ .b131_;
-.b131_:
+  v70_: int = div v57_ c24_;
+  v71_: int = mul c24_ v70_;
+  v72_: bool = eq v57_ v71_;
+  v73_: int = div v43_ c24_;
+  v74_: int = mul c24_ v73_;
+  v75_: bool = eq v43_ v74_;
+  v76_: int = div v29_ c24_;
+  v77_: int = mul c24_ v76_;
+  v78_: bool = eq v29_ v77_;
+  v79_: bool = not v78_;
+  v80_: bool = and v75_ v79_;
+  v81_: bool = not v75_;
+  v82_: bool = and v78_ v81_;
+  v83_: bool = or v80_ v82_;
+  v84_: bool = and v72_ v83_;
+  v85_: bool = not v72_;
+  v86_: bool = not v83_;
+  v87_: bool = and v85_ v86_;
+  v88_: bool = or v84_ v87_;
+  c89_: int = const 16;
+  v90_: int = id v25_;
+  v91_: int = id c24_;
+  v92_: int = id c26_;
+  v93_: int = id c27_;
+  v94_: int = id c89_;
+.b95_:
+  v96_: int = div v90_ v91_;
+  v97_: int = add v92_ v93_;
+  v98_: bool = lt v97_ v94_;
+  v90_: int = id v96_;
+  v99_: int = id v91_;
+  v92_: int = id v97_;
+  v100_: int = id v93_;
+  v101_: int = id v94_;
+  v91_: int = id v99_;
+  v93_: int = id v100_;
+  v94_: int = id v101_;
+  br v98_ .b95_ .b102_;
+.b102_:
+  v103_: int = div v90_ c24_;
+  v104_: int = mul c24_ v103_;
+  v105_: bool = eq v104_ v90_;
+  v106_: bool = and v105_ v88_;
+  v107_: bool = not v88_;
+  v108_: bool = not v105_;
+  v109_: bool = and v107_ v108_;
+  v110_: bool = or v106_ v109_;
+  v111_: int = mul c24_ v25_;
+  v112_: int = id v111_;
+  v113_: ptr<int> = id v16_;
+  br v110_ .b114_ .b115_;
+.b114_:
+  v116_: int = add c27_ v111_;
+  v112_: int = id v116_;
+  v113_: ptr<int> = id v16_;
+.b115_:
+  v117_: int = div v112_ v20_;
+  v118_: int = mul v117_ v20_;
+  v119_: int = sub v112_ v118_;
+  store v16_ v112_;
+  store v23_ v119_;
+  v120_: int = add v17_ v18_;
+  v121_: bool = lt v120_ v21_;
+  v122_: ptr<int> = id v16_;
+  v17_: int = id v120_;
+  v123_: int = id v18_;
+  v124_: ptr<int> = id v19_;
+  v125_: int = id v20_;
+  v126_: int = id v21_;
+  v16_: ptr<int> = id v122_;
+  v18_: int = id v123_;
+  v19_: ptr<int> = id v124_;
+  v20_: int = id v125_;
+  v21_: int = id v126_;
+  br v121_ .b22_ .b127_;
+.b127_:
   v8_: ptr<int> = id v16_;
   v9_: int = id v17_;
   v10_: int = id v18_;
@@ -671,11 +659,11 @@ expression: visualization.result
   v13_: int = id v21_;
   free v8_;
   ret;
-  jmp .b132_;
+  jmp .b128_;
 .b15_:
   free v8_;
   ret;
-.b132_:
+.b128_:
 }
 @csr_spmv(v0: int, v1: int, v2: ptr<int>, v3: ptr<int>, v4: ptr<int>, v5: ptr<int>, v6: ptr<int>) {
   c7_: int = const 0;

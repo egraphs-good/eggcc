@@ -84,6 +84,24 @@
 (rewrite (Bop (Smin) x x) x :ruleset peepholes)
 (rewrite (Bop (Smax) x x) x :ruleset peepholes)
 
+; bitwise-and with all-ones (-1 = 0xFFFF...FFFF in two's complement) is identity
+(rewrite (Bop (Bitand) e (Const (Int -1) ty ctx)) e :ruleset peepholes)
+(rewrite (Bop (Bitand) (Const (Int -1) ty ctx) e) e :ruleset peepholes)
+
+; shifting by 0 is identity (logical shifts)
+(rewrite (Bop (Shl) e (Const (Int 0) ty ctx)) e :ruleset peepholes)
+(rewrite (Bop (Shr) e (Const (Int 0) ty ctx)) e :ruleset peepholes)
+
+; cancellation identities (all valid under i64 wraparound)
+; (a + b) - a = b   and   (a + b) - b = a
+(rewrite (Bop (Sub) (Bop (Add) a b) a) b :ruleset peepholes)
+(rewrite (Bop (Sub) (Bop (Add) a b) b) a :ruleset peepholes)
+; a - (a - b) = b
+(rewrite (Bop (Sub) a (Bop (Sub) a b)) b :ruleset peepholes)
+; a + (b - a) = b   and   (b - a) + a = b
+(rewrite (Bop (Add) a (Bop (Sub) b a)) b :ruleset peepholes)
+(rewrite (Bop (Add) (Bop (Sub) b a) a) b :ruleset peepholes)
+
 ; self-comparisons (integer comparisons, always defined)
 (rule ((= expr (Bop (Eq) x x)) (HasArgType expr ty) (ContextOf expr ctx))
       ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)

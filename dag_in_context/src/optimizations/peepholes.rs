@@ -72,6 +72,46 @@ fn interval_div_fold() -> Result {
 }
 
 #[test]
+fn cancellation_identities() -> Result {
+    use crate::ast::*;
+    // (a + b) - a  ->  b ; then b - (b - a) -> a ; so the whole thing is a.
+    let ctx_ty = tuplet_vec(vec![intt(), intt(), statet()]);
+    let a = get(arg_ty(ctx_ty.clone()), 0);
+    let b = get(arg_ty(ctx_ty.clone()), 1);
+    let b_val = sub(add(a.clone(), b.clone()), a.clone()); // -> b
+    let expr = sub(b.clone(), sub(b_val, a.clone())); // b - (b - a) -> a
+
+    egglog_test(
+        &format!("(let expr_ {expr})"),
+        &format!("(check (= expr_ {a}))"),
+        vec![],
+        emptyv(),
+        intv(1),
+        vec![],
+    )
+}
+
+#[test]
+fn bitand_allones_and_shift_zero() -> Result {
+    use crate::ast::*;
+    // ((x << 0) & -1) >> 0  ->  x
+    let ctx_ty = tuplet_vec(vec![intt(), statet()]);
+    let x = get(arg_ty(ctx_ty.clone()), 0);
+    let zero = int_ty(0, ctx_ty.clone());
+    let neg_one = int_ty(-1, ctx_ty.clone());
+    let expr = shr(bitand(shl(x.clone(), zero.clone()), neg_one), zero);
+
+    egglog_test(
+        &format!("(let expr_ {expr})"),
+        &format!("(check (= expr_ {x}))"),
+        vec![],
+        emptyv(),
+        intv(1),
+        vec![],
+    )
+}
+
+#[test]
 fn self_comparison_and_double_neg() -> Result {
     use crate::ast::*;
     // (x == x)  ->  true ; --x -> x

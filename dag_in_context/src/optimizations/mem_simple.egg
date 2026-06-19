@@ -62,6 +62,40 @@
       :ruleset mem-simple)
 
 ; ============================
+; Allocation-identity analysis
+; ============================
+; (PtrAllocId ptr id): `ptr` is based on the allocation with static id `id`.
+; Alloc ids are assigned by a monotonic counter (one per allocation site), so
+; two pointers based on *different* allocations can never alias. (Two pointers
+; with the same id are left as may-alias -- e.g. the same alloc site reached on
+; different iterations -- which is conservative and sound.)
+;
+; This is much cheaper than the full alloc-cell points-to analysis in memory.egg
+; (just one i64 per pointer, no interval/lattice terms), and it feeds the
+; existing mem-simple commute/forward rules to enable store-to-load forwarding
+; across distinct allocations.
+
+(relation PtrAllocId (Expr i64))
+
+; A freshly-allocated pointer is based on its own allocation.
+(rule ((= alloc (Alloc id sz state ty)))
+      ((PtrAllocId (Get alloc 0) id))
+      :ruleset mem-simple)
+
+; PtrAdd preserves the base allocation.
+(rule ((= p2 (Bop (PtrAdd) p off))
+       (PtrAllocId p id))
+      ((PtrAllocId p2 id))
+      :ruleset mem-simple)
+
+; Pointers based on different allocations never alias.
+(rule ((PtrAllocId p1 id1)
+       (PtrAllocId p2 id2)
+       (!= id1 id2))
+      ((NoAlias p1 p2))
+      :ruleset mem-simple)
+
+; ============================
 ; Lesser analysis
 ; ============================
 ; (Lesser a b) means `a` is provably strictly less than `b` as an i64 value.

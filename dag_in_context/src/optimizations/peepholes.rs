@@ -112,6 +112,46 @@ fn bitand_allones_and_shift_zero() -> Result {
 }
 
 #[test]
+fn zero_sub_is_neg() -> Result {
+    use crate::ast::*;
+    // -(0 - x)  ->  -(-x)  ->  x  (0 - x => Neg x, then double-neg cancels)
+    let ctx_ty = tuplet_vec(vec![intt(), statet()]);
+    let x = get(arg_ty(ctx_ty.clone()), 0);
+    let zero = int_ty(0, ctx_ty.clone());
+    let expr = neg(sub(zero, x.clone()));
+
+    egglog_test(
+        &format!("(let expr_ {expr})"),
+        &format!("(check (= expr_ {x}))"),
+        vec![],
+        emptyv(),
+        intv(1),
+        vec![],
+    )
+}
+
+#[test]
+fn negated_comparison() -> Result {
+    use crate::ast::*;
+    // not(not(x < y))  ->  x < y  (via double-neg) ; and not(x < y) -> x >= y.
+    // Here we check not(x >= y) collapses to x < y.
+    let ctx_ty = tuplet_vec(vec![intt(), intt(), statet()]);
+    let x = get(arg_ty(ctx_ty.clone()), 0);
+    let y = get(arg_ty(ctx_ty.clone()), 1);
+    let expr = not(greater_eq(x.clone(), y.clone()));
+    let expected = less_than(x.clone(), y.clone());
+
+    egglog_test(
+        &format!("(let expr_ {expr})"),
+        &format!("(check (= expr_ {expected}))"),
+        vec![],
+        emptyv(),
+        intv(1),
+        vec![],
+    )
+}
+
+#[test]
 fn self_comparison_and_double_neg() -> Result {
     use crate::ast::*;
     // (x == x)  ->  true ; --x -> x

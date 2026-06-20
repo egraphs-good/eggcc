@@ -76,9 +76,32 @@
 
 ; double negation
 (rewrite (Uop (Not) (Uop (Not) e)) e :ruleset peepholes)
+; negation of an integer comparison flips it (integers are totally ordered).
+; These target the integer comparisons only (not the float FLessThan etc., where
+; NaN makes the equivalence unsound). Removes the Not node.
+(rewrite (Uop (Not) (Bop (LessThan) a b)) (Bop (GreaterEq) a b) :ruleset peepholes)
+(rewrite (Uop (Not) (Bop (GreaterThan) a b)) (Bop (LessEq) a b) :ruleset peepholes)
+(rewrite (Uop (Not) (Bop (LessEq) a b)) (Bop (GreaterThan) a b) :ruleset peepholes)
+(rewrite (Uop (Not) (Bop (GreaterEq) a b)) (Bop (LessThan) a b) :ruleset peepholes)
 (rewrite (Uop (Neg) (Uop (Neg) e)) e :ruleset peepholes)
 ; -(a - b) = b - a
 (rewrite (Uop (Neg) (Bop (Sub) a b)) (Bop (Sub) b a) :ruleset peepholes)
+
+; 0 - x = -x  (drops the zero constant)
+(rewrite (Bop (Sub) (Const (Int 0) ty ctx) x) (Uop (Neg) x) :ruleset peepholes)
+
+; complementary boolean: x and (not x) = false ; x or (not x) = true
+(rule ((= expr (Bop (And) x (Uop (Not) x))) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool false) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (And) (Uop (Not) x) x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool false) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (Or) x (Uop (Not) x))) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)
+(rule ((= expr (Bop (Or) (Uop (Not) x) x)) (HasArgType expr ty) (ContextOf expr ctx))
+      ((union expr (Const (Bool true) ty ctx))) :ruleset peepholes)
+
+; select with a negated predicate: swap the arms, absorbing the Not
+(rewrite (Top (Select) (Uop (Not) c) a b) (Top (Select) c b a) :ruleset peepholes)
 
 ; min/max with self
 (rewrite (Bop (Smin) x x) x :ruleset peepholes)

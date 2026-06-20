@@ -13,17 +13,16 @@ expression: visualization.result
   v10_: int = mul v6_ v9_;
   print v10_;
   v11_: int = add v10_ v4_;
-  v12_: bool = gt v11_ v5_;
-  v13_: bool = not v12_;
+  v12_: bool = ge v5_ v11_;
   v4_: int = id v11_;
-  v14_: int = id v5_;
-  v15_: int = id v6_;
-  v16_: int = id v7_;
-  v5_: int = id v14_;
-  v6_: int = id v15_;
-  v7_: int = id v16_;
-  br v13_ .b8_ .b17_;
-.b17_:
+  v13_: int = id v5_;
+  v14_: int = id v6_;
+  v15_: int = id v7_;
+  v5_: int = id v13_;
+  v6_: int = id v14_;
+  v7_: int = id v15_;
+  br v12_ .b8_ .b16_;
+.b16_:
   print v4_;
   ret;
 }

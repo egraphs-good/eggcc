@@ -229,6 +229,53 @@
       ((set (lo-bound lhs) (IntB 0)))
       :ruleset interval-analysis)
 
+; Division by a positive constant.
+; trunc(a/d) is monotonic non-decreasing in a for fixed d > 0,
+; so the bounds map directly.
+(rule (
+       (= lhs (Bop (Div) a (Const (Int d) _ty _ctx)))
+       (> d 0)
+       (= (IntB la) (lo-bound a))
+       (= (IntB ha) (hi-bound a))
+      )
+      (
+       (set (lo-bound lhs) (IntB (/ la d)))
+       (set (hi-bound lhs) (IntB (/ ha d)))
+      )
+      :ruleset interval-analysis)
+
+; Bitwise-and of non-negatives: result is in [0, min(hi-a, hi-b)].
+(rule (
+       (= lhs (Bop (Bitand) a b))
+       (= (IntB la) (lo-bound a))
+       (>= la 0)
+       (= (IntB lb) (lo-bound b))
+       (>= lb 0)
+       (= (IntB ha) (hi-bound a))
+       (= (IntB hb) (hi-bound b))
+      )
+      (
+       (set (lo-bound lhs) (IntB 0))
+       (set (hi-bound lhs) (IntB (min ha hb)))
+      )
+      :ruleset interval-analysis)
+
+; Logical right shift by a constant of a non-negative value:
+; monotonic, so bounds map directly.
+(rule (
+       (= lhs (Bop (Shr) a (Const (Int k) _ty _ctx)))
+       (>= k 0)
+       (< k 64)
+       (= (IntB la) (lo-bound a))
+       (>= la 0)
+       (= (IntB ha) (hi-bound a))
+      )
+      (
+       (set (lo-bound lhs) (IntB (>> la k)))
+       (set (hi-bound lhs) (IntB (>> ha k)))
+      )
+      :ruleset interval-analysis)
+
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
        (= lhs (Bop (LessThan) a b))

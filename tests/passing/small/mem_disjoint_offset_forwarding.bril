@@ -1,0 +1,20 @@
+# Store to a[2], then store to a[5] (a different address), then load a[2].
+# The load of a[2] should forward the value 7 past the a[5] store, which
+# requires proving NoAlias(a[2], a[5]) -- the Lesser analysis derives this
+# from the disjoint interval bounds of the constant offsets 2 and 5.
+@main {
+    size: int = const 10;
+    p: ptr<int> = alloc size;
+    two: int = const 2;
+    five: int = const 5;
+    seven: int = const 7;
+    nine: int = const 9;
+    p2: ptr<int> = ptradd p two;
+    p5: ptr<int> = ptradd p five;
+    store p2 seven;
+    store p5 nine;
+    v: int = load p2;
+    print v;
+    free p;
+    ret;
+}

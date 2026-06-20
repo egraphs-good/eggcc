@@ -1,0 +1,20 @@
+---
+source: tests/files.rs
+expression: visualization.result
+---
+# ARGS: 
+@main {
+  c0_: int = const 10;
+  v1_: ptr<int> = alloc c0_;
+  c2_: int = const 7;
+  c3_: int = const 5;
+  v4_: ptr<int> = ptradd v1_ c3_;
+  c5_: int = const 9;
+  c6_: int = const 2;
+  v7_: ptr<int> = ptradd v1_ c6_;
+  store v7_ c2_;
+  store v4_ c5_;
+  print c2_;
+  free v1_;
+  ret;
+}

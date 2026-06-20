@@ -170,16 +170,13 @@ def make_macros(profile, benchmark_suites, output_file):
       out.write(
         format_latex_macro(
           "MaxRaytraceRegionalizedEgraphTerms",
-          f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
+          f"{max(sample['egraph_size'] for sample in raytrace_timings):.4f}",
         )
       )
       out.write(
         format_latex_macro(
           "MaxRaytraceTigerExtractionTimeSecs",
-          f"{max(
-            duration_to_seconds(sample['extract_time_liveon_satelliteon'])
-            for sample in raytrace_timings
-          ):.6f}",
+          f"{max(duration_to_seconds(sample['extract_time_liveon_satelliteon']) for sample in raytrace_timings):.6f}",
         )
       )
       out.write(

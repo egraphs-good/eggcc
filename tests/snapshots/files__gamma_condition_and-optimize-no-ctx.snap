@@ -30,15 +30,14 @@ expression: visualization.result
   v21_: int = id c5_;
 .b22_:
   v23_: int = add v19_ v21_;
-  v24_: bool = gt v23_ v20_;
-  v25_: bool = not v24_;
+  v24_: bool = ge v20_ v23_;
   v19_: int = id v23_;
-  v26_: int = id v20_;
-  v27_: int = id v21_;
-  v20_: int = id v26_;
-  v21_: int = id v27_;
-  br v25_ .b22_ .b28_;
-.b28_:
+  v25_: int = id v20_;
+  v26_: int = id v21_;
+  v20_: int = id v25_;
+  v21_: int = id v26_;
+  br v24_ .b22_ .b27_;
+.b27_:
   v15_: int = id v19_;
   v7_: int = id v15_;
   print v7_;

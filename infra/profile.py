@@ -76,7 +76,7 @@ _base_treatments = [
   "eggcc-O3-O0",
   "eggcc-O3-O3",
   "eggcc-tiger-O0-O0",
-  "eggcc-tiger-ILP-CBC-O0-O0",
+  #"eggcc-tiger-ILP-CBC-O0-O0", # disabled to run without ILP
   #"eggcc-tiger-ILP-WITHCTX-O0-O0", #disabled for now
   "eggcc-WITHCTX-O0-O0",
   "eggcc-tiger-WITHCTX-O0-O0",

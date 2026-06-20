@@ -17,11 +17,18 @@ async function load_index() {
   document.getElementById("normalized").checked = true;
   onRadioClick("normalized");
 
-  const previousRuns = await getPreviousRuns();
-  const initialRunIdx = findBenchToCompareIdx(previousRuns);
-  loadBaseline(previousRuns[initialRunIdx].url);
+  // Loading previous runs for comparison requires network access to the
+  // nightly server, and findBenchToCompareIdx throws if no main run is found.
+  // Tolerate failure so local nightly runs still render the chart.
+  try {
+    const previousRuns = await getPreviousRuns();
+    const initialRunIdx = findBenchToCompareIdx(previousRuns);
+    loadBaseline(previousRuns[initialRunIdx].url);
 
-  buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
+    buildNightlyDropdown("comparison", previousRuns, initialRunIdx);
+  } catch (e) {
+    console.warn("Could not load previous runs for comparison:", e);
+  }
 
   refreshView();
   initializeChart();

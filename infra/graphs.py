@@ -420,6 +420,9 @@ def make_extraction_time_histogram(data, output):
 
 def make_fenwick_cycles_bar_chart(data, output):
   benchmark = "fenwick_tree"
+  if not any(row.get('benchmark', '') == benchmark for row in data):
+    print(f"WARNING: No {benchmark} benchmark found; skipping Fenwick cycles bar chart")
+    return
   title_fontsize = 18
   axis_label_fontsize = 16
   tick_fontsize = 13

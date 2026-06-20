@@ -1,0 +1,19 @@
+# Two distinct allocations p and q. We store to q, then store to p, then load q.
+# The load of q should forward the value 5 past the store to p, because p and q
+# are different allocations and therefore cannot alias. The offset-based NoAlias
+# analysis cannot prove this (p and q aren't related by ptradd); the allocation-
+# identity analysis (PtrAllocId) can: p and q have different alloc ids.
+@main {
+    one: int = const 1;
+    p: ptr<int> = alloc one;
+    q: ptr<int> = alloc one;
+    five: int = const 5;
+    seven: int = const 7;
+    store q five;
+    store p seven;
+    v: int = load q;
+    print v;
+    free p;
+    free q;
+    ret;
+}

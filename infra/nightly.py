@@ -15,7 +15,7 @@ from pathlib import Path
 from profile import NightlyConfig, run_profile
 from graphs import make_graphs
 from generate_line_counts import generate_latex
-from simple_table import make_compact_data, raytrace_total_region_extract_time, write_compact_table_latex
+from simple_table import write_compact_table_latex
 
 class TeeWriter:
     """Write to both a file and the original stream."""
@@ -59,14 +59,12 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
 
     # Generate the plots
     print("Generating graphs...")
-    #make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
+    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
     data = []
     with open(profile_json) as f:
         data = json.load(f)
 
-    print(make_compact_data(data))
     write_compact_table_latex(data, paper_dir)
-    raytrace_total_region_extract_time(data)
 
     # Generate latex after running the profiler (depends on profile.json)
     print("Generating line counts...")

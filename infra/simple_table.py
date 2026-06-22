@@ -1,6 +1,4 @@
-import profile
 import os
-import math
 from graph_helpers import *
 from generate_line_counts import stddev_cycles
 
@@ -32,6 +30,9 @@ def to_latex(table, caption=None, label=None, longtable=True, align=None):
 
     `+-` in cells is rendered as $\\pm$. Cells are otherwise escaped.
     With longtable=True the body uses the `longtable` package so it pages.
+
+    `caption` is escaped, but `label` is emitted verbatim into `\\label{...}`,
+    so it must be a bare LaTeX identifier (no special characters).
     """
     if not table:
         return ""
@@ -49,7 +50,7 @@ def to_latex(table, caption=None, label=None, longtable=True, align=None):
         # Render "X +- Y" as math with \pm so it typesets nicely.
         if " +- " in s:
             left, right = s.split(" +- ", 1)
-            return f"{render_unit_suffix(left)} $\\pm$ {latex_escape(right)}"
+            return f"{render_unit_suffix(left)} $\\pm$ {render_unit_suffix(right)}"
         return latex_escape(s)
 
     header = " & ".join(render_cell(c) for c in table[0]) + r" \\"
@@ -122,16 +123,11 @@ def suites_in(data):
     return dedup([b.get('suite') for b in data])
 
 
-def make_compact_data(data):
-    benchmarks = dedup([b.get('benchmark') for b in data])
-    return _make_compact_data_for_benchmarks(data, benchmarks)
-
-
 def make_compact_data_for_suite(data, suite):
-    benchmarks = dedup([b['benchmark'] for b in data if b.get('suite') == suite])
-    return _make_compact_data_for_benchmarks(data, benchmarks)
+    suite_data = [b for b in data if b.get('suite') == suite]
+    benchmarks = dedup([b['benchmark'] for b in suite_data])
+    return _make_compact_data_for_benchmarks(suite_data, benchmarks)
 
-    
 
 def write_compact_table_latex(data, paper_dir):
     """Write one LaTeX fragment per suite into `paper_dir`.
@@ -153,13 +149,3 @@ def write_compact_table_latex(data, paper_dir):
         print(f"Wrote compact table LaTeX for suite '{suite}' to {out_path}")
         out_paths.append(out_path)
     return out_paths
-
-
-def raytrace_total_region_extract_time(data):
-    res = 0.0
-    row = get_row(data, "raytrace", "eggcc-tiger-ILP-COMPARISON")
-    timings = row["extractRegionTimings"]
-    for timing in timings:
-        res += duration_to_seconds(timing["extract_time_liveon_satelliteon"])
-    print("here it is")
-    print(res)

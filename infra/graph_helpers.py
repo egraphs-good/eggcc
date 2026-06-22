@@ -263,15 +263,19 @@ def geometric_mean(values):
   return math.exp(log_sum / count)
 
 
+# Clock rate of the machine the nightly benchmarks run on, used to convert the
+# cycle counts reported by the profiler into wall-clock time. Measured on the
+# nightly runner; update this if the benchmarking machine changes.
+CPU_HZ = 4_000_000_000
+
+
 def cycles_to_ms(cycles):
-    hz = 4000000000
-    ms = cycles * 1000 / hz
+    ms = cycles * 1000 / CPU_HZ
     return round(ms * 100.0) / 100.0
 
 
 def cycles_to_us(cycles):
-    hz = 4000000000
-    us = cycles * 1000000 / hz
+    us = cycles * 1000000 / CPU_HZ
     return round(us * 100.0) / 100.0
 
 

@@ -197,7 +197,7 @@ fn print_sexpr(expr: &SExpr) -> String {
         SExpr::Atom(a) => a.clone(),
         SExpr::List(items) => {
             let inner = items.iter().map(print_sexpr).collect::<Vec<_>>().join(" ");
-            format!("({})", inner)
+            format!("({inner})")
         }
     }
 }

@@ -1,9 +1,6 @@
 use std::{rc::Rc, vec};
 
-use egglog::{
-    ast::{Literal, Symbol},
-    Term, TermDag,
-};
+use egglog::{ast::Literal, TermDag, TermId};
 use indexmap::IndexMap;
 
 use crate::{
@@ -16,7 +13,7 @@ use crate::{
 pub(crate) struct TreeToEgglog {
     pub termdag: TermDag,
     // Cache for shared subexpressions
-    pub converted_cache: IndexMap<*const Expr, Term>,
+    pub converted_cache: IndexMap<*const Expr, TermId>,
 }
 
 impl TreeToEgglog {
@@ -28,21 +25,21 @@ impl TreeToEgglog {
         }
     }
 
-    fn app(&mut self, f: Symbol, args: Vec<Term>) -> Term {
+    fn app(&mut self, f: String, args: Vec<TermId>) -> TermId {
         self.termdag.app(f, args)
     }
 
-    fn var(&mut self, f: Symbol) -> Term {
+    fn var(&mut self, f: String) -> TermId {
         self.termdag.var(f)
     }
 
-    fn lit(&mut self, lit: Literal) -> Term {
+    fn lit(&mut self, lit: Literal) -> TermId {
         self.termdag.lit(lit)
     }
 }
 
 impl Constant {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
         match self {
             Constant::Int(i) => {
                 let i = term_dag.lit(Literal::Int(*i));
@@ -59,7 +56,7 @@ impl Constant {
         }
     }
 
-    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+    pub(crate) fn to_egglog(&self) -> (TermId, TermDag) {
         let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
@@ -67,7 +64,7 @@ impl Constant {
 }
 
 impl BaseType {
-    pub(crate) fn to_egglog_internal(&self, state: &mut TermDag) -> Term {
+    pub(crate) fn to_egglog_internal(&self, state: &mut TermDag) -> TermId {
         match self {
             BaseType::IntT => state.app("IntT".into(), vec![]),
             BaseType::FloatT => state.app("FloatT".into(), vec![]),
@@ -82,13 +79,13 @@ impl BaseType {
 }
 
 impl Type {
-    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+    pub(crate) fn to_egglog(&self) -> (TermId, TermDag) {
         let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }
 
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
         match self {
             Type::Base(base) => {
                 let baset = base.to_egglog_internal(&mut term_dag.termdag);
@@ -111,13 +108,13 @@ impl Type {
 }
 
 impl Assumption {
-    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+    pub(crate) fn to_egglog(&self) -> (TermId, TermDag) {
         let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state);
         (term, state.termdag)
     }
 
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
         match self {
             Assumption::InLoop(lhs, rhs) => {
                 let lhs = lhs.to_egglog_with(term_dag);
@@ -146,33 +143,33 @@ impl Assumption {
 }
 
 impl BinaryOp {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
+        term_dag.app(format!("{self:?}"), vec![])
     }
 }
 
 impl TernaryOp {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
+        term_dag.app(format!("{self:?}"), vec![])
     }
 }
 
 impl UnaryOp {
-    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> Term {
-        term_dag.app(format!("{:?}", self).into(), vec![])
+    pub(crate) fn to_egglog_internal(&self, term_dag: &mut TreeToEgglog) -> TermId {
+        term_dag.app(format!("{self:?}"), vec![])
     }
 }
 
 impl Expr {
-    pub fn to_egglog(self: &RcExpr) -> (Term, TermDag) {
+    pub fn to_egglog(self: &RcExpr) -> (TermId, TermDag) {
         let mut state = TreeToEgglog::new();
         let term = self.to_egglog_with(&mut state);
         (term, state.termdag)
     }
 
-    pub(crate) fn to_egglog_with(self: &RcExpr, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_with(self: &RcExpr, term_dag: &mut TreeToEgglog) -> TermId {
         if let Some(term) = term_dag.converted_cache.get(&Rc::as_ptr(self)) {
-            return term.clone();
+            return *term;
         }
         let res = match self.as_ref() {
             Expr::Const(c, ty, ctx) => {
@@ -264,9 +261,7 @@ impl Expr {
             Expr::Symbolic(name, _ty) => term_dag.var(name.into()),
         };
 
-        term_dag
-            .converted_cache
-            .insert(Rc::as_ptr(self), res.clone());
+        term_dag.converted_cache.insert(Rc::as_ptr(self), res);
         res
     }
 }
@@ -283,11 +278,11 @@ impl TreeProgram {
     /// Translates an the program to an egglog term
     /// encoded with respect to `schema.egg`.
     /// Shares common subexpressions.
-    pub fn to_egglog(&self) -> (Term, TermDag) {
+    pub fn to_egglog(&self) -> (TermId, TermDag) {
         self.to_egglog_with_termdag(TermDag::default())
     }
 
-    pub fn to_egglog_with_termdag(&self, termdag: TermDag) -> (Term, TermDag) {
+    pub fn to_egglog_with_termdag(&self, termdag: TermDag) -> (TermId, TermDag) {
         let mut state = TreeToEgglog {
             termdag,
             converted_cache: IndexMap::new(),
@@ -297,7 +292,7 @@ impl TreeProgram {
 
     // TODO Implement sharing of common subexpressions using
     // a cache and the Rc's pointer.
-    pub(crate) fn to_egglog_with(&self, term_dag: &mut TreeToEgglog) -> Term {
+    pub(crate) fn to_egglog_with(&self, term_dag: &mut TreeToEgglog) -> TermId {
         let entry_term = self.entry.to_egglog_with(term_dag);
         let functions_terms = self
             .functions
@@ -309,7 +304,7 @@ impl TreeProgram {
     }
 }
 
-fn to_listexpr(terms: Vec<Term>, term_dag: &mut TreeToEgglog) -> Term {
+fn to_listexpr(terms: Vec<TermId>, term_dag: &mut TreeToEgglog) -> TermId {
     let mut list = term_dag.app("Nil".into(), vec![]);
     for term in terms.into_iter().rev() {
         list = term_dag.app("Cons".into(), vec![term, list]);
@@ -317,7 +312,7 @@ fn to_listexpr(terms: Vec<Term>, term_dag: &mut TreeToEgglog) -> Term {
     list
 }
 
-fn to_tlistexpr(terms: Vec<Term>, term_dag: &mut TreeToEgglog) -> Term {
+fn to_tlistexpr(terms: Vec<TermId>, term_dag: &mut TreeToEgglog) -> TermId {
     let mut list = term_dag.app("TNil".into(), vec![]);
     for term in terms.into_iter().rev() {
         list = term_dag.app("TCons".into(), vec![term, list]);
@@ -340,7 +335,7 @@ fn test_expr_parses_to(expr: RcExpr, expected: &str) {
 }
 
 #[cfg(test)]
-fn test_parses_to(term: Term, termdag: &mut TermDag, expected: &str) {
+fn test_parses_to(term: TermId, termdag: &mut TermDag, expected: &str) {
     use egglog::ast::{Parser, Span};
 
     let mut parser = Parser::default();

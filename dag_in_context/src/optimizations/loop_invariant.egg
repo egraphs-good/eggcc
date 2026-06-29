@@ -66,7 +66,7 @@
        (let new_input_type (TupleT (TLConcat tylist (TCons base_inv_ty (TNil)))))
 
        ;; create an virtual assume node, union it with actuall InLoop later
-       (let assum (TmpCtx))
+       (let assum (unstable-fresh! Assumption))
        (let new_out_branch (Get (Arg new_input_type assum) len))
 
        ;; this two subst only change arg to arg with new type
@@ -83,7 +83,6 @@
        (let wrapper (SubTuple new_loop 0 len))
        (union loop wrapper)
        (subsume (DoWhile in body)) 
-       (delete (TmpCtx))
        (set (LoopNumItersGuess new_input new_body) iter-guess)
       )
        :ruleset loop-inv-motion)

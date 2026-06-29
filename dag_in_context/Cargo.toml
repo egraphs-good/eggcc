@@ -6,17 +6,17 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog", rev = "161a36f" }
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
 smallvec = "1.11.1"
 strum = "0.25"
 strum_macros = "0.25"
 main_error = "0.1.2"
 thiserror = "1.0"
-egraph-serialize = "0.2.0"
+egraph-serialize = "0.3.0"
 bril-rs = { git = "https://github.com/uwplse/bril", rev = "06117c089c2d235ff8d040bb3d0cfd1e2a1c4880" }
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"
-ordered-float = "3"
+ordered-float = "5"
 graphviz-rust = "0.8.0"
 dot-structures = "0.1.1"
 symbol_table = { version = "0.3.0", features = ["global"] }
@@ -32,3 +32,4 @@ serde = "1.0.217"
 clap = { version = "4.4.7", features = ["derive"] }
 tempfile = "3.10"
 libc = "0.2"
+rayon = "1"

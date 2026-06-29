@@ -4,15 +4,12 @@ use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
 fn parse_percent_regions(s: &str) -> Result<f64, String> {
-    let value: f64 = s.parse().map_err(|_| format!("Invalid number: {}", s))?;
+    let value: f64 = s.parse().map_err(|_| format!("Invalid number: {s}"))?;
     if !value.is_finite() {
-        return Err(format!("Value must be finite, got: {}", s));
+        return Err(format!("Value must be finite, got: {s}"));
     }
     if !(0.0..=100.0).contains(&value) {
-        return Err(format!(
-            "Value must be between 0.0 and 100.0, got: {}",
-            value
-        ));
+        return Err(format!("Value must be between 0.0 and 100.0, got: {value}"));
     }
     Ok(value)
 }
@@ -118,7 +115,7 @@ fn main() {
 
     if let Some(debug_dir) = args.debug_dir {
         if let Result::Err(error) = visualize(TestProgram::BrilFile(args.file.clone()), debug_dir) {
-            eprintln!("{}", error);
+            eprintln!("{error}");
             return;
         }
     }
@@ -189,7 +186,7 @@ fn main() {
         // just print out the result of interpreting the program
         println!("{}", result.result_interpreted.unwrap());
         if let Some(cycles_taken) = result.cycles_taken {
-            eprintln!("{}", cycles_taken);
+            eprintln!("{cycles_taken}");
         }
     } else if let &[visualization] = &result.visualizations.as_slice() {
         // when there is just one visualization, print it out without

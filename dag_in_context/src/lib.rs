@@ -1,7 +1,6 @@
 use clap::ValueEnum;
-use egglog::ast::Symbol;
 use egglog::SerializeConfig;
-use egglog::{Term, TermDag};
+use egglog::{Term, TermDag, TermId};
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use interpreter::Value;
@@ -52,6 +51,20 @@ pub mod pretty_print;
 pub mod schedule;
 
 pub type Result = std::result::Result<(), MainError>;
+
+/// Create a new experimental egraph, ensuring rayon's global thread pool is
+/// limited to a single thread so egglog runs single-threaded inside eggcc.
+fn new_single_threaded_egraph() -> egglog::EGraph {
+    use std::sync::Once;
+    static RAYON_INIT: Once = Once::new();
+    RAYON_INIT.call_once(|| {
+        // Ignore the error if the global pool was already initialized elsewhere.
+        let _ = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build_global();
+    });
+    egglog::new_experimental_egraph()
+}
 
 fn prologue_for_config(config: &EggccConfig) -> String {
     [
@@ -107,11 +120,11 @@ fn ablate_prologue(prologue: &str, ablate: &str) -> String {
     let lines: Vec<String> = prologue
         .lines()
         .map(|line| {
-            if line.contains(&format!("(ruleset {})", ablate)) {
+            if line.contains(&format!("(ruleset {ablate})")) {
                 found_ruleset = true;
-                line.replace(&format!("(ruleset {})", ablate), "")
-            } else if line.contains(&format!(":ruleset {}", ablate)) {
-                line.replace(&format!(":ruleset {}", ablate), ":ruleset never")
+                line.replace(&format!("(ruleset {ablate})"), "")
+            } else if line.contains(&format!(":ruleset {ablate}")) {
+                line.replace(&format!(":ruleset {ablate}"), ":ruleset never")
             } else {
                 line.to_string()
             }
@@ -120,8 +133,7 @@ fn ablate_prologue(prologue: &str, ablate: &str) -> String {
 
     assert!(
         found_ruleset,
-        "No ruleset {} found in prologue to ablate",
-        ablate
+        "No ruleset {ablate} found in prologue to ablate"
     );
     lines.join("\n")
 }
@@ -140,7 +152,7 @@ fn ablate_schedule(schedule: &str, ablate: &str) -> String {
         })
         .collect();
 
-    assert!(found_schedule, "No schedule {} found to ablate", ablate);
+    assert!(found_schedule, "No schedule {ablate} found to ablate");
     lines.join("\n")
 }
 
@@ -154,37 +166,36 @@ fn ablate_schedule(schedule: &str, ablate: &str) -> String {
 /// new term dag.
 fn print_with_intermediate_helper(
     termdag: &TermDag,
-    term: Term,
-    cache: &mut IndexMap<Term, String>,
+    term_id: TermId,
+    cache: &mut IndexMap<TermId, String>,
     res: &mut String,
 ) -> String {
-    if let Some(var) = cache.get(&term) {
+    if let Some(var) = cache.get(&term_id) {
         return var.clone();
     }
 
-    match &term {
-        Term::Lit(_) => termdag.to_string(&term),
-        Term::Var(_) => termdag.to_string(&term),
+    let term = termdag.get(term_id);
+    match term {
+        Term::Lit(_) => termdag.to_string(term_id),
+        Term::Var(_) => termdag.to_string(term_id),
         Term::App(head, children) => {
             let child_vars = children
                 .iter()
-                .map(|child| {
-                    print_with_intermediate_helper(termdag, termdag.get(*child).clone(), cache, res)
-                })
+                .map(|child| print_with_intermediate_helper(termdag, *child, cache, res))
                 .collect::<Vec<String>>()
                 .join(" ");
             let fresh_var = format!("__tmp{}", cache.len());
             writeln!(res, "(let {fresh_var} ({head} {child_vars}))").unwrap();
-            cache.insert(term, fresh_var.clone());
+            cache.insert(term_id, fresh_var.clone());
 
             fresh_var
         }
     }
 }
 
-pub fn print_with_intermediate_vars(termdag: &TermDag, term: Term) -> String {
+pub fn print_with_intermediate_vars(termdag: &TermDag, term: TermId) -> String {
     let mut printed = String::new();
-    let mut cache = IndexMap::<Term, String>::new();
+    let mut cache = IndexMap::<TermId, String>::new();
     let res = print_with_intermediate_helper(termdag, term, &mut cache, &mut printed);
     printed.push_str(&format!("(let PROG {res})\n"));
     printed
@@ -226,7 +237,7 @@ pub fn build_program(
 
     // Create a global cache for generating intermediate variables
     let mut tree_state = TreeToEgglog::new();
-    let mut term_cache = IndexMap::<Term, String>::new();
+    let mut term_cache = IndexMap::<TermId, String>::new();
 
     // No union-based inlining; already applied AST-based inlining
     let function_inlining_unions = String::new();
@@ -312,23 +323,11 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
     term1 == term2
 }
 
-pub fn serialized_egraph(
-    egglog_egraph: egglog::EGraph,
-) -> (egraph_serialize::EGraph, IndexSet<String>) {
+pub fn serialized_egraph(egglog_egraph: egglog::EGraph) -> egraph_serialize::EGraph {
     let config = SerializeConfig::default();
-    let egraph = egglog_egraph.serialize(config);
-    let unextractables = egglog_egraph
-        .functions
-        .iter()
-        .filter_map(|(name, func)| {
-            if func.is_extractable() {
-                None
-            } else {
-                Some(name.to_string())
-            }
-        })
-        .collect();
-    (egraph, unextractables)
+    // egglog now encodes unextractable functions directly in the serialized
+    // egraph (tiger reads this), so we no longer return a separate set.
+    egglog_egraph.serialize(config).egraph
 }
 
 fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
@@ -348,10 +347,10 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let egglog_prog = build_program(program, None, &fns, &schedule, None, true, false);
 
     log::info!("Running egglog program...");
-    let mut egraph = egglog::EGraph::default();
+    let mut egraph = new_single_threaded_egraph();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
-    let (serialized, _unextractables) = serialized_egraph(egraph);
+    let serialized = serialized_egraph(egraph);
     let config = EggccConfig::default();
     let (res, _, _) = run_tiger_pipeline(&config, program, &fns, &serialized);
 
@@ -536,8 +535,7 @@ fn extract_program_with_egglog(
     batch: &[String],
     egraph: &mut egglog::EGraph,
 ) -> TreeProgram {
-    let function_symbol: Symbol = "Function".into();
-    let (rows, termdag) = match egraph.function_to_dag(function_symbol, usize::MAX) {
+    let (_rows, output_rows, termdag) = match egraph.function_to_dag("Function", usize::MAX, true) {
         Ok(res) => res,
         Err(err) => {
             panic!("Failed to convert egglog egraph to term dag: {err}");
@@ -553,7 +551,10 @@ fn extract_program_with_egglog(
 
     let mut extracted: IndexMap<String, RcExpr> = IndexMap::new();
 
-    for (_func_term, value_term) in rows {
+    // output_rows contains the output values for constructors
+    let output_terms =
+        output_rows.expect("function_to_dag should return output rows when include_output=true");
+    for value_term in output_terms {
         // For constructors, the extracted term is in the output position.
         let expr = converter.expr_from_egglog(value_term);
         match expr.as_ref() {
@@ -745,7 +746,7 @@ fn run_tiger_pipeline(
     let eggcc_extraction_time = extraction_start.elapsed();
 
     // Tiger returns an egglog file containing just one program, run the egglog program
-    let mut tiger_egraph = egglog::EGraph::default();
+    let mut tiger_egraph = new_single_threaded_egraph();
     tiger_egraph
         .parse_and_run_program(None, &tiger_output)
         .map_err(|err| format!("failed to run tiger egglog program: {err}"))
@@ -926,10 +927,7 @@ pub fn optimize(
                 // check that all allowed_fns are in fns
                 for allowed_fn in allowed_fns {
                     if !fns.contains(allowed_fn) {
-                        panic!(
-                            "Told to optimize function {}, but not found in program",
-                            allowed_fn
-                        );
+                        panic!("Told to optimize function {allowed_fn}, but not found in program");
                     }
                 }
 
@@ -953,21 +951,20 @@ pub fn optimize(
             );
 
             log::info!("Running egglog program...");
-            let mut egraph = egglog::EGraph::default();
+            let mut egraph = new_single_threaded_egraph();
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
             let serialization_start = Instant::now();
-            let (serialized, _unextractables) = serialized_egraph(egraph);
+            let serialized = serialized_egraph(egraph);
             let serialization_duration = serialization_start.elapsed();
 
             if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
                 tiger_dump_counter += 1;
-                let filename = format!("tiger_egraph_{:04}.json", tiger_dump_counter);
+                let filename = format!("tiger_egraph_{tiger_dump_counter:04}.json");
                 let path = dir.join(filename);
                 let json = serde_json::to_string_pretty(&serialized).unwrap_or_else(|err| {
                     panic!(
-                        "Failed to serialize tiger e-graph #{:04} for dumping: {}",
-                        tiger_dump_counter, err
+                        "Failed to serialize tiger e-graph #{tiger_dump_counter:04} for dumping: {err}"
                     )
                 });
                 fs::write(&path, json).unwrap_or_else(|err| {
@@ -1058,11 +1055,11 @@ fn check_program_gets_type(program: TreeProgram) -> Result {
         checks.join("\n")
     );
 
-    egglog::EGraph::default()
+    new_single_threaded_egraph()
         .parse_and_run_program(None, &s)
         .map(|lines| {
             for line in lines {
-                println!("{}", line);
+                println!("{line}");
             }
         })?;
     Ok(())
@@ -1111,20 +1108,18 @@ fn egglog_test_internal(
         let (result_val, print_log) = interpret_dag_prog(&prog, &input);
         assert_eq!(
             result_val, expected,
-            "Program {:?}\nproduced:\n{}\ninstead of expected:\n{}",
-            prog, result_val, expected
+            "Program {prog:?}\nproduced:\n{result_val}\ninstead of expected:\n{expected}"
         );
         assert_eq!(
             print_log, expected_log,
-            "Program {:?}\nproduced log:\n{:?}\ninstead of expected log:\n{:?}",
-            prog, print_log, expected_log
+            "Program {prog:?}\nproduced log:\n{print_log:?}\ninstead of expected log:\n{expected_log:?}"
         );
 
         // Check that the input program gets a type by the type analysis
         match check_program_gets_type(prog.clone()) {
             Ok(_) => (),
             Err(e) => {
-                println!("Error in type analysis for program {:?}: {:?}", prog, e);
+                println!("Error in type analysis for program {prog:?}: {e:?}");
                 return Err(e);
             }
         }
@@ -1144,16 +1139,16 @@ fn egglog_test_internal(
         eprintln!("{program}");
     }
 
-    let res = egglog::EGraph::default()
+    let res = new_single_threaded_egraph()
         .parse_and_run_program(None, &program)
         .map(|lines| {
             for line in lines {
-                println!("{}", line);
+                println!("{line}");
             }
         });
 
     if res.is_err() {
-        eprintln!("{:?}", res);
+        eprintln!("{res:?}");
     }
 
     Ok(res?)

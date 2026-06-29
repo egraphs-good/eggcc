@@ -75,8 +75,7 @@ impl Expr {
             checker.add_arg_types_to_expr(self.clone(), &Some(TypeStack(vec![input_ty])));
         assert_eq!(
             ty, output_ty,
-            "Expected return type to be {:?}. Got {:?}",
-            output_ty, ty
+            "Expected return type to be {output_ty:?}. Got {ty:?}"
         );
         new_expr
     }
@@ -100,7 +99,7 @@ impl Expr {
                 out_ty.clone(),
                 body.clone().with_arg_types(in_ty.clone(), out_ty.clone()),
             )),
-            _ => panic!("Expected function, got {:?}", self),
+            _ => panic!("Expected function, got {self:?}"),
         }
     }
 }
@@ -166,8 +165,7 @@ impl<'a> TypeChecker<'a> {
                     self.add_arg_types_to_expr(body.clone(), &Some(TypeStack(vec![in_ty.clone()])));
                 assert_eq!(
                     expr_ty, *out_ty,
-                    "Expected return type to be {:?}. Got {:?}",
-                    out_ty, expr_ty
+                    "Expected return type to be {out_ty:?}. Got {expr_ty:?}"
                 );
                 RcExpr::new(Expr::Function(
                     name.clone(),
@@ -176,7 +174,7 @@ impl<'a> TypeChecker<'a> {
                     new_body,
                 ))
             }
-            _ => panic!("Expected function, got {:?}", func),
+            _ => panic!("Expected function, got {func:?}"),
         }
     }
 
@@ -315,17 +313,15 @@ impl<'a> TypeChecker<'a> {
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_tys);
                 let Type::Base(BaseType::PointerT(innert)) = lty else {
-                    panic!("Expected pointer type. Got {:?}", lty)
+                    panic!("Expected pointer type. Got {lty:?}")
                 };
                 let Type::Base(baset) = &rty else {
-                    panic!("Expected base type. Got {:?}", rty);
+                    panic!("Expected base type. Got {rty:?}");
                 };
                 assert_eq!(
                     *innert,
                     baset.clone(),
-                    "Expected right type to be {:?}. Got {:?}",
-                    innert,
-                    rty
+                    "Expected right type to be {innert:?}. Got {rty:?}"
                 );
                 (
                     base(statet()),
@@ -337,12 +333,11 @@ impl<'a> TypeChecker<'a> {
                 let (tty, new_then) = self.add_arg_types_to_expr(t.clone(), arg_tys);
                 let (ety, new_else) = self.add_arg_types_to_expr(e.clone(), arg_tys);
                 let Type::Base(BaseType::BoolT) = cty else {
-                    panic!("Expected base type. Got {:?}", cty)
+                    panic!("Expected base type. Got {cty:?}")
                 };
                 assert_eq!(
                     tty, ety,
-                    "Expected then and else types to be the same. Got {:?} and {:?}",
-                    tty, ety
+                    "Expected then and else types to be the same. Got {tty:?} and {ety:?}"
                 );
                 (
                     tty,
@@ -353,10 +348,10 @@ impl<'a> TypeChecker<'a> {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 let Type::Base(BaseType::PointerT(innert)) = lty else {
-                    panic!("Expected pointer type. Got {:?}", lty)
+                    panic!("Expected pointer type. Got {lty:?}")
                 };
                 let Type::Base(BaseType::IntT) = rty else {
-                    panic!("Expected int type. Got {:?}", rty)
+                    panic!("Expected int type. Got {rty:?}")
                 };
                 (
                     Type::Base(BaseType::PointerT(innert)),
@@ -370,13 +365,11 @@ impl<'a> TypeChecker<'a> {
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 assert_eq!(
                     lty, left_expected,
-                    "Expected left type to be {:?}. Got {:?}",
-                    left_expected, lty
+                    "Expected left type to be {left_expected:?}. Got {lty:?}"
                 );
                 assert_eq!(
                     rty, right_expected,
-                    "Expected right type to be {:?} in {:?}. Got {:?}",
-                    right_expected, expr, rty
+                    "Expected right type to be {right_expected:?} in {expr:?}. Got {rty:?}"
                 );
                 (
                     out_expected,
@@ -389,8 +382,7 @@ impl<'a> TypeChecker<'a> {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_tys);
                 assert_eq!(
                     ity, expected_inner,
-                    "Expected inner type to be {:?}. Got {:?}",
-                    expected_inner, ity
+                    "Expected inner type to be {expected_inner:?}. Got {ity:?}"
                 );
                 (expected_out, RcExpr::new(Expr::Uop(op.clone(), new_inner)))
             }
@@ -406,7 +398,7 @@ impl<'a> TypeChecker<'a> {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_tys);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_tys);
                 let Type::Base(BaseType::PointerT(out_ty)) = ity else {
-                    panic!("Expected pointer type. Got {:?}", ity)
+                    panic!("Expected pointer type. Got {ity:?}")
                 };
                 (
                     tuplet!(*out_ty, statet()),
@@ -417,7 +409,7 @@ impl<'a> TypeChecker<'a> {
                 let (ity, new_inner) = self.add_arg_types_to_expr(inner.clone(), arg_tys);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_tys);
                 let Type::Base(BaseType::PointerT(_out_ty)) = ity else {
-                    panic!("Expected pointer type. Got {:?}", ity)
+                    panic!("Expected pointer type. Got {ity:?}")
                 };
                 (
                     base(statet()),
@@ -427,12 +419,11 @@ impl<'a> TypeChecker<'a> {
             Expr::Get(child, index) => {
                 let (cty, new_child) = self.add_arg_types_to_expr(child.clone(), arg_tys);
                 let Type::TupleT(types) = cty.clone() else {
-                    panic!("Expected tuple type in {:?}. Got {:?}", child, cty)
+                    panic!("Expected tuple type in {child:?}. Got {cty:?}")
                 };
                 if *index >= types.len() {
                     panic!(
-                        "Index out of bounds. Tuple has type {}, index is {}. Expr:\n{}",
-                        cty, index, expr
+                        "Index out of bounds. Tuple has type {cty}, index is {index}. Expr:\n{expr}"
                     );
                 }
                 let expected_ty = types[*index].clone();
@@ -445,7 +436,7 @@ impl<'a> TypeChecker<'a> {
                 let (aty, new_amount) = self.add_arg_types_to_expr(amount.clone(), arg_tys);
                 let (_sty, new_state) = self.add_arg_types_to_expr(state.clone(), arg_tys);
                 let Type::Base(BaseType::IntT) = aty else {
-                    panic!("Expected int type. Got {:?}", aty)
+                    panic!("Expected int type. Got {aty:?}")
                 };
                 (
                     tuplet!(baset.clone(), statet()),
@@ -475,7 +466,7 @@ impl<'a> TypeChecker<'a> {
                 let (Type::Base(basety), new_arg) =
                     self.add_arg_types_to_expr(arg.clone(), arg_tys)
                 else {
-                    panic!("Expected base type in child of Single. Got {:?}", arg)
+                    panic!("Expected base type in child of Single. Got {arg:?}")
                 };
                 (
                     Type::TupleT(vec![basety]),
@@ -486,13 +477,10 @@ impl<'a> TypeChecker<'a> {
                 let (lty, new_left) = self.add_arg_types_to_expr(left.clone(), arg_tys);
                 let (rty, new_right) = self.add_arg_types_to_expr(right.clone(), arg_tys);
                 let Type::TupleT(ltypes) = lty else {
-                    panic!(
-                        "Expected tuple type. Got {:?}. Left Expr:{} Right Expr: {}",
-                        lty, left, right
-                    )
+                    panic!("Expected tuple type. Got {lty:?}. Left Expr:{left} Right Expr: {right}")
                 };
                 let Type::TupleT(rtypes) = rty else {
-                    panic!("Expected tuple type. Got {:?}", rty)
+                    panic!("Expected tuple type. Got {rty:?}")
                 };
                 let result_types = ltypes.into_iter().chain(rtypes).collect();
                 (
@@ -504,7 +492,7 @@ impl<'a> TypeChecker<'a> {
                 let (ity, new_integer) = self.add_arg_types_to_expr(integer.clone(), arg_tys);
                 let (inputty, new_input) = self.add_arg_types_to_expr(input.clone(), arg_tys);
                 let Type::Base(BaseType::IntT) = ity else {
-                    panic!("Expected int type. Got {:?}", ity)
+                    panic!("Expected int type. Got {ity:?}")
                 };
                 let mut new_branches = vec![];
                 let mut res_type = None;
@@ -531,7 +519,7 @@ impl<'a> TypeChecker<'a> {
                 let (pty, new_pred) = self.add_arg_types_to_expr(pred.clone(), arg_tys);
                 let (ity, new_input) = self.add_arg_types_to_expr(input.clone(), arg_tys);
                 let Type::Base(BaseType::BoolT) = pty else {
-                    panic!("Expected bool type. Got {:?}", pty)
+                    panic!("Expected bool type. Got {pty:?}")
                 };
                 let (tty, new_then) = self.add_arg_types_to_expr(
                     then.clone(),
@@ -543,8 +531,7 @@ impl<'a> TypeChecker<'a> {
                 );
                 assert_eq!(
                     tty, ety,
-                    "Expected then and else types to be the same. Got {:?} and {:?}",
-                    tty, ety
+                    "Expected then and else types to be the same. Got {tty:?} and {ety:?}"
                 );
                 (
                     tty,
@@ -554,14 +541,14 @@ impl<'a> TypeChecker<'a> {
             Expr::DoWhile(inputs, pred_and_outputs) => {
                 let (ity, new_inputs) = self.add_arg_types_to_expr(inputs.clone(), arg_tys);
                 let Type::TupleT(in_tys) = ity.clone() else {
-                    panic!("Expected tuple type. Got {:?}", ity)
+                    panic!("Expected tuple type. Got {ity:?}")
                 };
                 let (pty, new_pred_and_outputs) = self.add_arg_types_to_expr(
                     pred_and_outputs.clone(),
                     &arg_tys.as_ref().map(|inner| inner.pushed(ity)),
                 );
                 let Type::TupleT(out_tys) = pty else {
-                    panic!("Expected tuple type. Got {:?}", pty)
+                    panic!("Expected tuple type. Got {pty:?}")
                 };
                 assert_eq!(
                     out_tys[0],

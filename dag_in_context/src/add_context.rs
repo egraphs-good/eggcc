@@ -3,7 +3,7 @@
 //! by remembering the most recent context (ex. DoWhile or If).
 //! Mantains the sharing invariant (see restore_sharing_invariant) by using a cache.
 
-use egglog::Term;
+use egglog::TermId;
 use indexmap::IndexMap;
 
 use crate::{
@@ -94,7 +94,7 @@ impl ContextCache {
         &self,
         printed: &mut String,
         tree_state: &mut TreeToEgglog,
-        term_cache: &mut IndexMap<Term, String>,
+        term_cache: &mut IndexMap<TermId, String>,
     ) -> String {
         self.loop_context_unions
             .iter()
@@ -174,14 +174,14 @@ impl TreeProgram {
 impl Expr {
     fn func_get_ctx(self: &RcExpr) -> Assumption {
         let Expr::Function(name, _arg_ty, _ret_ty, _body) = &self.as_ref() else {
-            panic!("Expected Function, got {:?}", self);
+            panic!("Expected Function, got {self:?}");
         };
         Assumption::InFunc(name.clone())
     }
 
     pub fn func_add_ctx(self: &RcExpr) -> (RcExpr, ContextCache) {
         let Expr::Function(name, arg_ty, ret_ty, body) = self.as_ref() else {
-            panic!("Expected Function, got {:?}", self);
+            panic!("Expected Function, got {self:?}");
         };
         let mut cache = ContextCache::new();
         let value = RcExpr::new(Expr::Function(

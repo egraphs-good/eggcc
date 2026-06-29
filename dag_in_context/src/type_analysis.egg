@@ -7,7 +7,7 @@
          (TCons hd (TLConcat tl r))
          :ruleset type-helpers)
 
-(function TypeList-length (TypeList) i64 :no-merge)
+(function TypeList-length (TypeList) i64 :merge old)
 (constructor TypeList-ith (TypeList i64) BaseType :unextractable)
 ;; Don't match on TypeList-ith because it is now lazily instantiated!
 (rule () ((set (TypeList-length (TNil)) 0)) :ruleset type-helpers)

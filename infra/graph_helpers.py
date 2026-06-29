@@ -262,3 +262,30 @@ def geometric_mean(values):
     raise ValueError("geometric_mean() requires at least one positive value")
   return math.exp(log_sum / count)
 
+
+# Clock rate of the machine the nightly benchmarks run on, used to convert the
+# cycle counts reported by the profiler into wall-clock time. Measured on the
+# nightly runner; update this if the benchmarking machine changes.
+CPU_HZ = 4_000_000_000
+
+
+def cycles_to_ms(cycles):
+    ms = cycles * 1000 / CPU_HZ
+    return round(ms * 100.0) / 100.0
+
+
+def cycles_to_us(cycles):
+    us = cycles * 1000000 / CPU_HZ
+    return round(us * 100.0) / 100.0
+
+
+def format_cycles_with_stddev(mean_cycles, std_cycles):
+    """Format mean +- stddev (both in cycles) with a unit chosen by the mean.
+
+    Uses microseconds when the mean is below 1.0 ms, otherwise milliseconds.
+    Returns a string like "5.3 ms +- 0.2" or "8.4 us +- 0.1".
+    """
+    mean_ms = cycles_to_ms(mean_cycles)
+    if mean_ms < 1.0:
+        return f"{cycles_to_us(mean_cycles)} us +- {cycles_to_us(std_cycles)}"
+    return f"{mean_ms} ms +- {cycles_to_ms(std_cycles)}"

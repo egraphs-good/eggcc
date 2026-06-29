@@ -9,11 +9,13 @@ import os
 import sys
 import subprocess
 import shutil
+import json
 from pathlib import Path
 
 from profile import NightlyConfig, run_profile
 from graphs import make_graphs
 from generate_line_counts import generate_latex
+from simple_table import write_compact_table_latex
 
 class TeeWriter:
     """Write to both a file and the original stream."""
@@ -39,6 +41,8 @@ def run_cmd(cmd, cwd=None):
         print(f"Command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
 
+
+
 def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, output_dir, 
                 paper_dir, data_dir, output_data_dir, profile_json, is_local):
     """Main nightly workflow - run profiler, generate graphs, and package output."""
@@ -56,6 +60,11 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
     # Generate the plots
     print("Generating graphs...")
     make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
+    data = []
+    with open(profile_json) as f:
+        data = json.load(f)
+
+    write_compact_table_latex(data, paper_dir)
 
     # Generate latex after running the profiler (depends on profile.json)
     print("Generating line counts...")

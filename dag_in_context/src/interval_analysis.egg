@@ -1,75 +1,31 @@
 (ruleset interval-analysis)
 (ruleset interval-rewrite)
 
-(sort CombineInt (UnstableFn (i64 i64) i64))
-(sort CombineBool (UnstableFn (bool bool) bool))
 (sort IntOrBool (Either i64 bool))
 ;; A none bound is dead code, so any value can be chosen.
 (sort Bound (Maybe IntOrBool))
-(sort I64ToIntOrBool (UnstableFn (i64) IntOrBool))
-(sort BoolToIntOrBool (UnstableFn (bool) IntOrBool))
-(sort IntOrBoolToBound (UnstableFn (IntOrBool) Bound))
-
-(primitive IntB (i64) Bound (maybe-some (either-left _0)))
-(primitive BoolB (bool) Bound (maybe-some (either-right _0)))
-(primitive Dead () Bound (maybe-none))
-(primitive bound-int (Bound) i64 (either-unwrap-left (maybe-unwrap _0)))
-(primitive bound-bool (Bound) bool (either-unwrap-right (maybe-unwrap _0)))
-
-(primitive merge-int-or-bool-left (CombineInt IntOrBool i64) IntOrBool
-  (either-left (unstable-app _0 _2 (either-unwrap-left _1))))
-
-(primitive merge-int-or-bool-right (CombineBool IntOrBool bool) IntOrBool
-  (either-right (unstable-app _0 _2 (either-unwrap-right _1))))
-
-(primitive merge-int-or-bool (CombineInt CombineBool IntOrBool IntOrBool) IntOrBool
-  (either-match
-    _2
-    (unstable-fn "merge-int-or-bool-left" _0 _3)
-    (unstable-fn "merge-int-or-bool-right" _1 _3)))
-
-(primitive bound-merge-somes (CombineInt CombineBool IntOrBool IntOrBool) Bound
-  (maybe-some (merge-int-or-bool _0 _1 _2 _3)))
-
-(primitive bound-merge-with-old (CombineInt CombineBool Bound IntOrBool) Bound
-  (unstable-maybe-match
-    _2
-    (unstable-fn "bound-merge-somes" _0 _1 _3)
-    (maybe-none)))
-
-(primitive bound-merge (CombineInt CombineBool Bound Bound) Bound
-  (unstable-maybe-match
-    _2
-    (unstable-fn "bound-merge-with-old" _0 _1 _3)
-    (maybe-none)))
-
-(primitive bound-min (Bound Bound) Bound
-  (bound-merge (unstable-fn "min") (unstable-fn "and") _0 _1))
-
-(primitive bound-max (Bound Bound) Bound
-  (bound-merge (unstable-fn "max") (unstable-fn "or") _0 _1))
 
 ; bound tables
-(function lo-bound (Expr) Bound :merge (bound-max old new))
-(function hi-bound (Expr) Bound :merge (bound-min old new))
+(function lo-bound (Expr) Bound :merge (maybe-either-i64-bool-max old new))
+(function hi-bound (Expr) Bound :merge (maybe-either-i64-bool-min old new))
 
 ; if lo > hi, we have proven that this code is dead (as long as all our rules are sound)
 ; In this case, interval analysis might start going crazy and fail to saturate
-; So we immediately set the bounds to (Dead)
+; So we immediately set the bounds to maybe-none.
 (rule (
-         (= lo (bound-int (lo-bound expr)))
-         (= hi (bound-int (hi-bound expr)))
+         (= lo (either-unwrap-left (maybe-unwrap (lo-bound expr))))
+         (= hi (either-unwrap-left (maybe-unwrap (hi-bound expr))))
          (> lo hi)
        )
-       ((set (lo-bound expr) (Dead))
-        (set (hi-bound expr) (Dead)))
+       ((set (lo-bound expr) (maybe-none))
+        (set (hi-bound expr) (maybe-none)))
        :ruleset interval-analysis)
 (rule (
-      (= true (bound-bool (lo-bound expr)))
-      (= false (bound-bool (hi-bound expr)))
+      (= true (either-unwrap-right (maybe-unwrap (lo-bound expr))))
+      (= false (either-unwrap-right (maybe-unwrap (hi-bound expr))))
       )
-      ((set (lo-bound expr) (Dead))
-       (set (hi-bound expr) (Dead)))
+      ((set (lo-bound expr) (maybe-none))
+       (set (hi-bound expr) (maybe-none)))
        :ruleset interval-analysis)
 
 ; =================================
@@ -77,15 +33,15 @@
 ; =================================
 (rule ((= lhs (Const (Int x) ty ctx)))
       (
-        (set (lo-bound lhs) (IntB x))
-        (set (hi-bound lhs) (IntB x))
+        (set (lo-bound lhs) (maybe-some (either-left x)))
+        (set (hi-bound lhs) (maybe-some (either-left x)))
       )
       :ruleset interval-analysis)
 
 (rule ((= lhs (Const (Bool x) ty ctx)))
       (
-        (set (lo-bound lhs) (BoolB x))
-        (set (hi-bound lhs) (BoolB x))
+        (set (lo-bound lhs) (maybe-some (either-right x)))
+        (set (hi-bound lhs) (maybe-some (either-right x)))
       )
       :ruleset interval-analysis)
 
@@ -93,8 +49,8 @@
 ; Constant Folding
 ; =================================
 (rule (
-       (= x (bound-int (lo-bound expr)))
-       (= x (bound-int (hi-bound expr)))
+       (= x (either-unwrap-left (maybe-unwrap (lo-bound expr))))
+       (= x (either-unwrap-left (maybe-unwrap (hi-bound expr))))
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
@@ -102,8 +58,8 @@
       :ruleset interval-analysis)
 
 (rule (
-       (= x (bound-bool (lo-bound expr)))
-       (= x (bound-bool (hi-bound expr)))
+       (= x (either-unwrap-right (maybe-unwrap (lo-bound expr))))
+       (= x (either-unwrap-right (maybe-unwrap (hi-bound expr))))
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
@@ -112,7 +68,7 @@
 
 ; lower bound being true means the bool must be true
 (rule (
-       (= true (bound-bool (lo-bound expr)))
+       (= true (either-unwrap-right (maybe-unwrap (lo-bound expr))))
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
@@ -121,7 +77,7 @@
 
 ; upper bound being false means the bool must be false
 (rule (
-       (= false (bound-bool (hi-bound expr)))
+       (= false (either-unwrap-right (maybe-unwrap (hi-bound expr))))
        (HasArgType expr ty)
        (ContextOf expr ctx)
       )
@@ -134,139 +90,139 @@
 ; + a b interval is (+ la lb) (+ ha hb)
 (rule (
        (= lhs (Bop (Add) a b))
-       (= la (bound-int (lo-bound a)))
-       (= lb (bound-int (lo-bound b)))
+       (= la (either-unwrap-left (maybe-unwrap (lo-bound a))))
+       (= lb (either-unwrap-left (maybe-unwrap (lo-bound b))))
       )
-      ((set (lo-bound lhs) (IntB (+ la lb))))
+      ((set (lo-bound lhs) (maybe-some (either-left (+ la lb)))))
       :ruleset interval-analysis)
 (rule (
        (= lhs (Bop (Add) a b))
-       (= ha (bound-int (hi-bound a)))
-       (= hb (bound-int (hi-bound b)))
+       (= ha (either-unwrap-left (maybe-unwrap (hi-bound a))))
+       (= hb (either-unwrap-left (maybe-unwrap (hi-bound b))))
       )
-      ((set (hi-bound lhs) (IntB (+ ha hb))))
+      ((set (hi-bound lhs) (maybe-some (either-left (+ ha hb)))))
       :ruleset interval-analysis)
 
 ; - a b interval is (- la hb) (- ha lb)
 (rule (
        (= lhs (Bop (Sub) a b))
-       (= la (bound-int (lo-bound a)))
-       (= hb (bound-int (hi-bound b)))
+       (= la (either-unwrap-left (maybe-unwrap (lo-bound a))))
+       (= hb (either-unwrap-left (maybe-unwrap (hi-bound b))))
       )
-      ((set (lo-bound lhs) (IntB (- la hb))))
+      ((set (lo-bound lhs) (maybe-some (either-left (- la hb)))))
       :ruleset interval-analysis)
 (rule (
        (= lhs (Bop (Sub) a b))
-       (= ha (bound-int (hi-bound a)))
-       (= lb (bound-int (lo-bound b)))
+       (= ha (either-unwrap-left (maybe-unwrap (hi-bound a))))
+       (= lb (either-unwrap-left (maybe-unwrap (lo-bound b))))
       )
-      ((set (hi-bound lhs) (IntB (- ha lb))))
+      ((set (hi-bound lhs) (maybe-some (either-left (- ha lb)))))
       :ruleset interval-analysis)
 
 ; Multiplication for two constants
 ; TODO: Make fancier interval analysis
 (rule (
        (= lhs (Bop (Mul) a b))
-       (= x (bound-int (lo-bound a)))
-       (= x (bound-int (hi-bound a)))
-       (= y (bound-int (lo-bound b)))
-       (= y (bound-int (hi-bound b)))
+       (= x (either-unwrap-left (maybe-unwrap (lo-bound a))))
+       (= x (either-unwrap-left (maybe-unwrap (hi-bound a))))
+       (= y (either-unwrap-left (maybe-unwrap (lo-bound b))))
+       (= y (either-unwrap-left (maybe-unwrap (hi-bound b))))
       )
       (
-       (set (lo-bound lhs) (IntB (* x y)))
-       (set (hi-bound lhs) (IntB (* x y)))
+       (set (lo-bound lhs) (maybe-some (either-left (* x y))))
+       (set (hi-bound lhs) (maybe-some (either-left (* x y))))
       )
       :ruleset interval-analysis)
 
 ; negative * negative is positive
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= hi-x (bound-int (hi-bound x)))
-        (= hi-y (bound-int (hi-bound y)))
+        (= hi-x (either-unwrap-left (maybe-unwrap (hi-bound x))))
+        (= hi-y (either-unwrap-left (maybe-unwrap (hi-bound y))))
         (< hi-x 0)
         (< hi-y 0)
       )
-      ((set (lo-bound lhs) (IntB 1)))
+      ((set (lo-bound lhs) (maybe-some (either-left 1))))
       :ruleset interval-analysis)
 
 ; negative * positive is negative
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= hi-x (bound-int (hi-bound x)))
-        (= lo-y (bound-int (lo-bound y)))
+        (= hi-x (either-unwrap-left (maybe-unwrap (hi-bound x))))
+        (= lo-y (either-unwrap-left (maybe-unwrap (lo-bound y))))
         (< hi-x 0) ; x < 0 (x is negative)
         (> lo-y 0) ; y > 0 (y is positive)
       )
-      ((set (hi-bound lhs) (IntB -1)))
+      ((set (hi-bound lhs) (maybe-some (either-left -1))))
       :ruleset interval-analysis)
 
 ; positive * positive is positive
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= lo-x (bound-int (lo-bound x)))
-        (= lo-y (bound-int (lo-bound y)))
+        (= lo-x (either-unwrap-left (maybe-unwrap (lo-bound x))))
+        (= lo-y (either-unwrap-left (maybe-unwrap (lo-bound y))))
         (> lo-x 0)
         (> lo-y 0)
       )
-      ((set (lo-bound lhs) (IntB 1)))
+      ((set (lo-bound lhs) (maybe-some (either-left 1))))
       :ruleset interval-analysis)
 
 ; non-positive * non-positive is non-negative
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= hi-x (bound-int (hi-bound x)))
-        (= hi-y (bound-int (hi-bound y)))
+        (= hi-x (either-unwrap-left (maybe-unwrap (hi-bound x))))
+        (= hi-y (either-unwrap-left (maybe-unwrap (hi-bound y))))
         (<= hi-x 0)
         (<= hi-y 0)
       )
-      ((set (lo-bound lhs) (IntB 0)))
+      ((set (lo-bound lhs) (maybe-some (either-left 0))))
       :ruleset interval-analysis)
 
 ; non-positive * non-negative is non-positive
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= hi-x (bound-int (hi-bound x)))
-        (= lo-y (bound-int (lo-bound y)))
+        (= hi-x (either-unwrap-left (maybe-unwrap (hi-bound x))))
+        (= lo-y (either-unwrap-left (maybe-unwrap (lo-bound y))))
         (<= hi-x 0) ; x <= 0 (x is non-positive)
         (>= lo-y 0) ; y >= 0 (y is non-negative)
       )
-      ((set (hi-bound lhs) (IntB 0)))
+      ((set (hi-bound lhs) (maybe-some (either-left 0))))
       :ruleset interval-analysis)
 
 ; non-negative * non-negative is non-negative
 (rule (
         (= lhs (Bop (Mul) x y))
-        (= lo-x (bound-int (lo-bound x)))
-        (= lo-y (bound-int (lo-bound y)))
+        (= lo-x (either-unwrap-left (maybe-unwrap (lo-bound x))))
+        (= lo-y (either-unwrap-left (maybe-unwrap (lo-bound y))))
         (>= lo-x 0)
         (>= lo-y 0)
       )
-      ((set (lo-bound lhs) (IntB 0)))
+      ((set (lo-bound lhs) (maybe-some (either-left 0))))
       :ruleset interval-analysis)
 
 ; < a b interval is (< ha lb) (< la hb)
 (rule (
        (= lhs (Bop (LessThan) a b))
-       (= ha (bound-int (hi-bound a)))
-       (= lb (bound-int (lo-bound b)))
+       (= ha (either-unwrap-left (maybe-unwrap (hi-bound a))))
+       (= lb (either-unwrap-left (maybe-unwrap (lo-bound b))))
       )
       (
-       (set (lo-bound lhs) (BoolB (bool-< ha lb)))
+       (set (lo-bound lhs) (maybe-some (either-right (bool-< ha lb))))
       )
       :ruleset interval-analysis)
 (rule (
        (= lhs (Bop (LessThan) a b))
-       (= la (bound-int (lo-bound a)))
-       (= hb (bound-int (hi-bound b)))
+       (= la (either-unwrap-left (maybe-unwrap (lo-bound a))))
+       (= hb (either-unwrap-left (maybe-unwrap (hi-bound b))))
       )
-      ((set (hi-bound lhs) (BoolB (bool-< la hb))))
+      ((set (hi-bound lhs) (maybe-some (either-right (bool-< la hb)))))
       :ruleset interval-analysis)
 
 ; Abs
 ; abs(x) = x if x >= 0
 (rule (
         (= lhs (Uop (Abs) x))
-        (= lx (bound-int (lo-bound x)))
+        (= lx (either-unwrap-left (maybe-unwrap (lo-bound x))))
         (>= lx 0)
       )
       ((union lhs x))
@@ -275,7 +231,7 @@
 ; abs(x) = -x if x <= 0
 (rule (
         (= lhs (Uop (Abs) x))
-        (= hx (bound-int (hi-bound x)))
+        (= hx (either-unwrap-left (maybe-unwrap (hi-bound x))))
         (<= hx 0)
         (HasArgType lhs ty)
         (ContextOf lhs ctx)
@@ -290,7 +246,7 @@
 (rule (
        (= lhs (If cond inputs thn els))
        (ContextOf lhs if_ctx)
-       (= true (bound-bool (lo-bound cond)))
+       (= true (either-unwrap-right (maybe-unwrap (lo-bound cond))))
       )
       ((union lhs (Subst if_ctx inputs thn)))
       :ruleset interval-rewrite)
@@ -299,7 +255,7 @@
 (rule (
        (= lhs (If cond inputs thn els))
        (ContextOf lhs if_ctx)
-       (= false (bound-bool (hi-bound cond)))
+       (= false (either-unwrap-right (maybe-unwrap (hi-bound cond))))
       )
       ((union lhs (Subst if_ctx inputs els)))
       :ruleset interval-rewrite)
@@ -311,14 +267,14 @@
         (= lo-thn (lo-bound thn))
         (= lo-els (lo-bound els))
       )
-      ((set (lo-bound lhs) (bound-min lo-thn lo-els)))
+      ((set (lo-bound lhs) (maybe-either-i64-bool-min lo-thn lo-els)))
       :ruleset interval-analysis)
 (rule (
        (= lhs (If cond inputs thn els))
        (= hi-thn (hi-bound thn))
        (= hi-els (hi-bound els))
       )
-      ((set (hi-bound lhs) (bound-max hi-thn hi-els)))
+      ((set (hi-bound lhs) (maybe-either-i64-bool-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
 ; Same rules, but for Ifs that have multiple outputs
@@ -327,14 +283,14 @@
         (= lo-thn (lo-bound (Get thn i)))
         (= lo-els (lo-bound (Get els i)))
       )
-      ((set (lo-bound (Get lhs i)) (bound-min lo-thn lo-els)))
+      ((set (lo-bound (Get lhs i)) (maybe-either-i64-bool-min lo-thn lo-els)))
       :ruleset interval-analysis)
 (rule (
        (= lhs (If cond inputs thn els))
        (= hi-thn (hi-bound (Get thn i)))
        (= hi-els (hi-bound (Get els i)))
       )
-      ((set (hi-bound (Get lhs i)) (bound-max hi-thn hi-els)))
+      ((set (hi-bound (Get lhs i)) (maybe-either-i64-bool-max hi-thn hi-els)))
       :ruleset interval-analysis)
 
 ; If the If takes a tuple
@@ -345,13 +301,13 @@
         ; the left operand of the < is an input to the if region
         (= expr (Get inputs i))
         ; the right operand of the < has an upper bound
-        (= v (bound-int (hi-bound value)))
+        (= v (either-unwrap-left (maybe-unwrap (hi-bound value))))
         ; context node inside the if region
         (= ctx (Arg ty (InIf true pred inputs)))
         (HasType inputs ty)
       )
       ; expr < value was true, so we know expr is at most (hi-bound value) - 1
-      ((set (hi-bound (Get ctx i)) (IntB (- v 1))))
+      ((set (hi-bound (Get ctx i)) (maybe-some (either-left (- v 1)))))
       :ruleset interval-analysis)
 (rule (
         ; expr < value
@@ -360,13 +316,13 @@
         ; the left operand of the < is an input to the if region
         (= expr (Get inputs i))
         ; the right operand of the < has a lower bound
-        (= v (bound-int (lo-bound value)))
+        (= v (either-unwrap-left (maybe-unwrap (lo-bound value))))
         ; context node inside the if region
         (= ctx (Arg ty (InIf false pred inputs)))
         (HasType inputs ty)
       )
       ; expr < value was false, so we know expr is at least (lo-bound value)
-      ((set (lo-bound (Get ctx i)) (IntB v)))
+      ((set (lo-bound (Get ctx i)) (maybe-some (either-left v))))
       :ruleset interval-analysis)
 
 (rule (
@@ -376,13 +332,13 @@
         ; the right operand of the < is an input to the if region
         (= expr (Get inputs i))
         ; the left operand of the < has a lower bound
-        (= v (bound-int (lo-bound value)))
+        (= v (either-unwrap-left (maybe-unwrap (lo-bound value))))
         ; context node inside the if region
         (= ctx (Arg ty (InIf true pred inputs)))
         (HasType inputs ty)
       )
       ; value < expr was true, so we know expr is at least (lo-bound value) + 1
-      ((set (lo-bound (Get ctx i)) (IntB (+ v 1))))
+      ((set (lo-bound (Get ctx i)) (maybe-some (either-left (+ v 1)))))
       :ruleset interval-analysis)
 (rule (
         ; value < expr
@@ -391,13 +347,13 @@
         ; the right operand of the < is an input to the if region
         (= expr (Get inputs i))
         ; the left operand of the < has an upper bound
-        (= v (bound-int (hi-bound value)))
+        (= v (either-unwrap-left (maybe-unwrap (hi-bound value))))
         ; context node inside the if region
         (= ctx (Arg ty (InIf false pred inputs)))
         (HasType inputs ty)
       )
       ; value < expr was false, so we know expr is at most (hi-bound value)
-      ((set (hi-bound (Get ctx i)) (IntB v)))
+      ((set (hi-bound (Get ctx i)) (maybe-some (either-left v))))
       :ruleset interval-analysis)
 
 ;; Push intervals for inputs into if region
@@ -429,9 +385,9 @@
        (= expr (Get inputs i))
        (= ctx  (Arg ty (InIf true pred inputs)))
        (HasType inputs ty)
-       (= lo (bound-int (lo-bound val)))
+       (= lo (either-unwrap-left (maybe-unwrap (lo-bound val))))
       )
-      ((set (lo-bound (Get ctx i)) (IntB lo)))
+      ((set (lo-bound (Get ctx i)) (maybe-some (either-left lo))))
       :ruleset interval-analysis)
 (rule (
        (= pred (Bop (Eq) expr val))
@@ -440,9 +396,9 @@
        (= expr (Get inputs i))
        (= ctx (Arg ty (InIf true pred inputs)))
        (HasType inputs ty)
-       (= hi (bound-int (hi-bound val)))
+       (= hi (either-unwrap-left (maybe-unwrap (hi-bound val))))
       )
-      ((set (hi-bound (Get ctx i)) (IntB hi)))
+      ((set (hi-bound (Get ctx i)) (maybe-some (either-left hi))))
       :ruleset interval-analysis)
 
 

@@ -5,14 +5,9 @@
 (ruleset terms-helpers-helpers)
 
 (sort TermAndCost (Pair Term i64))
-(sort UnitThunk (UnstableFn () Unit))
-
-;; Returns the smaller of the two, keeping the old value on ties.
-(primitive Smaller (TermAndCost TermAndCost) TermAndCost
-  (unstable-if (unstable-fn "<=" (pair-second _0) (pair-second _1)) _0 _1))
 
 (function ExtractedExpr (Expr) TermAndCost
-  :merge (Smaller old new))
+  :merge (pair-min-by-second-i64 old new))
 ;; potential extractions- use so that when the costs are equal, we don't change the term
 ;; this preserves egglog's timestamp of when the last time ExtractedExpr was changed, fixing a big performance problem
 (relation PotentialExtractedExpr (Expr TermAndCost))

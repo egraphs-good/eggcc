@@ -73,8 +73,8 @@
        (= (Get thn k) (Get (Arg _ty (InIf true pred inputs)) i))
 
        (= els_out (Get els k))
-       (= y (bound-int (lo-bound els_out)))
-       (= y (bound-int (hi-bound els_out)))
+       (= y (either-unwrap-left (maybe-unwrap (lo-bound els_out))))
+       (= y (either-unwrap-left (maybe-unwrap (hi-bound els_out))))
        )
        (
        (union (Get if_e k) (Top (Select) pred a (Const (Int y) ty ctx)))
@@ -90,8 +90,8 @@
        (HasArgType if_e ty)
 
        (= thn_out (Get thn k))
-       (= y (bound-int (lo-bound thn_out)))
-       (= y (bound-int (hi-bound thn_out)))
+       (= y (either-unwrap-left (maybe-unwrap (lo-bound thn_out))))
+       (= y (either-unwrap-left (maybe-unwrap (hi-bound thn_out))))
 
        ; input to the if
        (= b (Get inputs i))

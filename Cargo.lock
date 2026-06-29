@@ -902,7 +902,7 @@ dependencies = [
 [[package]]
 name = "egglog-experimental"
 version = "0.1.0"
-source = "git+https://github.com/egraphs-good/egglog-experimental.git?branch=codex%2Feggcc-proof-baseline-pr927#fcdaccba715569e0b4c05938db267a2eb219b52a"
+source = "git+https://github.com/egraphs-good/egglog-experimental.git?branch=codex%2Feggcc-proof-baseline-pr927#19ed86667733c56e4072956ce3b414b6860660bc"
 dependencies = [
  "egglog",
  "egglog-ast",
@@ -1035,7 +1035,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2060,7 +2060,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2293,7 +2293,7 @@ dependencies = [
  "getrandom 0.4.1",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

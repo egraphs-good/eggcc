@@ -1,4 +1,4 @@
-(function ListExpr-length (ListExpr) i64 :no-merge)
+(function ListExpr-length (ListExpr) i64 :merge old)
 (constructor ListExpr-ith (ListExpr i64) Expr :unextractable)
 (constructor ListExpr-suffix (ListExpr i64) ListExpr :unextractable)
 (constructor Append (ListExpr Expr) ListExpr :unextractable)
@@ -19,7 +19,7 @@
    (Cons e (Nil))
    :ruleset always-run)
 
-(function tuple-length (Expr) i64 :no-merge)
+(function tuple-length (Expr) i64 :merge old)
 
 (rule ((HasType expr (TupleT tl))
        (= len (TypeList-length tl)))

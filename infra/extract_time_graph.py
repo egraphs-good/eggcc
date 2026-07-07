@@ -43,7 +43,7 @@ def _collect_solver_series(points, *, time_field, timed_out_field):
   }
 
 
-def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
+def make_extraction_time_cdf(data, output, use_log_x, use_exp_y, include_gurobi=True):
   benchmarks = dedup([b.get('benchmark') for b in data])
   points = all_region_extract_points("eggcc-tiger-ILP-COMPARISON", data, benchmarks)
 
@@ -66,8 +66,10 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
       extract_value = float(secs) + float(nanos) / 1e9
       extract_times_by_treatment[field].append(extract_value)
 
-  solver_configs = [
-    {
+  solver_configs = []
+  # Gurobi series is only plotted when Gurobi actually ran (include_gurobi).
+  if include_gurobi:
+    solver_configs.append({
       "time_field": "ilp_extract_time",
       "timed_out_field": "ilp_timed_out",
       "label": "Gurobi",
@@ -75,17 +77,16 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y):
       "timeout_label": "ILP Timeouts",
       "timeout_color": "red",
       "timeout_time": ILP_TIMEOUT_SECONDS,
-    },
-    {
-      "time_field": "cbc_ilp_extract_time",
-      "timed_out_field": "cbc_ilp_timed_out",
-      "label": "CBC",
-      "color": "olive",
-      "timeout_label": "CBC ILP Timeouts",
-      "timeout_color": "tab:pink",
-      "timeout_time": ILP_TIMEOUT_SECONDS,
-    },
-  ]
+    })
+  solver_configs.append({
+    "time_field": "cbc_ilp_extract_time",
+    "timed_out_field": "cbc_ilp_timed_out",
+    "label": "CBC",
+    "color": "olive",
+    "timeout_label": "CBC ILP Timeouts",
+    "timeout_color": "tab:pink",
+    "timeout_time": ILP_TIMEOUT_SECONDS,
+  })
 
   solver_series_data = []
   for config in solver_configs:

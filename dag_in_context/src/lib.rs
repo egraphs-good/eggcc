@@ -409,6 +409,10 @@ pub struct EggccConfig {
     pub egraph_dump_dir: Option<PathBuf>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
@@ -416,6 +420,10 @@ pub struct ExtractRegionTiming {
     pub extract_time_liveon_satelliteoff: Duration,
     pub extract_time_liveoff_satelliteon: Duration,
     pub extract_time_liveoff_satelliteoff: Duration,
+    /// False when the Gurobi run was skipped (e.g. gurobi_cl not installed). When false,
+    /// the `ilp_*` fields carry no meaning and only the `cbc_ilp_*` fields have real data.
+    #[serde(default = "default_true")]
+    pub ilp_ran: bool,
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
@@ -768,6 +776,8 @@ fn run_tiger_pipeline(
             tiger_duration_liveon_satelliteoff_ns: u64,
             tiger_duration_liveoff_satelliteon_ns: u64,
             tiger_duration_liveoff_satelliteoff_ns: u64,
+            #[serde(default = "default_true")]
+            ilp_ran: bool,
             #[serde(default)]
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
@@ -809,12 +819,15 @@ fn run_tiger_pipeline(
             });
 
         for (idx, row) in rows.into_iter().enumerate() {
+            let ilp_ran = row.ilp_ran;
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
             let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
-            let ilp_extract_time = match (ilp_timed_out, row.ilp_duration_ns) {
-                (true, _) => None,
-                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
-                (false, None) => {
+            let ilp_extract_time = match (ilp_ran, ilp_timed_out, row.ilp_duration_ns) {
+                // Gurobi was skipped (no gurobi_cl): no Gurobi timing for this row.
+                (false, _, _) => None,
+                (true, true, _) => None,
+                (true, false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (true, false, None) => {
                     panic!(
                         "Missing ilp_duration_ns for non-timeout extract-region timing on row {} (infeasible={})",
                         idx + 1,
@@ -845,6 +858,7 @@ fn run_tiger_pipeline(
                 extract_time_liveoff_satelliteoff: Duration::from_nanos(
                     row.tiger_duration_liveoff_satelliteoff_ns,
                 ),
+                ilp_ran,
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,

@@ -28,6 +28,9 @@ pub struct ExtractRegionTiming {
     pub tiger_duration_liveon_satelliteoff_ns: i64,
     pub tiger_duration_liveoff_satelliteon_ns: i64,
     pub tiger_duration_liveoff_satelliteoff_ns: i64,
+    // False when the Gurobi run was skipped (e.g. gurobi_cl is not installed), in which
+    // case the ilp_* fields below carry no meaning and only cbc_ilp_* has real data.
+    pub ilp_ran: bool,
     pub ilp_duration_ns: Option<i64>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
@@ -128,18 +131,28 @@ fn compute_ilp_metrics(
     root: EClassId,
     rstatewalk_cost: &Vec<Vec<Cost>>,
 ) {
-    let gurobi_metrics: SolverMetrics =
-        run_solver_for_metrics(gr, root, rstatewalk_cost, true);
-    sample.ilp_timed_out = gurobi_metrics.timed_out;
-    sample.ilp_infeasible = gurobi_metrics.infeasible;
-    sample.ilp_encoding_num_vars = gurobi_metrics.encoding_vars;
-    sample.ilp_duration_ns = gurobi_metrics.duration_ns;
+    sample.ilp_ran = g_config().time_ilp_run_gurobi;
+    if sample.ilp_ran {
+        let gurobi_metrics: SolverMetrics = run_solver_for_metrics(gr, root, rstatewalk_cost, true);
+        sample.ilp_timed_out = gurobi_metrics.timed_out;
+        sample.ilp_infeasible = gurobi_metrics.infeasible;
+        sample.ilp_encoding_num_vars = gurobi_metrics.encoding_vars;
+        sample.ilp_duration_ns = gurobi_metrics.duration_ns;
+    } else {
+        // Gurobi was skipped (e.g. gurobi_cl not installed): leave the ilp_* fields
+        // empty. The encoding size is solver-independent, so take it from CBC below.
+        sample.ilp_timed_out = false;
+        sample.ilp_infeasible = false;
+        sample.ilp_duration_ns = None;
+    }
 
-    let cbc_metrics: SolverMetrics =
-        run_solver_for_metrics(gr, root, rstatewalk_cost, false);
+    let cbc_metrics: SolverMetrics = run_solver_for_metrics(gr, root, rstatewalk_cost, false);
     sample.cbc_ilp_duration_ns = cbc_metrics.duration_ns;
     sample.cbc_ilp_timed_out = cbc_metrics.timed_out;
     sample.cbc_ilp_infeasible = cbc_metrics.infeasible;
+    if !sample.ilp_ran {
+        sample.ilp_encoding_num_vars = cbc_metrics.encoding_vars;
+    }
 }
 
 struct PreparedRegion {
@@ -332,6 +345,7 @@ pub fn write_extract_region_timings_json(
             "tiger_duration_liveon_satelliteoff_ns": sample.tiger_duration_liveon_satelliteoff_ns,
             "tiger_duration_liveoff_satelliteon_ns": sample.tiger_duration_liveoff_satelliteon_ns,
             "tiger_duration_liveoff_satelliteoff_ns": sample.tiger_duration_liveoff_satelliteoff_ns,
+            "ilp_ran": sample.ilp_ran,
             "ilp_duration_ns": sample.ilp_duration_ns,
             "ilp_timed_out": sample.ilp_timed_out,
             "ilp_infeasible": sample.ilp_infeasible,

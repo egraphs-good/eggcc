@@ -9,6 +9,10 @@ pub struct Config {
     pub ilp_minimize_objective: bool,
     pub ilp_timeout_seconds: i32,
     pub time_ilp: bool,
+    /// When timing ILP (--time-ilp), also run the Gurobi solver. Disabled when the
+    /// selected solver is CBC (e.g. gurobi_cl is not installed), so timing records
+    /// only tiger + CBC data instead of aborting on a missing gurobi_cl.
+    pub time_ilp_run_gurobi: bool,
     pub percent_regions: f64,
 }
 
@@ -20,6 +24,7 @@ impl Default for Config {
             ilp_minimize_objective: true,
             ilp_timeout_seconds: 5 * 60,
             time_ilp: false,
+            time_ilp_run_gurobi: true,
             percent_regions: 100.0,
         }
     }

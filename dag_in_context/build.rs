@@ -98,6 +98,12 @@ fn build_tiger_rs(manifest_dir: &str, target_dir: &Path, profile: &str) {
     let mut cmd = Command::new(cargo_bin);
     cmd.current_dir(&tiger_rs_crate)
         .args(["build", "--bin", "tiger-rs"]);
+    // The tiger crate is a separate helper-binary crate, not part of this workspace's
+    // lint surface. When the parent build runs under `cargo clippy`, it exports a
+    // clippy wrapper that would otherwise leak into this nested build and lint tiger
+    // with `-D warnings`. Clear the wrapper so the nested build is a plain rustc build.
+    cmd.env_remove("RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("RUSTC_WRAPPER");
     if profile == "release" {
         cmd.arg("--release");
     }
@@ -109,9 +115,7 @@ fn build_tiger_rs(manifest_dir: &str, target_dir: &Path, profile: &str) {
         panic!("cargo build for tiger-rs failed with status {}", status);
     }
 
-    let src = nested_target
-        .join(profile)
-        .join(binary_name("tiger-rs"));
+    let src = nested_target.join(profile).join(binary_name("tiger-rs"));
     let dst = target_dir.join(binary_name("tiger-rs"));
     fs::copy(&src, &dst).unwrap_or_else(|err| {
         panic!(

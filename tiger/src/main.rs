@@ -107,6 +107,11 @@ fn main() {
         }
         g_config.ilp_minimize_objective = false;
     }
+
+    // When --time-ilp is combined with --ilp-solver cbc, skip the Gurobi run so timing
+    // works on machines without gurobi_cl. CBC is always timed.
+    g_config.time_ilp_run_gurobi = use_gurobi_solver;
+
     set_config(g_config);
     let g_config = crate::config::g_config();
     let res: (EGraph, Vec<EClassId>) = crate::json2egraphin::parse_egglog_json();

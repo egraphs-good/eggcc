@@ -580,7 +580,14 @@ def normalized(profile, benchmark, treatment):
 def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True, ilp_label="Gurobi"):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
+  # Sort by the first treatment's normalized time; push benchmarks whose sort
+  # treatment produced no cycles to the end so the key never averages an empty list.
+  def _sort_key(group):
+    b = group[0].get('benchmark')
+    if not has_run_cycles(profile, b, treatments[0]):
+      return float('inf')
+    return normalized(profile, b, treatments[0])
+  sorted_by_eggcc = sorted(grouped_by_benchmark, key=_sort_key)
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
   if benchmarks_to_include is not None:
     # keep sorting but filter to only benchmarks in benchmarks_to_include
@@ -601,7 +608,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     min_color = None
 
     for runmode in treatments:
-      if (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
+      if has_run_cycles(profile, benchmark, runmode) and (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
         yval = normalized(profile, benchmark, runmode)
         if yval < miny:
           min_color = COLOR_MAP[runmode]
@@ -645,7 +652,24 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
         )
         i += 1
         continue
-      
+
+      if not has_run_cycles(profile, benchmark, runmode):
+        # Treatment produced no binary (e.g. ILP extraction hit the wall-clock
+        # timeout); mark it so the missing bar is visible.
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color=COLOR_MAP[runmode],
+          fontsize=14,
+          fontweight='bold',
+        )
+        i += 1
+        continue
+
       yval = normalized(profile, benchmark, runmode)
 
       # for outliers, add x marks to the top

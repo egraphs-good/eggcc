@@ -130,6 +130,20 @@ def is_ilp_infeasible(data, benchmark_name, run_method):
       return row["failed"] and ("ILP solver reported infeasibility" in row["error"])
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+
+def has_run_cycles(data, benchmark_name, run_method):
+  """True if this benchmark+treatment produced a non-empty cycles list.
+
+  A treatment can fail without being a flagged region timeout or a reported
+  infeasibility -- e.g. ILP extraction exceeds the wall-clock timeout, so the eggcc
+  process is killed and no binary is produced (cycles == False). Charts must skip
+  such treatments instead of averaging an empty list."""
+  for row in data:
+    if row.get('benchmark') == benchmark_name and row.get('runMethod') == run_method:
+      cycles = row.get('cycles')
+      return isinstance(cycles, list) and len(cycles) > 0
+  return False
+
 def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
 

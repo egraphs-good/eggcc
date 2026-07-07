@@ -1,0 +1,9 @@
+# Python dependencies for the eggcc nightly (infra/nightly.py and graph generation).
+# Install with:  pip install -r infra/requirements.txt
+matplotlib
+numpy
+pandas
+
+# Pillow (PIL) is only needed for the standalone infra/visualize_raytrace_result.py
+# helper, not for the nightly itself. Uncomment if you use that script:
+# pillow

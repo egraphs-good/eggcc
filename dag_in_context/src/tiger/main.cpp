@@ -73,6 +73,10 @@ int main(int argc, char *argv[]) {
         }
         g_config.ilp_minimize_objective = false;
     }
+
+    // When --time-ilp is combined with --ilp-solver cbc, skip the Gurobi run so timing
+    // works on machines without gurobi_cl. CBC is always timed.
+    g_config.time_ilp_run_gurobi = use_gurobi_solver;
     pair<EGraph, vector<EClassId> > res = parse_egglog_json();
     EGraph &g = res.first;
     vector<EClassId> &roots = res.second;

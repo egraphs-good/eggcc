@@ -107,8 +107,13 @@ def get_row(data, benchmark_name, run_method):
       return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+# ILP extraction treatments whose timeouts/infeasibilities are drawn on the normalized
+# charts. The chart uses the Gurobi one when Gurobi is available and the CBC one otherwise.
+ILP_EXTRACTION_TREATMENTS = {"eggcc-tiger-ILP-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0"}
+
+
 def is_ilp_timeout(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
@@ -118,7 +123,7 @@ def is_ilp_timeout(data, benchmark_name, run_method):
 
 
 def is_ilp_infeasible(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
@@ -158,6 +163,40 @@ def all_region_extract_points(treatment, data, benchmarks):
       res = res + timings
 
   return res
+
+
+# The treatment that records per-region tiger/CBC/Gurobi timing samples.
+COMPARISON_TREATMENT = "eggcc-tiger-ILP-COMPARISON"
+
+
+def comparison_ran(data):
+  """True if the COMPARISON treatment produced any region-timing samples.
+
+  When true, tiger and CBC timing data are available for every sample, so all the
+  tiger-only and CBC graphs can be generated (regardless of Gurobi)."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    if row.get("extractRegionTimings"):
+      return True
+  return False
+
+
+def has_gurobi_ilp_data(data):
+  """True if any COMPARISON sample recorded a real Gurobi run.
+
+  Samples set ilp_ran=False when Gurobi was skipped (e.g. gurobi_cl not installed).
+  Older data predates the field, so a missing ilp_ran is treated as a Gurobi run."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    timings = row.get("extractRegionTimings")
+    if not timings:
+      continue
+    for sample in timings:
+      if sample.get("ilp_ran", True):
+        return True
+  return False
 
 
 def dedup(lst):

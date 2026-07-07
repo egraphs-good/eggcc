@@ -446,8 +446,8 @@ def make_statewalk_width_performance_scatter_multi(
   y_break_runtimes=None,
 ):
   treatment_list = list(treatments)
-  if len(treatment_list) < 2:
-    raise ValueError("Expected at least two treatments for multi scatter plot")
+  if len(treatment_list) < 1:
+    raise ValueError("Expected at least one treatment for multi scatter plot")
 
   benchmarks = dedup([b.get('benchmark') for b in data])
 

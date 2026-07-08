@@ -90,6 +90,9 @@ struct Args {
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Defaults to 100.0.
     #[clap(long, default_value_t = 100.0, value_parser = parse_percent_regions)]
     percent_regions: f64,
+    /// Per-region ILP solver time limit, in seconds. Defaults to 300 (5 minutes).
+    #[clap(long, default_value_t = 5 * 60)]
+    ilp_timeout_seconds: u64,
     /// When provided, dump each e-graph we extract from into this directory.
     #[clap(long)]
     egraph_out_dir: Option<PathBuf>,
@@ -161,6 +164,7 @@ fn main() {
             tiger_ilp: args.tiger_ilp,
             time_ilp: args.time_ilp,
             percent_regions: args.percent_regions,
+            ilp_timeout_seconds: args.ilp_timeout_seconds,
             use_context: args.with_context,
             disable_hacker_rules: args.no_hacker_rules,
             non_weakly_linear: true,

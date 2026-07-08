@@ -16,6 +16,17 @@ from graph_helpers import *
 def make_macros(profile, benchmark_suites, output_file):
   with open(output_file, 'a') as out:
     benchmarks = dedup([row["benchmark"] for row in profile])
+    # In non-paper runs the COMPARISON treatment can hit the wall-clock timeout and
+    # produce no region data (extractRegionTimings == False). Every macro below assumes
+    # a list of samples, so drop benchmarks whose comparison run produced no timings.
+    # In paper mode the comparison succeeds for all benchmarks, so this filters nothing.
+    comparison_ok = {
+      row["benchmark"]
+      for row in profile
+      if row.get("runMethod") == "eggcc-tiger-ILP-COMPARISON"
+      and isinstance(row.get("extractRegionTimings"), list)
+    }
+    benchmarks = [b for b in benchmarks if b in comparison_ok]
     benchmark_regions = {benchmark: 0 for benchmark in benchmarks}
     suite_region_counts = {}
     benchmark_suite_map = {}
@@ -483,17 +494,17 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
       raise KeyError("Missing ilp_infeasible when computing tiger speedup macro")
 
     if sample["ilp_timed_out"] or sample["ilp_infeasible"]:
-      gurobi_time = ILP_TIMEOUT_SECONDS
+      gurobi_time = get_ilp_timeout_seconds()
     else:
       if "ilp_extract_time" not in sample:
         raise KeyError("Missing ilp_extract_time when computing tiger speedup macro")
       gurobi_duration = sample["ilp_extract_time"]
-      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
+      gurobi_time = get_ilp_timeout_seconds() if gurobi_duration is None else duration_to_seconds(gurobi_duration)
 
     if tiger_time <= 0:
       raise ValueError("Non-positive tiger time encountered when computing tiger speedup macro")
     if gurobi_time <= 0:
-      gurobi_time = ILP_TIMEOUT_SECONDS
+      gurobi_time = get_ilp_timeout_seconds()
 
     ratio = gurobi_time / tiger_time
     if ratio <= 0:

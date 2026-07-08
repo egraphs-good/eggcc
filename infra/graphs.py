@@ -45,12 +45,12 @@ def make_region_extract_plot(json, output, plot_ilp):
 
     if ilp_infeasible:
       if ilp_solve_time is None:
-        ilp_infeasible_points.append((egraph_size, 5 * 60))
+        ilp_infeasible_points.append((egraph_size, get_ilp_timeout_seconds()))
       else:
         ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
         ilp_infeasible_points.append((egraph_size, ilp_time))
     elif ilp_solve_time is None:
-      ilp_timeout_points.append((egraph_size, 5 * 60))
+      ilp_timeout_points.append((egraph_size, get_ilp_timeout_seconds()))
     else:
       ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
       ilp_points.append((egraph_size, ilp_time))
@@ -105,7 +105,7 @@ def make_region_extract_plot(json, output, plot_ilp):
         timeout_y,
         color='red',
         marker='x',
-        label="ILP Timeout (5 min)",
+        label=f"ILP Timeout ({format_timeout_label()})",
         alpha=alpha,
         s=psize,
         linewidths=timeoutLineWidth,
@@ -580,7 +580,14 @@ def normalized(profile, benchmark, treatment):
 def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True, ilp_label="Gurobi"):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
+  # Sort by the first treatment's normalized time; push benchmarks whose sort
+  # treatment produced no cycles to the end so the key never averages an empty list.
+  def _sort_key(group):
+    b = group[0].get('benchmark')
+    if not has_run_cycles(profile, b, treatments[0]):
+      return float('inf')
+    return normalized(profile, b, treatments[0])
+  sorted_by_eggcc = sorted(grouped_by_benchmark, key=_sort_key)
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
   if benchmarks_to_include is not None:
     # keep sorting but filter to only benchmarks in benchmarks_to_include
@@ -601,7 +608,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     min_color = None
 
     for runmode in treatments:
-      if (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
+      if has_run_cycles(profile, benchmark, runmode) and (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
         yval = normalized(profile, benchmark, runmode)
         if yval < miny:
           min_color = COLOR_MAP[runmode]
@@ -645,7 +652,24 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
         )
         i += 1
         continue
-      
+
+      if not has_run_cycles(profile, benchmark, runmode):
+        # Treatment produced no binary (e.g. ILP extraction hit the wall-clock
+        # timeout); mark it so the missing bar is visible.
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color=COLOR_MAP[runmode],
+          fontsize=14,
+          fontweight='bold',
+        )
+        i += 1
+        continue
+
       yval = normalized(profile, benchmark, runmode)
 
       # for outliers, add x marks to the top
@@ -704,7 +728,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   legend_handles.append(
     plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
   )
-  legend_labels.append(f'{ilp_label} Timeout (5 min)')
+  legend_labels.append(f'{ilp_label} Timeout ({format_timeout_label()})')
 
   if has_ilp_infeasible:
     legend_handles.append(
@@ -871,6 +895,10 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig):
+  # Graphs report the per-region ILP timeout the data was generated with (e.g. "30 s"
+  # for the default nightly, "5 min" for paper).
+  set_ilp_timeout_seconds(getattr(config, "ilp_timeout_seconds", 5 * 60))
+
   # Read profile.json from nightly/output/data/profile.json
   data = []
   with open(profile_file) as f:

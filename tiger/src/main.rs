@@ -96,6 +96,19 @@ fn main() {
                 std::process::exit(1);
             }
             i += 1;
+        } else if argv[i] == "--ilp-timeout-seconds" {
+            if i + 1 >= argv.len() {
+                eprintln!("--ilp-timeout-seconds requires a value");
+                std::process::exit(1);
+            }
+            match argv[i + 1].parse::<i32>() {
+                Ok(v) if v > 0 => g_config.ilp_timeout_seconds = v,
+                _ => {
+                    eprintln!("Invalid value for --ilp-timeout-seconds: {}", argv[i + 1]);
+                    std::process::exit(1);
+                }
+            }
+            i += 1;
         }
         i += 1;
     }

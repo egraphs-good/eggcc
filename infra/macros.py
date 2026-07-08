@@ -494,17 +494,17 @@ def compute_geometric_mean_tiger_speedup_vs_gurobi(region_points):
       raise KeyError("Missing ilp_infeasible when computing tiger speedup macro")
 
     if sample["ilp_timed_out"] or sample["ilp_infeasible"]:
-      gurobi_time = ILP_TIMEOUT_SECONDS
+      gurobi_time = get_ilp_timeout_seconds()
     else:
       if "ilp_extract_time" not in sample:
         raise KeyError("Missing ilp_extract_time when computing tiger speedup macro")
       gurobi_duration = sample["ilp_extract_time"]
-      gurobi_time = ILP_TIMEOUT_SECONDS if gurobi_duration is None else duration_to_seconds(gurobi_duration)
+      gurobi_time = get_ilp_timeout_seconds() if gurobi_duration is None else duration_to_seconds(gurobi_duration)
 
     if tiger_time <= 0:
       raise ValueError("Non-positive tiger time encountered when computing tiger speedup macro")
     if gurobi_time <= 0:
-      gurobi_time = ILP_TIMEOUT_SECONDS
+      gurobi_time = get_ilp_timeout_seconds()
 
     ratio = gurobi_time / tiger_time
     if ratio <= 0:

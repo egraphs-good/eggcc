@@ -76,7 +76,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y, include_gurobi=
       "color": "green",
       "timeout_label": "ILP Timeouts",
       "timeout_color": "red",
-      "timeout_time": ILP_TIMEOUT_SECONDS,
+      "timeout_time": get_ilp_timeout_seconds(),
     })
   solver_configs.append({
     "time_field": "cbc_ilp_extract_time",
@@ -85,7 +85,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y, include_gurobi=
     "color": "olive",
     "timeout_label": "CBC ILP Timeouts",
     "timeout_color": "tab:pink",
-    "timeout_time": ILP_TIMEOUT_SECONDS,
+    "timeout_time": get_ilp_timeout_seconds(),
   })
 
   solver_series_data = []

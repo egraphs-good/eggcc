@@ -394,6 +394,8 @@ pub struct EggccConfig {
     pub time_ilp: bool,
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Regions are selected randomly.
     pub percent_regions: f64,
+    /// Per-region ILP solver time limit, in seconds. Passed to tiger as --ilp-timeout-seconds.
+    pub ilp_timeout_seconds: u64,
     pub use_context: bool,
     /// If true, disable the hacker ruleset in hackers_delight.egg.
     pub disable_hacker_rules: bool,
@@ -488,6 +490,7 @@ impl Default for EggccConfig {
             tiger_ilp: false,
             time_ilp: false,
             percent_regions: 100.0,
+            ilp_timeout_seconds: 5 * 60,
             use_context: true,
             disable_hacker_rules: false,
             non_weakly_linear: true,
@@ -687,6 +690,9 @@ fn run_tiger_pipeline(
         IlpSolver::Gurobi => OsString::from("gurobi"),
         IlpSolver::Cbc => OsString::from("cbc"),
     });
+
+    tiger_args.push(OsString::from("--ilp-timeout-seconds"));
+    tiger_args.push(OsString::from(eggcc_config.ilp_timeout_seconds.to_string()));
 
     let extract_timing_file = if eggcc_config.time_ilp {
         tiger_args.push(OsString::from("--time-ilp"));

@@ -17,7 +17,28 @@ if profile.TO_ABLATE != "":
 
 # need ilp and graph run modes for this script to work
 NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
-ILP_TIMEOUT_SECONDS = 5 * 60
+
+# Per-region ILP solver timeout (seconds) used to generate the current run's data.
+# make_graphs sets this from the nightly config so graphs report the real timeout
+# (e.g. "30 s" for the default nightly, "5 min" for paper). Defaults to 5 minutes.
+_ILP_TIMEOUT_SECONDS = 5 * 60
+
+
+def set_ilp_timeout_seconds(seconds):
+  global _ILP_TIMEOUT_SECONDS
+  _ILP_TIMEOUT_SECONDS = int(seconds)
+
+
+def get_ilp_timeout_seconds():
+  return _ILP_TIMEOUT_SECONDS
+
+
+def format_timeout_label(seconds=None):
+  """Human-readable timeout, e.g. '5 min' or '30 s'."""
+  s = get_ilp_timeout_seconds() if seconds is None else int(seconds)
+  if s % 60 == 0:
+    return f"{s // 60} min"
+  return f"{s} s"
 
 # copied from chart.js
 COLOR_MAP = {

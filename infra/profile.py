@@ -48,6 +48,15 @@ class NightlyConfig:
       return 1.0
     return 100.0
 
+  @property
+  def ilp_timeout_seconds(self):
+    # Per-region ILP solver time limit. The default (non-paper) nightly uses a short
+    # limit so intractable CBC regions don't burn 5 minutes each and blow the nightly's
+    # wall-clock budget. Paper mode keeps the full 5 minutes for the reported results.
+    if not self.paper_mode:
+      return 30
+    return 5 * 60
+
 
 _GUROBI_AVAILABLE = None
 
@@ -271,15 +280,15 @@ def get_eggcc_options(benchmark):
       # --ilp-solver cbc tells tiger to skip the Gurobi run so this works without
       # gurobi_cl (CBC is always timed).
       solver_flag = "" if benchmark.config.use_gurobi else " --ilp-solver cbc"
-      return (f'optimize --time-ilp --percent-regions {benchmark.config.percent_regions}{solver_flag}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --time-ilp --percent-regions {benchmark.config.percent_regions} --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}{solver_flag}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --tiger-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-CBC-O0-O0":
-      return (f'optimize --tiger-ilp --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-solver cbc --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":
-      return (f'optimize --tiger-ilp --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --with-context --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-NOMIN-O0-O0":
-      return (f'optimize --tiger-ilp --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-no-minimize --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
 
     case "eggcc-WITHCTX-O0-O0":
       # run with the with-context flag

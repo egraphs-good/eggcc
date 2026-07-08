@@ -3,6 +3,8 @@
 import json
 import os
 import signal
+import shutil
+import tempfile
 from glob import glob
 from sys import stdout
 import sys
@@ -46,6 +48,54 @@ class NightlyConfig:
       return 1.0
     return 100.0
 
+  @property
+  def ilp_timeout_seconds(self):
+    # Per-region ILP solver time limit. The default (non-paper) nightly uses a short
+    # limit so intractable CBC regions don't burn 5 minutes each and blow the nightly's
+    # wall-clock budget. Paper mode keeps the full 5 minutes for the reported results.
+    if not self.paper_mode:
+      return 30
+    return 5 * 60
+
+
+_GUROBI_AVAILABLE = None
+
+def gurobi_available():
+  """Return True if gurobi_cl is installed and holds a usable license.
+
+  We probe by actually solving a trivial LP with gurobi_cl -- the same binary the
+  tiger extractor shells out to -- so this detects both a missing binary and a
+  missing/expired license. The result is cached for the process."""
+  global _GUROBI_AVAILABLE
+  if _GUROBI_AVAILABLE is not None:
+    return _GUROBI_AVAILABLE
+
+  gurobi_cl = shutil.which("gurobi_cl")
+  if gurobi_cl is None:
+    _GUROBI_AVAILABLE = False
+    return False
+
+  ok = False
+  try:
+    with tempfile.TemporaryDirectory() as tmp:
+      lp_path = os.path.join(tmp, "gurobi_check.lp")
+      with open(lp_path, "w") as f:
+        f.write("Maximize\n x\nSubject To\n c1: x <= 1\nBounds\n 0 <= x <= 1\nEnd\n")
+      result = subprocess.run(
+        [gurobi_cl, lp_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=60,
+        text=True,
+      )
+      # gurobi_cl exits non-zero when it cannot obtain a license.
+      ok = result.returncode == 0
+  except Exception:
+    ok = False
+
+  _GUROBI_AVAILABLE = ok
+  return ok
+
 
 def average(lst):
   return sum(lst) / len(lst)
@@ -81,14 +131,17 @@ _base_treatments = [
   "eggcc-WITHCTX-O0-O0",
   "eggcc-tiger-WITHCTX-O0-O0",
   "eggcc-tiger-nohacker-WITHCTX-O0-O0",
+  # Per-region timing samples for tiger + CBC (+ Gurobi when available). Uses CBC only
+  # when Gurobi is disabled (see get_eggcc_options), so it stays in the base set and
+  # feeds the tiger/statewalk/CBC graphs without Gurobi. Keep last so it runs after the
+  # cheaper treatments.
+  "eggcc-tiger-ILP-COMPARISON",
 ]
 
 # Treatments that require Gurobi (when --use-gurobi or --paper is passed)
 _gurobi_treatments = [
   "eggcc-tiger-ILP-O0-O0",
   "eggcc-tiger-ILP-NOMIN-O0-O0",
-  # run both tiger and ILP on the same egraphs, keep this last in the list
-  "eggcc-tiger-ILP-COMPARISON", 
 ]
 
 def get_treatments(config: NightlyConfig):
@@ -223,15 +276,19 @@ def get_eggcc_options(benchmark):
     case "eggcc-tiger-O0-O0":
       return (f'optimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-COMPARISON":
-      return (f'optimize --time-ilp --percent-regions {benchmark.config.percent_regions}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      # Time tiger + CBC on each region, plus Gurobi when it is enabled. Passing
+      # --ilp-solver cbc tells tiger to skip the Gurobi run so this works without
+      # gurobi_cl (CBC is always timed).
+      solver_flag = "" if benchmark.config.use_gurobi else " --ilp-solver cbc"
+      return (f'optimize --time-ilp --percent-regions {benchmark.config.percent_regions} --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}{solver_flag}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-O0-O0":
-      return (f'optimize --tiger-ilp', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-CBC-O0-O0":
-      return (f'optimize --tiger-ilp --ilp-solver cbc', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-solver cbc --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-WITHCTX-O0-O0":
-      return (f'optimize --tiger-ilp --with-context', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --with-context --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
     case "eggcc-tiger-ILP-NOMIN-O0-O0":
-      return (f'optimize --tiger-ilp --ilp-no-minimize', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
+      return (f'optimize --tiger-ilp --ilp-no-minimize --ilp-timeout-seconds {benchmark.config.ilp_timeout_seconds}', f'--run-mode llvm --optimize-egglog false --optimize-bril-llvm O0_O0')
 
     case "eggcc-WITHCTX-O0-O0":
       # run with the with-context flag
@@ -526,8 +583,10 @@ def run_profile(data_dir, bril_dir, config: NightlyConfig, parallel=False):
   treatments = get_treatments(config)
   if not config.paper_mode:
     print("WARNING: Running in testing mode with reduced samples. Pass the --paper flag for the final paper results.")
-  if not config.use_gurobi:
-    print("INFO: Gurobi treatments disabled. Pass --use-gurobi or --paper to enable them.")
+  if config.use_gurobi:
+    print("INFO: Gurobi enabled. Running Gurobi treatments and all Gurobi-dependent graphs.")
+  else:
+    print("INFO: Gurobi disabled. Timing ILP with CBC only; Gurobi-only treatments and graphs are skipped.")
 
   isParallelBenchmark = parallel
 

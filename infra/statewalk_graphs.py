@@ -66,7 +66,7 @@ class StatewalkTreatment:
     raise ValueError(f"Unknown runtime source {self.runtime}")
 
   def timeout_label(self) -> str:
-    return "Timeout (5 min)"
+    return f"Timeout ({format_timeout_label()})"
 
   def timeout_color(self) -> str:
     if self.runtime == "ilp_cbc":
@@ -306,11 +306,11 @@ def _collect_statewalk_scatter_points(
     if is_ilp_runtime:
       if sample.get(infeasible_field, False):
         infeasible_x.append(x_magnitude)
-        infeasible_y.append(ILP_TIMEOUT_SECONDS)
+        infeasible_y.append(get_ilp_timeout_seconds())
         continue
       if sample.get(timeout_field, False):
         timeout_x.append(x_magnitude)
-        timeout_y.append(ILP_TIMEOUT_SECONDS)
+        timeout_y.append(get_ilp_timeout_seconds())
         continue
 
     runtime_value = sample.get(duration_field)
@@ -446,8 +446,8 @@ def make_statewalk_width_performance_scatter_multi(
   y_break_runtimes=None,
 ):
   treatment_list = list(treatments)
-  if len(treatment_list) < 2:
-    raise ValueError("Expected at least two treatments for multi scatter plot")
+  if len(treatment_list) < 1:
+    raise ValueError("Expected at least one treatment for multi scatter plot")
 
   benchmarks = dedup([b.get('benchmark') for b in data])
 

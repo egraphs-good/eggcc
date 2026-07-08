@@ -45,12 +45,12 @@ def make_region_extract_plot(json, output, plot_ilp):
 
     if ilp_infeasible:
       if ilp_solve_time is None:
-        ilp_infeasible_points.append((egraph_size, 5 * 60))
+        ilp_infeasible_points.append((egraph_size, get_ilp_timeout_seconds()))
       else:
         ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
         ilp_infeasible_points.append((egraph_size, ilp_time))
     elif ilp_solve_time is None:
-      ilp_timeout_points.append((egraph_size, 5 * 60))
+      ilp_timeout_points.append((egraph_size, get_ilp_timeout_seconds()))
     else:
       ilp_time = ilp_solve_time["secs"] + ilp_solve_time["nanos"] / 1e9
       ilp_points.append((egraph_size, ilp_time))
@@ -105,7 +105,7 @@ def make_region_extract_plot(json, output, plot_ilp):
         timeout_y,
         color='red',
         marker='x',
-        label="ILP Timeout (5 min)",
+        label=f"ILP Timeout ({format_timeout_label()})",
         alpha=alpha,
         s=psize,
         linewidths=timeoutLineWidth,
@@ -577,10 +577,17 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
-def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True):
+def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True, ilp_label="Gurobi"):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
-  sorted_by_eggcc = sorted(grouped_by_benchmark, key=lambda x: normalized(profile, x[0].get('benchmark'), treatments[0]))
+  # Sort by the first treatment's normalized time; push benchmarks whose sort
+  # treatment produced no cycles to the end so the key never averages an empty list.
+  def _sort_key(group):
+    b = group[0].get('benchmark')
+    if not has_run_cycles(profile, b, treatments[0]):
+      return float('inf')
+    return normalized(profile, b, treatments[0])
+  sorted_by_eggcc = sorted(grouped_by_benchmark, key=_sort_key)
   benchmarks = [group[0].get('benchmark') for group in sorted_by_eggcc]
   if benchmarks_to_include is not None:
     # keep sorting but filter to only benchmarks in benchmarks_to_include
@@ -601,7 +608,7 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
     min_color = None
 
     for runmode in treatments:
-      if (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
+      if has_run_cycles(profile, benchmark, runmode) and (not is_ilp_timeout(profile, benchmark, runmode)) and (not is_ilp_infeasible(profile, benchmark, runmode)):
         yval = normalized(profile, benchmark, runmode)
         if yval < miny:
           min_color = COLOR_MAP[runmode]
@@ -645,7 +652,24 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
         )
         i += 1
         continue
-      
+
+      if not has_run_cycles(profile, benchmark, runmode):
+        # Treatment produced no binary (e.g. ILP extraction hit the wall-clock
+        # timeout); mark it so the missing bar is visible.
+        ax.text(
+          current_pos,
+          y_max,
+          'x',
+          ha='center',
+          va='center',
+          zorder=3,
+          color=COLOR_MAP[runmode],
+          fontsize=14,
+          fontweight='bold',
+        )
+        i += 1
+        continue
+
       yval = normalized(profile, benchmark, runmode)
 
       # for outliers, add x marks to the top
@@ -704,13 +728,13 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   legend_handles.append(
     plt.Line2D([0], [0], marker='x', color='red', linestyle='None', markersize=10, markeredgewidth=3.0)
   )
-  legend_labels.append('Gurobi Timeout (5 min)')
+  legend_labels.append(f'{ilp_label} Timeout ({format_timeout_label()})')
 
   if has_ilp_infeasible:
     legend_handles.append(
       plt.Line2D([0], [0], marker='x', color='orange', linestyle='None', markersize=10, markeredgewidth=3.0)
     )
-    legend_labels.append('Gurobi Infeasible')
+    legend_labels.append(f'{ilp_label} Infeasible')
 
   anchor_point = (xanchor, yanchor) if xanchor is not None and yanchor is not None else (0.02, 0.98)
   if legend:
@@ -871,6 +895,10 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig):
+  # Graphs report the per-region ILP timeout the data was generated with (e.g. "30 s"
+  # for the default nightly, "5 min" for paper).
+  set_ilp_timeout_seconds(getattr(config, "ilp_timeout_seconds", 5 * 60))
+
   # Read profile.json from nightly/output/data/profile.json
   data = []
   with open(profile_file) as f:
@@ -880,25 +908,31 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   benchmark_suites = [f for f in os.listdir(benchmark_suite_folder) if os.path.isdir(os.path.join(benchmark_suite_folder, f))]
   benchmark_suites = [os.path.join(benchmark_suite_folder, f) for f in benchmark_suites]
 
-  # Only generate ILP-comparison graphs if Gurobi treatments were run
-  if config.use_gurobi:
-    make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False)
-  else:
-    print("Skipping extraction-time-cdf graph (requires Gurobi treatments)")
+  # Graph gating is by available data, not a single Gurobi flag:
+  #   has_comparison -> the COMPARISON treatment ran (tiger + CBC timing available)
+  #   has_gurobi     -> the COMPARISON samples include a real Gurobi run
+  has_comparison = comparison_ran(data)
+  has_gurobi = has_gurobi_ilp_data(data)
+  if has_comparison and not has_gurobi:
+    print("INFO: No Gurobi timing data; rendering ILP graphs from CBC/tiger data only.")
 
+  # Always available (no ILP timing data required)
   make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
   make_fenwick_cycles_bar_chart(data, f'{graphs_folder}/fenwick-cycles-bar-chart.pdf')
 
-  if config.use_gurobi:
+  if has_comparison:
+    # CDF plots tiger + CBC series (plus the Gurobi series when it ran)
+    make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False, include_gurobi=has_gurobi)
+    # tiger greedy extraction time (no Gurobi needed)
     make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
-    make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
-    make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+    if has_gurobi:
+      make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+      make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+    else:
+      print("Skipping ILP-time region plot and extraction-time-histogram (require Gurobi)")
   else:
-    print("Skipping region extract plots and extraction-time-histogram (requires Gurobi treatments)")
-  #make_ilp_encoding_scatter(
-  #  profile,
-  #  f'{graphs_folder}/ilp-encoding-vs-egraph-size.pdf',
-  #)
+    print("Skipping all region-timing graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
+
   statewalk_histogram_max_width = None
 
   tiger_optimizations_on = StatewalkTreatment(
@@ -916,8 +950,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_gurobi = StatewalkTreatment(runtime="ilp_gurobi", liveness_on=False, satellite_on=False)
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
-  # All statewalk and ILP-related graphs require eggcc-tiger-ILP-COMPARISON data
-  if config.use_gurobi:
+  # Statewalk-width and ILP-encoding graphs. Tiger/CBC graphs render whenever the
+  # COMPARISON treatment ran; the Gurobi-specific graphs need has_gurobi.
+  if has_comparison:
     make_statewalk_width_histogram(
       data,
       f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
@@ -948,25 +983,20 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       y_break=(0.6, 4.5),
       y_break_runtimes={'tiger'},
     )
+    # CBC is always present; add the Gurobi series only when it ran.
+    ilp_scatter_treatments = [ilp_cbc] + ([ilp_gurobi] if has_gurobi else [])
     make_statewalk_width_performance_scatter_multi(
       data,
       f'{graphs_folder}/statewalk-width-vs-ilp-time.pdf',
-      [ilp_cbc, ilp_gurobi],
+      ilp_scatter_treatments,
       is_average=False,
       scale_by_egraph_size=False,
     )
-    
+
     make_egraph_size_vs_statewalk_width_heatmap(
       data,
       f'{graphs_folder}/heatmap-tiger-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
       tiger_optimizations_off,
-      is_average=False,
-      min_width=1,
-    )
-    make_egraph_size_vs_statewalk_width_heatmap(
-      data,
-      f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
-      ilp_gurobi,
       is_average=False,
       min_width=1,
     )
@@ -978,39 +1008,52 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       min_width=1,
       max_width=6000,
     )
-    make_egraph_size_vs_statewalk_width_heatmap(
-      data,
-      f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
-      ilp_gurobi,
-      is_average=False,
-      min_width=1,
-      max_width=6000,
-    )
+    # ILP encoding var count is solver-independent
     make_ilp_encoding_scatter(
       data,
       f'{graphs_folder}/ilp-encoding-size-scatter.pdf',
-    )
-    make_ilp_encoding_time_scatter(
-      data,
-      f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
     )
     make_cbc_encoding_time_scatter(
       data,
       f'{graphs_folder}/ilp-encoding-size-vs-cbc-solve-time.pdf',
     )
-    make_peggy_comparison_graph(
-      data,
-      "./infra/peggy_data.csv",
-      f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
-      f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
-    )
+
+    if has_gurobi:
+      make_egraph_size_vs_statewalk_width_heatmap(
+        data,
+        f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace.pdf',
+        ilp_gurobi,
+        is_average=False,
+        min_width=1,
+      )
+      make_egraph_size_vs_statewalk_width_heatmap(
+        data,
+        f'{graphs_folder}/heatmap-ilp-time-with-egraph-size-vs-statewalk-width-no-raytrace-max6000.pdf',
+        ilp_gurobi,
+        is_average=False,
+        min_width=1,
+        max_width=6000,
+      )
+      make_ilp_encoding_time_scatter(
+        data,
+        f'{graphs_folder}/ilp-encoding-size-vs-solve-time.pdf',
+      )
+      make_peggy_comparison_graph(
+        data,
+        "./infra/peggy_data.csv",
+        f'{graphs_folder}/eggcc-extraction-time-ratio.pdf',
+        f'{graphs_folder}/peggy-extraction-time-ratio.pdf'
+      )
+    else:
+      print("Skipping Gurobi-only ILP graphs (ilp-time heatmaps, Gurobi solve-time scatter, peggy comparison)")
   else:
-    print("Skipping statewalk and ILP-related graphs (requires Gurobi treatments)")
+    print("Skipping statewalk and ILP-related graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
   
-  # Normalized charts require Gurobi treatments (eggcc-tiger-ILP-O0-O0)
-  if not config.use_gurobi:
-    print("Skipping normalized charts for all suites (requires Gurobi treatments)")
-  else:
+  # Normalized charts: use the Gurobi ILP treatment when it ran, otherwise the CBC ILP
+  # treatment (both run per-benchmark), so the perf charts render with or without Gurobi.
+  ilp_chart_treatment = "eggcc-tiger-ILP-O0-O0" if has_gurobi else "eggcc-tiger-ILP-CBC-O0-O0"
+  ilp_chart_label = "Gurobi" if has_gurobi else "CBC"
+  if benchmark_suites:
     for suite_path in benchmark_suites:
       suite = os.path.basename(suite_path)
       suite_benchmarks_all = benchmarks_in_folder(suite_path)
@@ -1030,7 +1073,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
         width = 6
         height = 5.0
 
-      chart_treatments = ["eggcc-tiger-O0-O0", "eggcc-tiger-ILP-O0-O0", "llvm-O0-O0"]
+      chart_treatments = ["eggcc-tiger-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
 
       if suite == "bril":
         benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
@@ -1047,6 +1090,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
           yanchor,
           benchmarks_under3,
           legend=True,
+          ilp_label=ilp_chart_label,
         )
         make_normalized_chart(
           profile_for_suite,
@@ -1059,6 +1103,7 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
           yanchor,
           benchmarks_over3,
           legend=False,
+          ilp_label=ilp_chart_label,
         )
 
       else:
@@ -1073,12 +1118,15 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
           yanchor,
           None,
           legend=True,
+          ilp_label=ilp_chart_label,
         )
 
-  if config.use_gurobi:
+  # nightlymacros.tex is pervasively Gurobi-dependent (Gurobi speedups, timeout counts,
+  # ilp_extract_time). The frontend already treats its absence as expected without Gurobi.
+  if has_gurobi:
     make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
   else:
-    print("Skipping macro generation (requires Gurobi treatments)")
+    print("Skipping macro generation (nightlymacros.tex requires Gurobi data)")
 
   # make json list of graph names and put in in output
   graph_names = []

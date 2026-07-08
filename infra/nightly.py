@@ -12,7 +12,7 @@ import shutil
 import json
 from pathlib import Path
 
-from profile import NightlyConfig, run_profile
+from profile import NightlyConfig, run_profile, gurobi_available
 from graphs import make_graphs
 from generate_line_counts import generate_latex
 from simple_table import write_compact_table_latex
@@ -122,7 +122,12 @@ def main():
     parser.add_argument(
         "--use-gurobi",
         action="store_true",
-        help="Enable Gurobi treatments without full paper mode"
+        help="Force-enable Gurobi treatments (errors out if gurobi_cl / license is unavailable)"
+    )
+    parser.add_argument(
+        "--no-gurobi",
+        action="store_true",
+        help="Force-disable Gurobi even if it is available (runs the CBC/tiger-only subset)"
     )
     parser.add_argument(
         "--parallel",
@@ -156,8 +161,33 @@ def main():
         # Install tokei v13.0.0 which works with Rust 1.87
         run_cmd("cargo install tokei --version 13.0.0 --locked")
 
-    # Build config - paper mode implies use_gurobi
-    use_gurobi = args.paper or args.use_gurobi
+    # Decide whether to use Gurobi:
+    #   --no-gurobi           -> off
+    #   --use-gurobi / --paper -> on (error out if Gurobi is unavailable)
+    #   otherwise             -> auto-detect a usable gurobi_cl + license
+    if args.no_gurobi and (args.use_gurobi or args.paper):
+        parser.error("--no-gurobi cannot be combined with --use-gurobi or --paper")
+
+    if args.no_gurobi:
+        use_gurobi = False
+        print("Gurobi disabled via --no-gurobi; running the CBC/tiger subset.")
+    elif args.use_gurobi or args.paper:
+        use_gurobi = True
+        if not gurobi_available():
+            print("ERROR: Gurobi was requested (--use-gurobi/--paper) but gurobi_cl is not")
+            print("       installed or has no valid license.")
+            print("       Install Gurobi and provide a license (see infra/setup_gurobi.sh or")
+            print("       'make gurobi-setup'), or drop the flag to auto-detect.")
+            sys.exit(1)
+        print("Gurobi enabled (requested via --use-gurobi/--paper).")
+    else:
+        use_gurobi = gurobi_available()
+        if use_gurobi:
+            print("Gurobi auto-detected: enabling Gurobi treatments and all graphs.")
+        else:
+            print("Gurobi not detected: running the CBC/tiger subset. Pass --use-gurobi to require it,")
+            print("or run infra/setup_gurobi.sh to install a license.")
+
     config = NightlyConfig(paper_mode=args.paper, use_gurobi=use_gurobi)
 
     # Determine directories

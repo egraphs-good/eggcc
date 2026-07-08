@@ -394,6 +394,8 @@ pub struct EggccConfig {
     pub time_ilp: bool,
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Regions are selected randomly.
     pub percent_regions: f64,
+    /// Per-region ILP solver time limit, in seconds. Passed to tiger as --ilp-timeout-seconds.
+    pub ilp_timeout_seconds: u64,
     pub use_context: bool,
     /// If true, disable the hacker ruleset in hackers_delight.egg.
     pub disable_hacker_rules: bool,
@@ -408,6 +410,10 @@ pub struct EggccConfig {
     pub egraph_dump_dir: Option<PathBuf>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ExtractRegionTiming {
     pub egraph_size: usize,
@@ -415,6 +421,10 @@ pub struct ExtractRegionTiming {
     pub extract_time_liveon_satelliteoff: Duration,
     pub extract_time_liveoff_satelliteon: Duration,
     pub extract_time_liveoff_satelliteoff: Duration,
+    /// False when the Gurobi run was skipped (e.g. gurobi_cl not installed). When false,
+    /// the `ilp_*` fields carry no meaning and only the `cbc_ilp_*` fields have real data.
+    #[serde(default = "default_true")]
+    pub ilp_ran: bool,
     pub ilp_extract_time: Option<Duration>,
     pub ilp_timed_out: bool,
     pub ilp_infeasible: bool,
@@ -480,6 +490,7 @@ impl Default for EggccConfig {
             tiger_ilp: false,
             time_ilp: false,
             percent_regions: 100.0,
+            ilp_timeout_seconds: 5 * 60,
             use_context: true,
             disable_hacker_rules: false,
             non_weakly_linear: true,
@@ -662,8 +673,8 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let tiger_bin = find_tiger_binary("tiger")
-        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
+    let tiger_bin = find_tiger_binary("tiger-rs")
+        .ok_or_else(|| "tiger-rs binary not found; build the tiger tools first".to_string())
         .unwrap();
 
     let mut tiger_args: Vec<OsString> = Vec::new();
@@ -679,6 +690,9 @@ fn run_tiger_pipeline(
         IlpSolver::Gurobi => OsString::from("gurobi"),
         IlpSolver::Cbc => OsString::from("cbc"),
     });
+
+    tiger_args.push(OsString::from("--ilp-timeout-seconds"));
+    tiger_args.push(OsString::from(eggcc_config.ilp_timeout_seconds.to_string()));
 
     let extract_timing_file = if eggcc_config.time_ilp {
         tiger_args.push(OsString::from("--time-ilp"));
@@ -769,6 +783,8 @@ fn run_tiger_pipeline(
             tiger_duration_liveon_satelliteoff_ns: u64,
             tiger_duration_liveoff_satelliteon_ns: u64,
             tiger_duration_liveoff_satelliteoff_ns: u64,
+            #[serde(default = "default_true")]
+            ilp_ran: bool,
             #[serde(default)]
             ilp_duration_ns: Option<u64>,
             #[serde(default)]
@@ -810,12 +826,15 @@ fn run_tiger_pipeline(
             });
 
         for (idx, row) in rows.into_iter().enumerate() {
+            let ilp_ran = row.ilp_ran;
             let ilp_timed_out = row.ilp_timed_out.unwrap_or(false);
             let ilp_infeasible = row.ilp_infeasible.unwrap_or(false);
-            let ilp_extract_time = match (ilp_timed_out, row.ilp_duration_ns) {
-                (true, _) => None,
-                (false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
-                (false, None) => {
+            let ilp_extract_time = match (ilp_ran, ilp_timed_out, row.ilp_duration_ns) {
+                // Gurobi was skipped (no gurobi_cl): no Gurobi timing for this row.
+                (false, _, _) => None,
+                (true, true, _) => None,
+                (true, false, Some(nanos)) => Some(Duration::from_nanos(nanos)),
+                (true, false, None) => {
                     panic!(
                         "Missing ilp_duration_ns for non-timeout extract-region timing on row {} (infeasible={})",
                         idx + 1,
@@ -846,6 +865,7 @@ fn run_tiger_pipeline(
                 extract_time_liveoff_satelliteoff: Duration::from_nanos(
                     row.tiger_duration_liveoff_satelliteoff_ns,
                 ),
+                ilp_ran,
                 ilp_extract_time,
                 ilp_timed_out,
                 ilp_infeasible,

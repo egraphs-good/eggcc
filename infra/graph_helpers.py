@@ -17,7 +17,28 @@ if profile.TO_ABLATE != "":
 
 # need ilp and graph run modes for this script to work
 NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
-ILP_TIMEOUT_SECONDS = 5 * 60
+
+# Per-region ILP solver timeout (seconds) used to generate the current run's data.
+# make_graphs sets this from the nightly config so graphs report the real timeout
+# (e.g. "30 s" for the default nightly, "5 min" for paper). Defaults to 5 minutes.
+_ILP_TIMEOUT_SECONDS = 5 * 60
+
+
+def set_ilp_timeout_seconds(seconds):
+  global _ILP_TIMEOUT_SECONDS
+  _ILP_TIMEOUT_SECONDS = int(seconds)
+
+
+def get_ilp_timeout_seconds():
+  return _ILP_TIMEOUT_SECONDS
+
+
+def format_timeout_label(seconds=None):
+  """Human-readable timeout, e.g. '5 min' or '30 s'."""
+  s = get_ilp_timeout_seconds() if seconds is None else int(seconds)
+  if s % 60 == 0:
+    return f"{s // 60} min"
+  return f"{s} s"
 
 # copied from chart.js
 COLOR_MAP = {
@@ -107,8 +128,13 @@ def get_row(data, benchmark_name, run_method):
       return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+# ILP extraction treatments whose timeouts/infeasibilities are drawn on the normalized
+# charts. The chart uses the Gurobi one when Gurobi is available and the CBC one otherwise.
+ILP_EXTRACTION_TREATMENTS = {"eggcc-tiger-ILP-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0"}
+
+
 def is_ilp_timeout(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
@@ -118,12 +144,26 @@ def is_ilp_timeout(data, benchmark_name, run_method):
 
 
 def is_ilp_infeasible(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
       return row["failed"] and ("ILP solver reported infeasibility" in row["error"])
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
+
+
+def has_run_cycles(data, benchmark_name, run_method):
+  """True if this benchmark+treatment produced a non-empty cycles list.
+
+  A treatment can fail without being a flagged region timeout or a reported
+  infeasibility -- e.g. ILP extraction exceeds the wall-clock timeout, so the eggcc
+  process is killed and no binary is produced (cycles == False). Charts must skip
+  such treatments instead of averaging an empty list."""
+  for row in data:
+    if row.get('benchmark') == benchmark_name and row.get('runMethod') == run_method:
+      cycles = row.get('cycles')
+      return isinstance(cycles, list) and len(cycles) > 0
+  return False
 
 def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
@@ -158,6 +198,40 @@ def all_region_extract_points(treatment, data, benchmarks):
       res = res + timings
 
   return res
+
+
+# The treatment that records per-region tiger/CBC/Gurobi timing samples.
+COMPARISON_TREATMENT = "eggcc-tiger-ILP-COMPARISON"
+
+
+def comparison_ran(data):
+  """True if the COMPARISON treatment produced any region-timing samples.
+
+  When true, tiger and CBC timing data are available for every sample, so all the
+  tiger-only and CBC graphs can be generated (regardless of Gurobi)."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    if row.get("extractRegionTimings"):
+      return True
+  return False
+
+
+def has_gurobi_ilp_data(data):
+  """True if any COMPARISON sample recorded a real Gurobi run.
+
+  Samples set ilp_ran=False when Gurobi was skipped (e.g. gurobi_cl not installed).
+  Older data predates the field, so a missing ilp_ran is treated as a Gurobi run."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    timings = row.get("extractRegionTimings")
+    if not timings:
+      continue
+    for sample in timings:
+      if sample.get("ilp_ran", True):
+        return True
+  return False
 
 
 def dedup(lst):

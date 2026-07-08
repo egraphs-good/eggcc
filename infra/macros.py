@@ -16,6 +16,17 @@ from graph_helpers import *
 def make_macros(profile, benchmark_suites, output_file):
   with open(output_file, 'a') as out:
     benchmarks = dedup([row["benchmark"] for row in profile])
+    # In non-paper runs the COMPARISON treatment can hit the wall-clock timeout and
+    # produce no region data (extractRegionTimings == False). Every macro below assumes
+    # a list of samples, so drop benchmarks whose comparison run produced no timings.
+    # In paper mode the comparison succeeds for all benchmarks, so this filters nothing.
+    comparison_ok = {
+      row["benchmark"]
+      for row in profile
+      if row.get("runMethod") == "eggcc-tiger-ILP-COMPARISON"
+      and isinstance(row.get("extractRegionTimings"), list)
+    }
+    benchmarks = [b for b in benchmarks if b in comparison_ok]
     benchmark_regions = {benchmark: 0 for benchmark in benchmarks}
     suite_region_counts = {}
     benchmark_suite_map = {}

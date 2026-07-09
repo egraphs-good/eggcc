@@ -7,7 +7,7 @@
 #
 # Usage:
 #   infra/setup_gurobi.sh [path/to/gurobi.lic]
-#   GUROBI_LICENSE_FILE=path/to/gurobi.lic infra/setup_gurobi.sh
+#   GRB_LICENSE_FILE=path/to/gurobi.lic infra/setup_gurobi.sh
 #   make gurobi-setup LICENSE=path/to/gurobi.lic
 #
 # With a path, the license is copied to ~/gurobi.lic (Gurobi's default search location)
@@ -16,7 +16,9 @@
 
 set -euo pipefail
 
-LICENSE_SRC="${1:-${GUROBI_LICENSE_FILE:-}}"
+# Source license path: positional arg, else the standard GRB_LICENSE_FILE that gurobi_cl
+# itself honors, else the legacy GUROBI_LICENSE_FILE as a fallback.
+LICENSE_SRC="${1:-${GRB_LICENSE_FILE:-${GUROBI_LICENSE_FILE:-}}}"
 DEST="$HOME/gurobi.lic"
 
 if ! command -v gurobi_cl >/dev/null 2>&1; then
@@ -39,6 +41,8 @@ if [ -n "$LICENSE_SRC" ]; then
   else
     echo "License already installed at $DEST."
   fi
+  # License files can contain sensitive credentials (e.g. WLS secrets); keep them private.
+  chmod 600 "$DEST"
   echo "(To keep the license elsewhere, set GRB_LICENSE_FILE in your shell profile instead.)"
 else
   echo "No license path given; verifying the license Gurobi already sees..."

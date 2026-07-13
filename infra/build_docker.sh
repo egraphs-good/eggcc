@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build the eggcc artifact container image (OOPSLA/SPLASH artifact evaluation).
-# The Docker counterpart to build_vm.sh; see infra/Dockerfile and infra/BUILDING.md.
+# Builds the image defined in infra/Dockerfile; see infra/BUILDING.md.
 #
 #   ./build_docker.sh [--tag TAG] [--ref REF] [--platforms LIST] [--push]
 #

@@ -4,10 +4,10 @@
 # eggcc artifact image (OOPSLA/SPLASH artifact evaluation).
 #
 # A self-contained Ubuntu 22.04 image that installs every dependency, clones and
-# builds eggcc, and reproduces the paper's figures. It mirrors infra/provision.sh
-# (the tested VM provisioning) minus the VM-only pieces (GNOME desktop, VirtualBox
-# guest tools): a container needs no graphical desktop -- reviewers view the
-# generated PDFs on the host through a bind-mounted output directory.
+# builds eggcc, and reproduces the paper's figures. It installs the same
+# dependencies as the project's install_ubuntu.sh and nightly (LLVM 18, CBC, Rust,
+# Python); it is headless -- reviewers view the generated PDFs on the host through a
+# bind-mounted output directory.
 #
 # Build + run instructions live in infra/build_docker.sh and infra/BUILDING.md.
 # Quick version:

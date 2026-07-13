@@ -36,6 +36,22 @@ infeasibility (CBC also times out on every PolyBench benchmark).
 > not the exact paper numbers; the figures state the timeout they used. §2 explains how to
 > run the full paper configuration on a large machine.
 
+## Running via Docker (alternative to the VM)
+
+If you'd rather not use VirtualBox, the same artifact also ships as a Docker image (building
+or pulling it is described in `infra/BUILDING.md`). Everything below is identical — run
+`reproduce.sh` inside the container with a host directory bind-mounted at `/out` to collect
+the figures:
+
+```bash
+mkdir -p out
+docker run --rm -it -v "$PWD/out:/out" eggcc-artifact ./reproduce.sh smoke   # ~5-10 min
+docker run --rm -it -v "$PWD/out:/out" eggcc-artifact ./reproduce.sh full    # ~3-4 h
+```
+
+The PDFs land in `./out` on your host; open them with your usual viewer. The image has no
+desktop — that is the only difference from the VM, where the figures pop open automatically.
+
 ## 1. Sanity check (~5–10 min)
 
 Open a terminal and run:
@@ -121,7 +137,8 @@ bug.
 └── eggcc/                        source
     ├── artifact/                 reproduce.sh, README.md (this file)
     ├── infra/                    nightly.py, graphs.py, plot_cdf.py, setup_gurobi.sh,
-    │                             build_vm.sh, provision.sh, BUILDING.md
+    │                             build_vm.sh, provision.sh, Dockerfile, build_docker.sh,
+    │                             BUILDING.md
     ├── dag_in_context/           egglog pipeline + Statewalk DP extractor (src/tiger/)
     └── benchmarks/passing/       benchmark suite (Bril, PolyBench, raytracer, Fenwick)
 ```

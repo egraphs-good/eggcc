@@ -14,13 +14,13 @@
 #                                headline CDF, the normalized performance bar charts
 #                                (bril/polybench/fenwick/raytrace), and the Fenwick chart.
 #   paper            hours     : the full paper configuration (100% of regions, more
-#                                samples). NOT feasible on the small VM -- see README
+#                                samples). NOT feasible on a laptop -- see README
 #                                ("Note on paper-scale runs"); use a large machine.
 #                                Uses Gurobi if a license is installed (infra/setup_gurobi.sh).
 #
-#   --out-dir DIR   copy the produced figures into DIR (the VM's ~/reproduce.sh passes
-#                   --out-dir "$HOME" so figures appear at the clean top level). Default:
-#                   leave them in nightly/output/paper/.
+#   --out-dir DIR   copy the produced figures into DIR (the container's /root/reproduce.sh
+#                   wrapper passes --out-dir /out so figures land on the bind-mounted host
+#                   directory). Default: leave them in nightly/output/paper/.
 #
 # The CDF plots, per regionalized e-graph, how long the fast Statewalk DP extractor takes
 # vs the optimal ILP extractor. Statewalk DP is orders of magnitude faster.
@@ -44,7 +44,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Use the pinned-dependency virtualenv created by provision.sh if present.
+# Use the pinned-dependency virtualenv at ~/.eggcc-venv if present (created at build time).
 PY="python3"
 if [ -x "$HOME/.eggcc-venv/bin/python3" ]; then
   PY="$HOME/.eggcc-venv/bin/python3"
@@ -70,8 +70,8 @@ case "$MODE" in
     ;;
   full)
     # No --no-gurobi: auto-detect. If a Gurobi license was installed (setup_gurobi.sh) the
-    # CDF gains a Gurobi curve; otherwise it is CBC-only. Either way it is VM-scale (1% of
-    # regions), so it is feasible on a few cores.
+    # CDF gains a Gurobi curve; otherwise it is CBC-only. Either way it is at the sampled
+    # scale (1% of regions), so it is feasible on a few cores.
     echo "[full] running the full nightly (~3-4 h; Gurobi if a license is installed, else CBC)..."
     bash infra/nightly.sh benchmarks/passing --local
     FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
@@ -106,7 +106,7 @@ else
 fi
 echo "================================================================"
 
-# Best-effort: pop the headline figure open in the VM's PDF viewer so it's impossible to miss.
+# Best-effort: if a display is available, pop the headline figure open in a PDF viewer.
 if [ -n "${DISPLAY:-}" ] && command -v xdg-open >/dev/null 2>&1 && [ "${#COPIED[@]}" -gt 0 ]; then
   xdg-open "${COPIED[0]}" >/dev/null 2>&1 &
 fi

@@ -7,7 +7,7 @@
 #                 [--iso-url URL] [--workdir DIR]
 #
 # It creates a VirtualBox VM (4 vCPUs / 8 GB RAM by default) and unattended-installs the
-# Ubuntu 22.04 *Server* ISO -- VirtualBox drives the server installer's autoinstall reliably,
+# Ubuntu 24.04 *Server* ISO -- VirtualBox drives the server installer's autoinstall reliably,
 # whereas the desktop ISO's newer installer often fails at VBoxManage's "prepare" step. It
 # then runs infra/provision.sh inside over SSH, which adds a minimal GNOME desktop (so the
 # VM is graphical for viewing PDFs), installs every dependency, builds eggcc, and
@@ -30,10 +30,10 @@ VM_NAME="eggcc-artifact"
 EGGCC_REF="oflatt-gurobi-optional"
 CPUS=4
 RAM_MB=8192
-DISK_MB=61440
+DISK_MB=40960
 SSH_PORT=2222
 PREGENERATE="full"
-ISO_URL="https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso"
+ISO_URL="https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 WORKDIR="$HOME/eggcc-artifact-build"
 VM_USER="eggcc"
 VM_PASS="eggcc"
@@ -67,7 +67,7 @@ PUBKEY="$(cat "$KEY.pub")"
 
 # 2. Create + configure the VM -----------------------------------------------------------
 if ! VBoxManage showvminfo "$VM_NAME" >/dev/null 2>&1; then
-  VBoxManage createvm --name "$VM_NAME" --ostype Ubuntu22_LTS_64 --register
+  VBoxManage createvm --name "$VM_NAME" --ostype Ubuntu24_LTS_64 --register
   VBoxManage createhd --filename "$WORKDIR/$VM_NAME.vdi" --size "$DISK_MB"
   VBoxManage storagectl "$VM_NAME" --name SATA --add sata --controller IntelAhci
   VBoxManage storageattach "$VM_NAME" --storagectl SATA --port 0 --device 0 --type hdd \

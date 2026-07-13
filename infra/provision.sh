@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Provision a fresh Ubuntu 22.04 (jammy) machine into the eggcc artifact:
+# Provision a fresh Ubuntu 24.04 (noble) or 22.04 (jammy) machine into the eggcc artifact:
 # installs every dependency, clones eggcc, builds it, and pre-generates the figures.
 # Designed to run unattended (all apt installs use -y). Safe to re-run.
 #
 # This is what infra/build_vm.sh runs inside the guest. You can also run it by hand on
-# any fresh Ubuntu 22.04 machine or VM:
+# any fresh Ubuntu 24.04 / 22.04 machine or VM:
 #
 #   bash provision.sh [--ref REF] [--repo URL] [--dir DIR] [--pregenerate full|smoke|none]
 #
@@ -58,7 +58,9 @@ fi
 # Mirrors install_ubuntu.sh but non-interactively, using a modern signed keyring.
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
   | sudo gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg
-echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" \
+# Match the LLVM repo to this machine's Ubuntu release (jammy=22.04, noble=24.04).
+LLVM_CODENAME="$(. /etc/os-release && echo "${VERSION_CODENAME:-jammy}")"
+echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/${LLVM_CODENAME}/ llvm-toolchain-${LLVM_CODENAME}-18 main" \
   | sudo tee /etc/apt/sources.list.d/llvm-18.list >/dev/null
 sudo apt-get update -y
 sudo apt-get install -y \

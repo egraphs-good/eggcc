@@ -21,7 +21,7 @@ cd infra
 ```
 
 `--pregenerate smoke` keeps the build fast — it skips the ~3–4 h CBC full run you'd just
-overwrite with the Gurobi run in step 2. `build_vm.sh` downloads the Ubuntu 22.04 **Server**
+overwrite with the Gurobi run in step 2. `build_vm.sh` downloads the Ubuntu 24.04 **Server**
 ISO (~2 GB) and unattended-installs it (VirtualBox drives the server installer reliably; the
 desktop ISO's newer installer fails at VBox's "prepare" step). It then provisions over SSH:
 `provision.sh` adds a minimal GNOME desktop so the VM is graphical, installs the deps, builds
@@ -71,7 +71,7 @@ Then submit `eggcc-artifact.ova` (e.g. upload to Zenodo for a DOI, then the AE H
 environment had no VirtualBox). If a `VBoxManage` step fails on your host, build the VM by
 hand instead:
 
-1. Create an Ubuntu 22.04 Desktop VM in the VirtualBox GUI (4 vCPUs, 8 GB RAM, 60 GB disk;
+1. Create an Ubuntu 24.04 Desktop VM in the VirtualBox GUI (4 vCPUs, 8 GB RAM, 40 GB disk;
    user `eggcc`).
 2. Inside the VM:
    ```bash

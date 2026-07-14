@@ -62,20 +62,25 @@ eggcc/artifact/reproduce.sh full --out-dir ~/reference   # ~3–4 h; tiger-vs-Gu
 Gurobi `full` run. (Provisioning pre-fills `~/reference/` with a CBC-only run; this
 overwrites it with the licensed one.)
 
-## 3. Export the appliance
+## 3. Export and package for submission
+
+Export the appliance, then bundle it with the host-side setup guide (as `README.md`) into a
+single zip for Zenodo:
 
 ```bash
-# on the Mac host:
+# on the Mac host (adjust the path to your eggcc checkout):
 VBoxManage export eggcc-artifact -o eggcc-artifact.ova
+
+mkdir -p eggcc-artifact
+cp eggcc-artifact.ova              eggcc-artifact/
+cp ~/eggcc/artifact/HOST_README.md eggcc-artifact/README.md
+zip -r eggcc-artifact.zip eggcc-artifact
 ```
 
-Then submit **both** files together (e.g. upload to Zenodo for a DOI, then the AE HotCRP):
-
-- `eggcc-artifact.ova`
-- `artifact/HOST_README.md` — upload it as **`README.md`** so it is the obvious first file
-  next to the OVA. It tells reviewers how to install VirtualBox, import the OVA, and log in,
-  then points them at the in-VM guide. (Reviewers can't read the in-VM `README.md` until
-  they've booted the VM, so this host-side one is required.)
+Upload `eggcc-artifact.zip` to Zenodo for a DOI, then submit the DOI to the AE HotCRP. The
+zip's `README.md` (the host-side setup guide) tells reviewers how to install VirtualBox,
+import the OVA, and log in, then points them at the in-VM guide. (Reviewers can't read the
+in-VM `README.md` until they've booted the VM, so this host-side one is required.)
 
 ## Manual fallback
 

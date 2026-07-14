@@ -386,6 +386,16 @@ def optimize(benchmark):
     failure_data["error"] = f'ILP timeout while extracting a region.'
     return failure_data
 
+  # ILP infeasibility is an EXPECTED outcome for some regions (e.g. CBC on every
+  # PolyBench benchmark; see artifact/README.md). Record it so the charts can classify it
+  # -- graph_helpers.is_ilp_infeasible() keys off this exact "ILP solver reported
+  # infeasibility" substring in the error field -- but keep the scary stderr dump off the
+  # console so reviewers don't mistake a normal result for a real failure.
+  if process.returncode != 0 and "ILP solver reported infeasibility" in process.stderr:
+    print(f'[{benchmark.index}/{benchmark.total}] {benchmark.name} ({benchmark.treatment}): ILP solver reported the region infeasible (expected for some benchmarks; recorded for the charts).', flush=True)
+    failure_data["error"] = f'Error running {cmd1}: {process.stderr}'
+    return failure_data
+
   if process.returncode != 0:
     print(f'[{benchmark.index}/{benchmark.total}] Error running {cmd1}: {process.stderr}', flush=True, file=sys.stderr)
     failure_data["error"] = f'Error running {cmd1}: {process.stderr}'

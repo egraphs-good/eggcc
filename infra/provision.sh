@@ -52,6 +52,27 @@ if ! command -v gnome-shell >/dev/null 2>&1; then
     || echo "WARNING: desktop install did not complete; the artifact still works over the CLI."
   # VirtualBox guest tools for auto screen-resize + host clipboard (best-effort; needs multiverse).
   sudo apt-get install -y virtualbox-guest-x11 || true
+
+  # Stop GNOME from blanking/locking the screen or auto-suspending, so a long reproduce.sh
+  # run never drops the reviewer to the login screen. Set as a system dconf default so it
+  # applies without a graphical session being active during provisioning.
+  sudo mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
+  if [ ! -f /etc/dconf/profile/user ]; then
+    printf 'user-db:user\nsystem-db:local\n' | sudo tee /etc/dconf/profile/user >/dev/null
+  fi
+  sudo tee /etc/dconf/db/local.d/00-eggcc-no-idle >/dev/null <<'DCONF'
+[org/gnome/desktop/session]
+idle-delay=uint32 0
+
+[org/gnome/desktop/screensaver]
+lock-enabled=false
+idle-activation-enabled=false
+
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'
+DCONF
+  sudo dconf update || true
 fi
 
 # --- LLVM 18 toolchain (eggcc requires clang-18 / opt-18 / llvm-config) -----------------
@@ -112,33 +133,17 @@ exec "$EGGCC_DIR/artifact/reproduce.sh" --out-dir "\$HOME" "\$@"
 WRAP
 chmod +x "$HOME/reproduce.sh"
 
-cat > "$HOME/README.md" <<'RM'
-# eggcc artifact — quick start
+# One README at the home top level: the artifact guide, which opens with a quick start.
+cp "$EGGCC_DIR/artifact/README.md" "$HOME/README.md"
 
-Open a terminal and run one of:
-
-    ./reproduce.sh smoke     # ~5-10 min : sanity check (3 benchmarks, CBC solver)
-    ./reproduce.sh full      # ~3-4 h    : whole benchmark suite (CBC solver)
-
-The figures are copied into THIS directory (your home folder):
-
-  - extraction-time-cdf.pdf              CDF of ILP vs Statewalk DP extraction times (headline)
-  - normalized-binary-perf-chart-*.pdf   performance bar charts (bril, polybench, fenwick, raytrace)
-  - fenwick-cycles-bar-chart.pdf         the Fenwick-tree case study
-
-(smoke writes a separate extraction-time-cdf-smoke.pdf and does not overwrite the above.)
-Double-click a PDF to view it. This VM already ships with the full figures generated.
-
-Full instructions (claim-by-claim guide, optional Gurobi, paper-scale runs) are in:
-    eggcc/artifact/README.md
-Source code for browsing / reuse is in:
-    eggcc/
-RM
-
-# --- Pre-generate the figures so the VM ships ready to view -----------------------------
-# Best-effort: a failure here does not fail provisioning (reviewers can run ~/reproduce.sh).
+# --- Pre-generate the reference figures so the VM ships ready to view -------------------
+# These go in ~/reference (the untouched "answer key"); the reviewer's own reproduce.sh runs
+# write alongside them in the home folder for comparison. Best-effort: a failure here does
+# not fail provisioning (reviewers can still run ~/reproduce.sh). Pass --pregenerate none to
+# skip this (e.g. when you hand-curate ~/reference for the shipped image).
 if [ "$PREGENERATE" != "none" ]; then
-  "$EGGCC_DIR/artifact/reproduce.sh" "$PREGENERATE" --out-dir "$HOME" \
+  mkdir -p "$HOME/reference"
+  "$EGGCC_DIR/artifact/reproduce.sh" "$PREGENERATE" --out-dir "$HOME/reference" \
     || echo "WARNING: pre-generation ($PREGENERATE) did not finish; run ~/reproduce.sh in the VM."
 fi
 
@@ -146,6 +151,7 @@ set +x
 echo ""
 echo "=========================================================================="
 echo " eggcc artifact provisioned in: $EGGCC_DIR  (ref: $EGGCC_REF)"
-echo " Home now contains README.md, reproduce.sh, eggcc/, and the generated figures."
+echo " Home now contains README.md (quick start at top), reproduce.sh, eggcc/, and"
+echo " reference/ (the pre-generated figures). Reviewer runs write figures into the home folder."
 echo " In the VM:  ./reproduce.sh smoke   (re-run the ~5-10 min sanity check)"
 echo "=========================================================================="

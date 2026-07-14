@@ -1,5 +1,21 @@
 # eggcc Artifact — "Efficient Extraction for Effectful E-Graphs"
 
+## Quick start
+
+In the VM, open a terminal and run:
+
+```bash
+./reproduce.sh smoke     # ~5–10 min : sanity check (3 benchmarks)
+./reproduce.sh full      # ~3–4 h    : the whole benchmark suite
+```
+
+Your figures land in this home folder; the authors' pre-generated versions are in
+`~/reference/` to compare against. The authors' figures are already there, so you can open
+`~/reference/` right now to see the expected results. The rest of this file is the full,
+claim-by-claim guide (VM notes, optional Gurobi, paper-scale runs, reusability).
+
+---
+
 This artifact supports the paper *Efficient Extraction for Effectful E-Graphs*. The paper
 introduces **Statewalk DP**, an extraction algorithm for effectful e-graphs that enforces
 effect ordering **without an external ILP solver**. It is implemented in **eggcc**, an
@@ -22,12 +38,13 @@ infeasibility (CBC also times out on every PolyBench benchmark).
 
 ## The VM
 
-- **Host:** VirtualBox 7.2+ (free; macOS/ARM and Windows/ARM supported). Import
-  `eggcc-artifact.ova` and start it.
+- **Host:** VirtualBox 7.2+ (free; macOS/ARM and Windows/ARM supported). If you haven't
+  imported the VM yet, see the host-side setup guide shipped next to `eggcc-artifact.ova`.
 - **Guest:** Ubuntu 22.04 Desktop, 4 vCPUs / 8 GB RAM. Login `eggcc` / `eggcc`.
-- **Your home folder is the workspace.** It holds only: `README.md` (a short quick start),
-  `reproduce.sh`, the source in `eggcc/`, and the **figures** — already generated, so you
-  can open them right away.
+- **In your home folder** you'll find `README.md` (this guide, quick start at the top),
+  `reproduce.sh`, the source in `eggcc/`, and `reference/` — the authors' pre-generated
+  figures, ready to open right away. Running `reproduce.sh` writes *your* figures into the
+  home folder next to `reference/`, so you can compare against it (see below).
 
 > **Scale.** The paper ran on a 100+-core AMD EPYC (512 GB), timing **100 % of regions**
 > with a **5-minute** per-region ILP timeout. That is not feasible on a small VM, so the
@@ -44,11 +61,10 @@ Open a terminal and run:
 ./reproduce.sh smoke
 ```
 
-This profiles three small benchmarks with CBC and writes `~/extraction-time-cdf-smoke.pdf`
-(a separate file, so the shipped figures are untouched); it opens automatically. **Statewalk
-DP** is bunched at the far left and **CBC** far to the right — Statewalk DP is dramatically
-faster. Three benchmarks make a coarse plot; the shipped `~/extraction-time-cdf.pdf` is the
-full one.
+This profiles three small benchmarks with CBC and writes `~/extraction-time-cdf-smoke.pdf`;
+it opens automatically. **Statewalk DP** is bunched at the far left and **CBC** far to the
+right — Statewalk DP is dramatically faster. Three benchmarks make a coarse plot; the full
+version ships in `~/reference/extraction-time-cdf.pdf`.
 
 ## 2. Full reproduction (~3–4 h)
 
@@ -57,7 +73,7 @@ full one.
 ```
 
 Runs the whole benchmark suite (64 Bril + 30 PolyBench + a raytracer, as in the paper) and
-refreshes these figures in your home folder:
+writes these figures into your home folder:
 
 - `extraction-time-cdf.pdf` — **RQ1**, paper Fig. 7. Statewalk DP is sub-millisecond;
   CBC/ILP is orders of magnitude slower with a run of points at the timeout.
@@ -65,6 +81,11 @@ refreshes these figures in your home folder:
   two by the 5 outlier benchmarks, as in the paper).
 - `normalized-binary-perf-chart-polybench.pdf` — **RQ2**, paper Fig. 11.
 - `fenwick-cycles-bar-chart.pdf` — **RQ3**, the Hacker's-Delight Fenwick-tree case study.
+
+These land in your home folder, next to the authors' pre-generated set in `~/reference/`, so
+open the two side by side to compare — e.g. `~/extraction-time-cdf.pdf` against
+`~/reference/extraction-time-cdf.pdf`. The shapes should match (see §3); exact numbers will
+not, since both are 1 %-of-regions samples with their own random draw.
 
 (The other paper figures — ILP encoding size (Fig. 6), statewalk-width distribution
 (Fig. 8), and runtime-vs-statewalk-width scaling (Fig. 9) — are also written to
@@ -98,7 +119,8 @@ timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks
 | RQ3: domain-specific optimization | `./reproduce.sh full` | `fenwick-cycles-bar-chart.pdf` — EQCC-DP (with Hacker's-Delight rules) well below the LLVM and no-hacker bars |
 
 A run is valid if it completes and writes the PDFs; a crash/panic or an empty figure is a
-bug.
+bug. Each expected result above is also shipped as a graph in `~/reference/`, so you can
+compare your freshly generated figure against the authors' side by side.
 
 ## 4. Reusability
 
@@ -115,9 +137,11 @@ bug.
 
 ```
 ~/
-├── README.md                     short quick start
-├── reproduce.sh                  smoke | full   →   figures land here
+├── README.md                     this guide (quick start at the top; = eggcc/artifact/README.md)
+├── reproduce.sh                  smoke | full   →   your figures land here
 ├── extraction-time-cdf.pdf, normalized-binary-perf-chart-*.pdf, fenwick-cycles-bar-chart.pdf
+│                                 (YOUR figures — appear here after you run reproduce.sh)
+├── reference/                    the authors' pre-generated figures, to compare against
 └── eggcc/                        source
     ├── artifact/                 reproduce.sh, README.md (this file)
     ├── infra/                    nightly.py, graphs.py, plot_cdf.py, setup_gurobi.sh,

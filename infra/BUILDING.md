@@ -1,7 +1,8 @@
 # Building and shipping the eggcc artifact VM
 
 Author-facing guide for producing `eggcc-artifact.ova` on a macOS host. Reviewers don't need
-this — they just import and run the VM (see `README.md`).
+this — they import and run the VM following the host-side setup guide
+(`artifact/HOST_README.md`, shipped next to the OVA), then the in-VM `README.md`.
 
 ## 0. Prerequisites
 
@@ -53,8 +54,13 @@ reviewer would:
 ```bash
 # in the VM — drop your gurobi.lic in the home folder first:
 eggcc/infra/setup_gurobi.sh ~/gurobi.lic
-./reproduce.sh full          # ~3–4 h; the tiger-vs-Gurobi-vs-CBC figures land in ~/
+# write the reference figures straight into ~/reference (the shipped "answer key"):
+eggcc/artifact/reproduce.sh full --out-dir ~/reference   # ~3–4 h; tiger-vs-Gurobi-vs-CBC
 ```
+
+`~/reference/` is what reviewers compare their own runs against, so it should hold this
+Gurobi `full` run. (Provisioning pre-fills `~/reference/` with a CBC-only run; this
+overwrites it with the licensed one.)
 
 ## 3. Export the appliance
 
@@ -63,7 +69,13 @@ eggcc/infra/setup_gurobi.sh ~/gurobi.lic
 VBoxManage export eggcc-artifact -o eggcc-artifact.ova
 ```
 
-Then submit `eggcc-artifact.ova` (e.g. upload to Zenodo for a DOI, then the AE HotCRP).
+Then submit **both** files together (e.g. upload to Zenodo for a DOI, then the AE HotCRP):
+
+- `eggcc-artifact.ova`
+- `artifact/HOST_README.md` — upload it as **`README.md`** so it is the obvious first file
+  next to the OVA. It tells reviewers how to install VirtualBox, import the OVA, and log in,
+  then points them at the in-VM guide. (Reviewers can't read the in-VM `README.md` until
+  they've booted the VM, so this host-side one is required.)
 
 ## Manual fallback
 

@@ -45,9 +45,14 @@ while [ $# -gt 0 ]; do
 done
 
 # Use the pinned-dependency virtualenv created by provision.sh if present.
+# Put it on PATH too, so the `full`/`paper` modes -- which delegate to nightly.sh ->
+# nightly.py (run via its `#!/usr/bin/env python3` shebang) and its python3 subprocesses --
+# also resolve to the venv rather than the system Python (which lacks matplotlib et al.).
 PY="python3"
 if [ -x "$HOME/.eggcc-venv/bin/python3" ]; then
   PY="$HOME/.eggcc-venv/bin/python3"
+  export PATH="$HOME/.eggcc-venv/bin:$PATH"
+  export VIRTUAL_ENV="$HOME/.eggcc-venv"
 fi
 
 PAPER="$REPO_ROOT/nightly/output/paper"

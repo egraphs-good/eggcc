@@ -104,7 +104,7 @@ def summarize_row(row):
     return format_cycles_with_stddev(mean(row["cycles"]), stddev_cycles(row["cycles"]))
 
 
-COMPACT_METHODS = ["llvm-O0-O0", "eggcc-tiger-O0-O0", "llvm-O3-O0"]
+COMPACT_METHODS = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 
 def _make_compact_data_for_benchmarks(data, benchmarks):

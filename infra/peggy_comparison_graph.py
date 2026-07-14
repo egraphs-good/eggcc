@@ -7,7 +7,7 @@ import json
 def get_eggcc_df(profile_data):
     result = []
     for run in profile_data:
-        if run['runMethod'] == 'eggcc-tiger-O0-O0' or run['runMethod'] == 'eggcc-tiger-ILP-O0-O0':
+        if run['runMethod'] == 'eggcc-O0-O0' or run['runMethod'] == 'eggcc-tiger-ILP-O0-O0':
             bril_file = run['path']
             eggcc_time = run['eggccCompileTimeSecs']
             extraction_time = run['eggccExtractionTimeSecs']
@@ -66,7 +66,7 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         ax=axs,
         eggcc_color="blue",
         ilp_color="green",
-        eggcc='eggcc-tiger-O0-O0',
+        eggcc='eggcc-O0-O0',
         ilp='eggcc-tiger-ILP-O0-O0',
         label_eggcc="Statewalk DP",
         label_ilp="ILP",

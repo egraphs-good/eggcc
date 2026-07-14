@@ -98,7 +98,7 @@ class StatewalkTreatment:
     if self.runtime == "tiger":
       if self.liveness_on and self.satellite_on:
         return COLOR_MAP.get("eggcc-tiger-WL-O0-O0", "magenta")
-      return COLOR_MAP.get("eggcc-tiger-O0-O0", "blue")
+      return COLOR_MAP.get("eggcc-O0-O0", "blue")
     if self.runtime == "ilp_gurobi":
       return COLOR_MAP.get("eggcc-tiger-ILP-O0-O0", "green")
     if self.runtime == "ilp_cbc":

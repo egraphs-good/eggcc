@@ -765,7 +765,8 @@ def to_paper_names_treatment(treatment):
   if treatment == 'llvm-O3-O0':
     return 'LLVM-O3-O0'
   if treatment == 'eggcc-O0-O0':
-    return 'EQCC-O0-O0'
+    # eggcc-O0-O0 is the default (Statewalk DP) extraction; keep the DP paper label.
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-O3-O0':
     return 'EQCC-O3-O0'
   if treatment == 'eggcc-ablation-O0-O0':
@@ -794,8 +795,6 @@ def to_paper_names_treatment(treatment):
   if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
     # not talking about context in the paper
     return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
-  if treatment == 'eggcc-tiger-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-WL-O0-O0':
     return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
@@ -1073,11 +1072,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
         width = 6
         height = 5.0
 
-      chart_treatments = ["eggcc-tiger-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
+      chart_treatments = ["eggcc-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
 
       if suite == "bril":
-        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
-        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
+        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") <= 3.0]
+        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") > 3.0]
 
         make_normalized_chart(
           profile_for_suite,

@@ -27,7 +27,7 @@ artifact reproduces:
 
 | RQ | Claim | Figure (paper) | Artifact figure |
 |----|-------|----------------|-----------------|
-| **RQ1** | Statewalk DP is far faster than ILP extraction (paper: **520× vs Gurobi**; ILP times out on all 30 PolyBench and 17 Bril benchmarks) | Fig. 7 | `extraction-time-cdf.pdf` |
+| **RQ1** | Statewalk DP is far faster than ILP extraction (paper: **520× vs Gurobi**, with ILP routinely hitting the extraction timeout) | Fig. 7 | `extraction-time-cdf.pdf` |
 | **RQ2** | eggcc's extracted code is comparable to LLVM (and to ILP-extracted code) | Fig. 10 (Bril), Fig. 11 (PolyBench) | `normalized-binary-perf-chart-{under3,over3}-bril.pdf`, `-polybench.pdf` |
 | **RQ3** | Statewalk DP enables domain-specific effectful optimizations (Hacker's-Delight `lowbit` on a Fenwick tree: **6.52× vs LLVM-O3-O3**) | §8.3 | `fenwick-cycles-bar-chart.pdf` |
 
@@ -75,8 +75,9 @@ version ships in `~/reference/extraction-time-cdf.pdf`.
 Runs the whole benchmark suite (64 Bril + 30 PolyBench + a raytracer, as in the paper) and
 writes these figures into your home folder:
 
-- `extraction-time-cdf.pdf` — **RQ1**, paper Fig. 7. Statewalk DP is sub-millisecond;
-  CBC/ILP is orders of magnitude slower with a run of points at the timeout.
+- `extraction-time-cdf.pdf` — **RQ1**, paper Fig. 7. Confirm the shape: the Statewalk DP
+  curve sits at the far left (sub-millisecond) while the CBC/ILP curve is orders of magnitude
+  to the right, with a run of points pinned at the timeout (ILP failing to extract in time).
 - `normalized-binary-perf-chart-{under3,over3}-bril.pdf` — **RQ2**, paper Fig. 10 (split in
   two by the 5 outlier benchmarks, as in the paper).
 - `normalized-binary-perf-chart-polybench.pdf` — **RQ2**, paper Fig. 11.

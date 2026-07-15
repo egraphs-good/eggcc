@@ -49,12 +49,14 @@ the ISO.)
 ## 2. Generate the shipped figures (with Gurobi) inside the VM
 
 Provisioning already pre-filled `~/reference/` with the default **CBC** `full` run — that is
-what most reviewers reproduce. Add the paper's **Gurobi** run under `~/reference/gurobi/`,
-produced *in the VM* with a license exactly as a licensed reviewer would:
+what most reviewers reproduce — and installed the **Gurobi solver** (unlicensed). Add your own
+license and produce the paper's **Gurobi** run under `~/reference/gurobi/`, exactly as a
+licensed reviewer would (see the README's "Optional — Gurobi" for the `grbgetkey` flow):
 
 ```bash
-# in the VM — drop your gurobi.lic in the home folder first:
-eggcc/infra/setup_gurobi.sh ~/gurobi.lic
+# in the VM — activate your academic license (writes ~/gurobi.lic), then:
+grbgetkey <YOUR-KEY>                    # or drop a gurobi.lic in the home folder
+eggcc/infra/setup_gurobi.sh            # verifies Gurobi is licensed
 mkdir -p ~/reference/gurobi
 eggcc/artifact/reproduce.sh full --out-dir ~/reference/gurobi   # ~3–4 h; tiger-vs-Gurobi-vs-CBC
 ```
@@ -63,10 +65,23 @@ So the shipped VM has `~/reference/` (CBC, matches the default run) and `~/refer
 (the paper's Gurobi comparison, plus a few Gurobi-only figures). Reviewers compare their own
 run against whichever matches how they ran `reproduce.sh`.
 
+> **Remove your license before exporting.** Your `~/gurobi.lic` is a personal academic
+> credential — it must not ship in the OVA. Delete it before step 3:
+> `rm -f ~/gurobi.lic`. (The Gurobi *solver* install is fine to ship; only the license is
+> personal.)
+
 ## 3. Export and package for submission
 
-Export the appliance, then bundle it with the host-side setup guide (as `README.md`) into a
-single zip for Zenodo:
+First, **in the VM**, remove your personal Gurobi license so it isn't distributed, then shut
+the VM down:
+
+```bash
+rm -f ~/gurobi.lic      # in the VM — do NOT ship your academic license
+sudo poweroff
+```
+
+Then, on the host, export the appliance and bundle it with the host-side setup guide (as
+`README.md`) into a single zip for Zenodo:
 
 ```bash
 # on the Mac host (adjust the path to your eggcc checkout):

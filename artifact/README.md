@@ -96,19 +96,34 @@ Gurobi, compare against `~/reference/gurobi/` instead — see below.)
 Exact times vary with the host and the random region sample; the order-of-magnitude gap is
 stable. ILP timeouts are expected, not failures.
 
-**Optional — Gurobi (the paper's solver).** Install a (free academic) license, then re-run:
+**Optional — Gurobi (the paper's solver).** The 520× headline is specifically vs Gurobi,
+which is commercial but **free for academics**. The Gurobi solver is already installed in the
+VM — you only need to add a license. Do it *inside the VM* so there's no host↔guest file
+copying (VirtualBox copy-paste is unreliable):
 
-```bash
-eggcc/infra/setup_gurobi.sh /path/to/gurobi.lic
-./reproduce.sh full
-```
+1. **Get a license.** In the VM's web browser (Firefox), sign in at
+   <https://portal.gurobi.com/> and request a free **academic** license. Gurobi gives you a
+   one-line `grbgetkey <KEY>` command for it.
+2. **Activate it in the VM.** Paste that command into a terminal — it writes `~/gurobi.lic`:
+   ```bash
+   grbgetkey <YOUR-KEY>
+   ```
+   (If your license comes as a `gurobi.lic` file instead, just download it in the VM's
+   browser; it lands in `~/Downloads`.)
+3. **Verify and run:**
+   ```bash
+   eggcc/infra/setup_gurobi.sh            # or: eggcc/infra/setup_gurobi.sh ~/Downloads/gurobi.lic
+   ./reproduce.sh full
+   ```
 
-`full` auto-detects the license and adds a **Gurobi** curve to the CDF (Statewalk DP vs
-Gurobi vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matching
-the paper. It stays VM-scale, so it runs on a few cores. Compare this run against the authors'
-Gurobi set in `~/reference/gurobi/` (the default `~/reference/` is the CBC run). The Gurobi
-run also produces a couple of extra figures that the CBC run doesn't (e.g.
-`egraph-size-vs-ILP-time.pdf`).
+`full` auto-detects the license and adds a **Gurobi** curve to the CDF (Statewalk DP vs Gurobi
+vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matching the
+paper. Compare this run against the authors' Gurobi set in `~/reference/gurobi/` (the default
+`~/reference/` is the CBC run). The Gurobi run also produces a couple of extra figures the CBC
+run doesn't (e.g. `egraph-size-vs-ILP-time.pdf`).
+
+If `grbgetkey` fails to validate (academic licenses check your network), see
+<https://support.gurobi.com/hc/en-us/articles/360040113232>.
 
 **Paper-scale runs.** For the paper's exact configuration (100 % of regions, 5-minute
 timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks/passing
@@ -120,7 +135,7 @@ timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks
 |-------|----------------|--------------------------|
 | RQ1: Statewalk DP ≫ faster than ILP | `./reproduce.sh full` | `extraction-time-cdf.pdf` — Statewalk DP curve far left of the CBC/ILP curve; ILP hits the timeout |
 | RQ1 vs Gurobi (paper's 520×) | install Gurobi, `./reproduce.sh full` | CDF gains a Gurobi curve, also far right of Statewalk DP (compare against `~/reference/gurobi/`) |
-| RQ2: output at par with ILP, comparable to LLVM | `./reproduce.sh full` | `normalized-binary-perf-chart-*.pdf` — EQCC-DP tracks EQCC-GUROBI and is close to the LLVM-O3-O0 baseline (1.0) |
+| RQ2: output at par with ILP, comparable to LLVM | `./reproduce.sh full` | `normalized-binary-perf-chart-*.pdf` — EQCC-DP is close to the LLVM-O3-O0 baseline (1.0) and tracks the ILP-extracted bar (CBC by default; EQCC-GUROBI with a license) |
 | RQ3: domain-specific optimization | `./reproduce.sh full` | `fenwick-cycles-bar-chart.pdf` — EQCC-DP (with Hacker's-Delight rules) well below the LLVM and no-hacker bars |
 
 A run is valid if it completes and writes the PDFs; a crash/panic or an empty figure is a

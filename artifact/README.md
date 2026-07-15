@@ -12,7 +12,7 @@ In the VM, open a terminal and run:
 Your figures land in this home folder; the authors' pre-generated versions are in
 `~/reference/` to compare against. The authors' figures are already there, so you can open
 `~/reference/` right now to see the expected results. The rest of this file is the full,
-claim-by-claim guide (VM notes, optional Gurobi, paper-scale runs, reusability).
+claim-by-claim guide (VM notes, optional Gurobi, paper-scale runs).
 
 ---
 
@@ -83,10 +83,11 @@ writes these figures into your home folder:
 - `normalized-binary-perf-chart-polybench.pdf` — **RQ2**, paper Fig. 11.
 - `fenwick-cycles-bar-chart.pdf` — **RQ3**, the Hacker's-Delight Fenwick-tree case study.
 
-These land in your home folder, next to the authors' pre-generated set in `~/reference/`, so
-open the two side by side to compare — e.g. `~/extraction-time-cdf.pdf` against
+These land in your home folder, next to the authors' pre-generated CBC run in `~/reference/`,
+so open the two side by side to compare — e.g. `~/extraction-time-cdf.pdf` against
 `~/reference/extraction-time-cdf.pdf`. The shapes should match (see §3); exact numbers will
-not, since both are 1 %-of-regions samples with their own random draw.
+not, since both are 1 %-of-regions samples with their own random draw. (If you ran with
+Gurobi, compare against `~/reference/gurobi/` instead — see below.)
 
 (The other paper figures — ILP encoding size (Fig. 6), statewalk-width distribution
 (Fig. 8), and runtime-vs-statewalk-width scaling (Fig. 9) — are also written to
@@ -104,7 +105,10 @@ eggcc/infra/setup_gurobi.sh /path/to/gurobi.lic
 
 `full` auto-detects the license and adds a **Gurobi** curve to the CDF (Statewalk DP vs
 Gurobi vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matching
-the paper. It stays VM-scale, so it runs on a few cores.
+the paper. It stays VM-scale, so it runs on a few cores. Compare this run against the authors'
+Gurobi set in `~/reference/gurobi/` (the default `~/reference/` is the CBC run). The Gurobi
+run also produces a couple of extra figures that the CBC run doesn't (e.g.
+`egraph-size-vs-ILP-time.pdf`).
 
 **Paper-scale runs.** For the paper's exact configuration (100 % of regions, 5-minute
 timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks/passing
@@ -115,7 +119,7 @@ timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks
 | Claim | Reproduce with | Figure — expected result |
 |-------|----------------|--------------------------|
 | RQ1: Statewalk DP ≫ faster than ILP | `./reproduce.sh full` | `extraction-time-cdf.pdf` — Statewalk DP curve far left of the CBC/ILP curve; ILP hits the timeout |
-| RQ1 vs Gurobi (paper's 520×) | install Gurobi, `./reproduce.sh full` | CDF gains a Gurobi curve, also far right of Statewalk DP |
+| RQ1 vs Gurobi (paper's 520×) | install Gurobi, `./reproduce.sh full` | CDF gains a Gurobi curve, also far right of Statewalk DP (compare against `~/reference/gurobi/`) |
 | RQ2: output at par with ILP, comparable to LLVM | `./reproduce.sh full` | `normalized-binary-perf-chart-*.pdf` — EQCC-DP tracks EQCC-GUROBI and is close to the LLVM-O3-O0 baseline (1.0) |
 | RQ3: domain-specific optimization | `./reproduce.sh full` | `fenwick-cycles-bar-chart.pdf` — EQCC-DP (with Hacker's-Delight rules) well below the LLVM and no-hacker bars |
 
@@ -123,18 +127,7 @@ A run is valid if it completes and writes the PDFs; a crash/panic or an empty fi
 bug. Each expected result above is also shipped as a graph in `~/reference/`, so you can
 compare your freshly generated figure against the authors' side by side.
 
-## 4. Reusability
-
-- **Run on your own program:** `cd eggcc && cargo run --release -- <file.bril> --run-mode
-  optimize` (`--tiger-ilp` uses the ILP extractor instead of Statewalk DP, `--ilp-solver
-  cbc|gurobi`, `--ilp-timeout-seconds N`).
-- **Add benchmarks:** put `.bril`/`.rs` files under `eggcc/benchmarks/passing/<suite>/`.
-- **Key code:** the Statewalk DP extractor is `eggcc/dag_in_context/src/tiger/`; the
-  compiler pipeline is `eggcc/dag_in_context/` and `eggcc/src/`; the measurement/plotting
-  harness is `eggcc/infra/`.
-- **License:** open source (`eggcc/LICENSE`). **Requires LLVM 18.**
-
-## 5. Layout
+## 4. Layout
 
 ```
 ~/
@@ -142,7 +135,8 @@ compare your freshly generated figure against the authors' side by side.
 ├── reproduce.sh                  smoke | full   →   your figures land here
 ├── extraction-time-cdf.pdf, normalized-binary-perf-chart-*.pdf, fenwick-cycles-bar-chart.pdf
 │                                 (YOUR figures — appear here after you run reproduce.sh)
-├── reference/                    the authors' pre-generated figures, to compare against
+├── reference/                    the authors' pre-generated CBC run (matches the default run)
+│   └── gurobi/                   the authors' Gurobi run (matches a Gurobi run; a few extra figures)
 └── eggcc/                        source
     ├── artifact/                 reproduce.sh, README.md (this file)
     ├── infra/                    nightly.py, graphs.py, plot_cdf.py, setup_gurobi.sh,

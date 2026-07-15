@@ -48,19 +48,20 @@ the ISO.)
 
 ## 2. Generate the shipped figures (with Gurobi) inside the VM
 
-The reference figures are produced *in the VM* with a Gurobi license, exactly as a licensed
-reviewer would:
+Provisioning already pre-filled `~/reference/` with the default **CBC** `full` run — that is
+what most reviewers reproduce. Add the paper's **Gurobi** run under `~/reference/gurobi/`,
+produced *in the VM* with a license exactly as a licensed reviewer would:
 
 ```bash
 # in the VM — drop your gurobi.lic in the home folder first:
 eggcc/infra/setup_gurobi.sh ~/gurobi.lic
-# write the reference figures straight into ~/reference (the shipped "answer key"):
-eggcc/artifact/reproduce.sh full --out-dir ~/reference   # ~3–4 h; tiger-vs-Gurobi-vs-CBC
+mkdir -p ~/reference/gurobi
+eggcc/artifact/reproduce.sh full --out-dir ~/reference/gurobi   # ~3–4 h; tiger-vs-Gurobi-vs-CBC
 ```
 
-`~/reference/` is what reviewers compare their own runs against, so it should hold this
-Gurobi `full` run. (Provisioning pre-fills `~/reference/` with a CBC-only run; this
-overwrites it with the licensed one.)
+So the shipped VM has `~/reference/` (CBC, matches the default run) and `~/reference/gurobi/`
+(the paper's Gurobi comparison, plus a few Gurobi-only figures). Reviewers compare their own
+run against whichever matches how they ran `reproduce.sh`.
 
 ## 3. Export and package for submission
 

@@ -32,6 +32,24 @@ done
 
 export DEBIAN_FRONTEND=noninteractive
 
+# --- Self-heal a stale VM clock before touching apt -------------------------------------
+# A VM restored from an old snapshot/export can boot with its clock in the past, which makes
+# apt reject repo metadata as "not valid yet" (e.g. "<suite>/InRelease is not valid yet") and
+# aborts provisioning at the first apt-get update. Enable NTP and give it a moment to correct.
+# Best-effort: this never fails provisioning (if there is no network to sync from, we proceed
+# and apt will surface the real problem).
+if command -v timedatectl >/dev/null 2>&1; then
+  sudo timedatectl set-ntp true || true
+  sudo systemctl restart systemd-timesyncd 2>/dev/null || true
+  # Wait up to ~30s for the clock to actually sync before proceeding.
+  for _ in $(seq 1 15); do
+    if [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = "yes" ]; then
+      break
+    fi
+    sleep 2
+  done
+fi
+
 sudo apt-get update -y
 # Base tooling: git/curl to fetch things, graphviz (`dot`) for CFGs, evince to view the
 # result PDF, python for graph generation.

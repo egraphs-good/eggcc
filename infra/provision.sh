@@ -88,15 +88,28 @@ if ! command -v gnome-shell >/dev/null 2>&1; then
     || echo "WARNING: desktop install did not complete; the artifact still works over the CLI."
   # VirtualBox guest tools for auto screen-resize + host clipboard (best-effort; needs multiverse).
   sudo apt-get install -y virtualbox-guest-x11 || true
+fi
 
-  # Stop GNOME from blanking/locking the screen or auto-suspending, so a long reproduce.sh
-  # run never drops the reviewer to the login screen. Set as a system dconf default so it
-  # applies without a graphical session being active during provisioning.
+# Configure the desktop whenever one is present -- this runs both on the fresh install above
+# AND on a re-provision of an existing VM. (The install block is guarded on gnome-shell being
+# ABSENT, so this config must live outside it, or re-runs would silently skip it.)
+if command -v gnome-shell >/dev/null 2>&1; then
+  # gnome-terminal because ubuntu-desktop-minimal may omit it, and the quick start tells
+  # reviewers to "open a terminal".
+  sudo apt-get install -y gnome-terminal || true
+
+  # System dconf defaults for the reviewer's desktop (applied at login; no graphical session
+  # needed at provision time, unlike `gsettings`):
+  #   - never blank/lock the screen or auto-suspend, so a long reproduce.sh run doesn't drop
+  #     the reviewer to the login screen;
+  #   - pin the apps the artifact actually uses to the dock (Terminal first, then Files for
+  #     browsing ~/reference, Evince for the PDFs, Firefox for the optional Gurobi license).
+  #     Unknown/uninstalled .desktop ids are simply ignored by GNOME.
   sudo mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
   if [ ! -f /etc/dconf/profile/user ]; then
     printf 'user-db:user\nsystem-db:local\n' | sudo tee /etc/dconf/profile/user >/dev/null
   fi
-  sudo tee /etc/dconf/db/local.d/00-eggcc-no-idle >/dev/null <<'DCONF'
+  sudo tee /etc/dconf/db/local.d/00-eggcc-desktop >/dev/null <<'DCONF'
 [org/gnome/desktop/session]
 idle-delay=uint32 0
 
@@ -107,7 +120,12 @@ idle-activation-enabled=false
 [org/gnome/settings-daemon/plugins/power]
 sleep-inactive-ac-type='nothing'
 sleep-inactive-battery-type='nothing'
+
+[org/gnome/shell]
+favorite-apps=['org.gnome.Terminal.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Evince.desktop', 'firefox_firefox.desktop']
 DCONF
+  # Remove the old filename from earlier builds so it doesn't linger with stale settings.
+  sudo rm -f /etc/dconf/db/local.d/00-eggcc-no-idle
   sudo dconf update || true
 fi
 

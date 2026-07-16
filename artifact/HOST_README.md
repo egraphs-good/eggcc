@@ -17,7 +17,7 @@ the VM.** It supports the paper *Efficient Extraction for Effectful E-Graphs*.
    `eggcc-artifact.ova`, accept the defaults, and click **Import**.
    (Command-line equivalent: `VBoxManage import eggcc-artifact.ova`.)
 2. Select the **eggcc-artifact** VM and click **Start**.
-3. Log in: user **`eggcc`**, password **`eggcc`**.
+3. Log in: user **`artifact`**, password **`artifact`**.
 
 ## Then follow the in-VM guide
 

@@ -35,8 +35,8 @@ SSH_PORT=2222
 PREGENERATE="full"
 ISO_URL="https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso"
 WORKDIR="$HOME/eggcc-artifact-build"
-VM_USER="eggcc"
-VM_PASS="eggcc"
+VM_USER="artifact"
+VM_PASS="artifact"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -89,7 +89,7 @@ POST_INSTALL="apt-get update && apt-get install -y openssh-server && \
 echo "Installing Ubuntu unattended (this reboots the VM a couple of times)..."
 VBoxManage unattended install "$VM_NAME" \
   --iso="$ISO_PATH" \
-  --user="$VM_USER" --password="$VM_PASS" --full-user-name="eggcc artifact" \
+  --user="$VM_USER" --password="$VM_PASS" --full-user-name="eggcc artifact user" \
   --locale=en_US --country=US --time-zone=UTC \
   --post-install-command="$POST_INSTALL" \
   --start-vm=gui

@@ -26,7 +26,7 @@ overwrite with the Gurobi run in step 2. `build_vm.sh` downloads the Ubuntu 22.0
 ISO (~2 GB) and unattended-installs it (VirtualBox drives the server installer reliably; the
 desktop ISO's newer installer fails at VBox's "prepare" step). It then provisions over SSH:
 `provision.sh` adds a minimal GNOME desktop so the VM is graphical, installs the deps, builds
-eggcc, and runs the smoke check. Expect ~1 hour. Login: `eggcc` / `eggcc`.
+eggcc, and runs the smoke check. Expect ~1 hour. Login: `artifact` / `artifact`.
 
 Flags: `--cpus`, `--ram`, `--disk`, `--ssh-port`, `--ref`, `--pregenerate full|smoke|none`,
 `--iso-url`, `--workdir`.
@@ -105,7 +105,7 @@ environment had no VirtualBox). If a `VBoxManage` step fails on your host, build
 hand instead:
 
 1. Create an Ubuntu 22.04 Desktop VM in the VirtualBox GUI (4 vCPUs, 8 GB RAM, 60 GB disk;
-   user `eggcc`).
+   user `artifact` / password `artifact`).
 2. Inside the VM:
    ```bash
    sudo apt-get update && sudo apt-get install -y git

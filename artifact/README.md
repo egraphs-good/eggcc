@@ -40,7 +40,7 @@ infeasibility (CBC also times out on every PolyBench benchmark).
 
 - **Host:** VirtualBox 7.2+ (free; macOS/ARM and Windows/ARM supported). If you haven't
   imported the VM yet, see the host-side setup guide shipped next to `eggcc-artifact.ova`.
-- **Guest:** Ubuntu 22.04 Desktop, 4 vCPUs / 8 GB RAM. Login `eggcc` / `eggcc`.
+- **Guest:** Ubuntu 22.04 Desktop, 4 vCPUs / 8 GB RAM. Login `artifact` / `artifact`.
 - **In your home folder** you'll find `README.md` (this guide, quick start at the top),
   `reproduce.sh`, the source in `eggcc/`, and `reference/` — the authors' pre-generated
   figures, ready to open right away. Running `reproduce.sh` writes *your* figures into the

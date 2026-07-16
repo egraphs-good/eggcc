@@ -50,6 +50,24 @@ if command -v timedatectl >/dev/null 2>&1; then
   done
 fi
 
+# --- Claim the whole disk if the installer left the LVM volume group half-empty ----------
+# Ubuntu Server's guided LVM allocates only ~half the volume group to the root logical volume
+# by default, leaving the rest unused -- too little for the LLVM build + cargo target + Gurobi
+# + a full run. Grow the root LV into any free extents and resize its filesystem. Derives the
+# LV from the actual root mount, so it works whatever the volume group/LV are named.
+# Best-effort and idempotent: a no-op on non-LVM installs or when the LV is already full.
+if command -v lvextend >/dev/null 2>&1; then
+  root_src="$(findmnt -n -o SOURCE / 2>/dev/null || true)"
+  root_fs="$(findmnt -n -o FSTYPE / 2>/dev/null || true)"
+  if printf '%s' "$root_src" | grep -q '^/dev/mapper/'; then
+    sudo lvextend -l +100%FREE "$root_src" || true   # non-zero when already full; ignore
+    case "$root_fs" in
+      ext*) sudo resize2fs "$root_src" || true ;;
+      xfs)  sudo xfs_growfs / || true ;;
+    esac
+  fi
+fi
+
 sudo apt-get update -y
 # Base tooling: git/curl to fetch things, graphviz (`dot`) for CFGs, evince to view the
 # result PDF, python for graph generation.

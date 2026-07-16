@@ -38,9 +38,10 @@ infeasibility (CBC also times out on every PolyBench benchmark).
 
 ## The VM
 
-- **Host:** VirtualBox 7.2+ (free; macOS/ARM and Windows/ARM supported). If you haven't
-  imported the VM yet, see the host-side setup guide shipped next to `eggcc-artifact.ova`.
-- **Guest:** Ubuntu 22.04 Desktop, 4 vCPUs / 8 GB RAM. Login `artifact` / `artifact`.
+- **Host:** an ARM machine (Apple-Silicon Mac or Windows on ARM) with VirtualBox 7.2+ (7.2 is
+  the first to run VMs on ARM). This is an arm64 VM — it won't import on Intel/x86 hosts. If you
+  haven't imported the VM yet, see the host-side setup guide shipped next to `eggcc-artifact.ova`.
+- **Guest:** Ubuntu 24.04 Desktop, 4 vCPUs / 8 GB RAM. Login `artifact` / `artifact`.
 - **In your home folder** you'll find `README.md` (this guide, quick start at the top),
   `reproduce.sh`, the source in `eggcc/`, and `reference/` — the authors' pre-generated
   figures, ready to open right away. Running `reproduce.sh` writes *your* figures into the
@@ -98,21 +99,21 @@ stable. ILP timeouts are expected, not failures.
 
 **Optional — Gurobi (the paper's solver).** The 520× headline is specifically vs Gurobi,
 which is commercial but **free for academics**. The Gurobi solver is already installed in the
-VM — you only need to add a license. Do it *inside the VM* so there's no host↔guest file
-copying (VirtualBox copy-paste is unreliable):
+VM — you only need to add a license, and you do it with a one-line command (no browser needed
+in the VM):
 
-1. **Get a license.** In the VM's web browser (Firefox), sign in at
-   <https://portal.gurobi.com/> and request a free **academic** license. Gurobi gives you a
-   one-line `grbgetkey <KEY>` command for it.
-2. **Activate it in the VM.** Paste that command into a terminal — it writes `~/gurobi.lic`:
+1. **Get a license key.** On your *host* machine's browser, sign in at
+   <https://portal.gurobi.com/>, request a free **academic** license, and copy the
+   `grbgetkey <KEY>` command it shows you.
+2. **Activate it in the VM.** Type that command in a VM terminal — it contacts Gurobi and
+   writes `~/gurobi.lic`:
    ```bash
    grbgetkey <YOUR-KEY>
    ```
-   (If your license comes as a `gurobi.lic` file instead, just download it in the VM's
-   browser; it lands in `~/Downloads`.)
+   (Only the short key string needs to go into the VM — type it, no file transfer.)
 3. **Verify and run:**
    ```bash
-   eggcc/infra/setup_gurobi.sh            # or: eggcc/infra/setup_gurobi.sh ~/Downloads/gurobi.lic
+   eggcc/infra/setup_gurobi.sh
    ./reproduce.sh full
    ```
 
@@ -121,6 +122,11 @@ vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matc
 paper. Compare this run against the authors' Gurobi set in `~/reference/gurobi/` (the default
 `~/reference/` is the CBC run). The Gurobi run also produces a couple of extra figures the CBC
 run doesn't (e.g. `egraph-size-vs-ILP-time.pdf`).
+
+**If your license is a `gurobi.lic` file instead of a key** (e.g. a WLS license): put it in a
+VirtualBox **shared folder** (VM window → Devices → Shared Folders → add a host folder), then
+point the helper at it: `eggcc/infra/setup_gurobi.sh /path/to/shared/gurobi.lic`. (This VM has
+no web browser, by design — the desktop ships without one.)
 
 If `grbgetkey` fails to validate (academic licenses check your network), see
 <https://support.gurobi.com/hc/en-us/articles/360040113232>.
@@ -155,7 +161,7 @@ compare your freshly generated figure against the authors' side by side.
 └── eggcc/                        source
     ├── artifact/                 reproduce.sh, README.md (this file)
     ├── infra/                    nightly.py, graphs.py, plot_cdf.py, setup_gurobi.sh,
-    │                             build_vm.sh, provision.sh, BUILDING.md
+    │                             provision.sh, BUILDING.md
     ├── dag_in_context/           egglog pipeline + Statewalk DP extractor (src/tiger/)
     └── benchmarks/passing/       benchmark suite (Bril, PolyBench, raytracer, Fenwick)
 ```
@@ -163,5 +169,5 @@ compare your freshly generated figure against the authors' side by side.
 
 ## Rebuilding the VM
 
-Authors build and ship the VM with `infra/build_vm.sh` on a macOS host (VirtualBox 7.2+).
-See **`infra/BUILDING.md`** for the full build/ship steps and the manual fallback.
+Authors build the VM by hand on an Apple-Silicon Mac (VirtualBox 7.2+, arm64 Ubuntu 24.04).
+See **`infra/BUILDING.md`** for the full build/ship steps.

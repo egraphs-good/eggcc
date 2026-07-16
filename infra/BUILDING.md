@@ -1,52 +1,58 @@
 # Building and shipping the eggcc artifact VM
 
-Author-facing guide for producing `eggcc-artifact.ova` on a macOS host. Reviewers don't need
-this — they import and run the VM following the host-side setup guide
+Author-facing guide for building `eggcc-artifact.ova` by hand on an Apple-Silicon Mac.
+Reviewers don't need this — they import and run the VM following the host-side setup guide
 (`artifact/HOST_README.md`, shipped next to the OVA), then the in-VM `README.md`.
+
+The artifact ships as an **arm64** VM (native on Apple-Silicon Macs and Windows on ARM; it will
+not import on x86 hosts — see `artifact/HOST_README.md`).
 
 ## 0. Prerequisites
 
-- **Push the branch to GitHub first.** `build_vm.sh` provisions the VM by cloning eggcc from
-  GitHub at `--ref` (default `oflatt-gurobi-optional`), so the `artifact/` scripts must be on
-  that branch *on GitHub* before you build. (Once the paper's code lands on `main`, pass
-  `--ref main` or a tagged commit.)
-- **VirtualBox 7.2+** on the Mac: `brew install --cask virtualbox`.
+- **Push the branch to GitHub first.** `provision.sh` clones eggcc from GitHub at `--ref`
+  (default `oflatt-gurobi-optional`), so the `artifact/` and `infra/` scripts must be on that
+  branch *on GitHub* before you build. (Once the code lands on `main`, pass `--ref main` or a tag.)
+- **VirtualBox 7.2+** on the Mac — 7.2 is the first version that runs VMs on Apple Silicon:
+  `brew install --cask virtualbox`.
+- **Ubuntu 24.04 arm64 ISO**, e.g.
+  `https://cdimage.ubuntu.com/releases/24.04.3/release/ubuntu-24.04.3-live-server-arm64.iso`
+  (the Server image; `provision.sh` installs the GNOME desktop on top). The Desktop arm64 image
+  works too if you'd rather install graphically. **Use arm64** — an amd64 guest runs under x86
+  emulation on Apple Silicon and is unstable (random installer crashes, grey screens).
 
-## 1. Build the VM
+## 1. Create and provision the VM
 
-```bash
-git clone https://github.com/egraphs-good/eggcc      # or `git pull` an existing clone
-cd eggcc && git checkout oflatt-gurobi-optional
-cd infra
-./build_vm.sh --pregenerate smoke
-```
+1. Create the VM shell with **`infra/create_vm.sh`** (on the Mac host):
+   ```bash
+   ./infra/create_vm.sh   # arm64, EFI, 4 vCPU / 8 GB / 60 GB, ~/Downloads/ubuntu-24.04-live-server-arm64.iso attached
+   # flags: --name --iso --cpus --ram --disk --recreate
+   ```
+   This drives `VBoxManage` directly, because VirtualBox 7.2's **"New" GUI wizard tends to
+   crash on Apple Silicon** at the disk step. (If you prefer the GUI and it works for you: New
+   → *Linux* / **Ubuntu (ARM 64-bit)**, 4 vCPUs, 8 GB RAM, 60 GB dynamic disk, attach the arm64
+   ISO.) Then start it (`VBoxManage startvm eggcc-artifact`) and run the Ubuntu 24.04 installer:
+   - username **`artifact`**, password **`artifact`**;
+   - **give the root filesystem the whole disk.** Ubuntu's guided LVM leaves ~half the volume
+     group unallocated by default, which is too small for the LLVM build + Gurobi + a full run.
+     Edit `ubuntu-lv` to use all free space during install, or afterwards:
+     `sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv && sudo resize2fs /dev/ubuntu-vg/ubuntu-lv`.
 
-`--pregenerate smoke` keeps the build fast — it skips the ~3–4 h CBC full run you'd just
-overwrite with the Gurobi run in step 2. `build_vm.sh` downloads the Ubuntu 22.04 **Server**
-ISO (~2 GB) and unattended-installs it (VirtualBox drives the server installer reliably; the
-desktop ISO's newer installer fails at VBox's "prepare" step). It then provisions over SSH:
-`provision.sh` adds a minimal GNOME desktop so the VM is graphical, installs the deps, builds
-eggcc, and runs the smoke check. Expect ~1 hour. Login: `artifact` / `artifact`.
+   Never delete a VM by removing its folder in Finder — use VirtualBox's *Remove → Delete all
+   files*, or `create_vm.sh --recreate`; a manual folder-delete leaves VirtualBox's config
+   pointing at missing files.
+2. Boot, log in, and provision:
+   ```bash
+   sudo apt-get update && sudo apt-get install -y git
+   git clone https://github.com/egraphs-good/eggcc ~/eggcc
+   bash ~/eggcc/infra/provision.sh --ref oflatt-gurobi-optional
+   ```
+   `provision.sh` installs a minimal GNOME desktop, all dependencies (LLVM 18, CBC, and the
+   Gurobi *solver* — unlicensed), builds eggcc, and pre-generates the **CBC** reference figures
+   into `~/reference/`. Expect several hours (the `full` pre-generation is ~3–4 h; pass
+   `--pregenerate none` to skip it and generate the references yourself). Reboot into the desktop
+   when it finishes. Login: `artifact` / `artifact`.
 
-Flags: `--cpus`, `--ram`, `--disk`, `--ssh-port`, `--ref`, `--pregenerate full|smoke|none`,
-`--iso-url`, `--workdir`.
-
-### Re-running from a clean state
-
-`build_vm.sh` reuses an existing VM named `eggcc-artifact`, so a failed or partial run must be
-torn down first or the next run inherits its broken state:
-
-```bash
-VBoxManage controlvm eggcc-artifact poweroff 2>/dev/null || true
-VBoxManage unregistervm eggcc-artifact --delete 2>/dev/null || true
-rm -f ~/eggcc-artifact-build/eggcc-artifact.vdi
-```
-
-The SSH keypair and any downloaded ISO in `~/eggcc-artifact-build/` are reused across runs, so
-leave them. (Delete the whole `~/eggcc-artifact-build/` only if you also want to re-download
-the ISO.)
-
-## 2. Generate the shipped figures (with Gurobi) inside the VM
+## 2. Generate the Gurobi reference figures inside the VM
 
 Provisioning already pre-filled `~/reference/` with the default **CBC** `full` run — that is
 what most reviewers reproduce — and installed the **Gurobi solver** (unlicensed). Add your own
@@ -85,6 +91,9 @@ Then, on the host, export the appliance and bundle it with the host-side setup g
 
 ```bash
 # on the Mac host (adjust the path to your eggcc checkout):
+# detach the install ISO first, so it isn't bundled into the OVA and can't boot a reviewer
+# back into the installer (do this with the VM powered off):
+VBoxManage storageattach eggcc-artifact --storagectl SATA --port 1 --device 0 --type dvddrive --medium emptydrive
 VBoxManage export eggcc-artifact -o eggcc-artifact.ova
 
 mkdir -p eggcc-artifact
@@ -98,18 +107,6 @@ zip's `README.md` (the host-side setup guide) tells reviewers how to install Vir
 import the OVA, and log in, then points them at the in-VM guide. (Reviewers can't read the
 in-VM `README.md` until they've booted the VM, so this host-side one is required.)
 
-## Manual fallback
-
-`build_vm.sh` is the only part of the artifact not tested by its author (the build
-environment had no VirtualBox). If a `VBoxManage` step fails on your host, build the VM by
-hand instead:
-
-1. Create an Ubuntu 22.04 Desktop VM in the VirtualBox GUI (4 vCPUs, 8 GB RAM, 60 GB disk;
-   user `artifact` / password `artifact`).
-2. Inside the VM:
-   ```bash
-   sudo apt-get update && sudo apt-get install -y git
-   git clone https://github.com/egraphs-good/eggcc ~/eggcc
-   bash ~/eggcc/infra/provision.sh --ref oflatt-gurobi-optional
-   ```
-3. `cd ~/eggcc && artifact/reproduce.sh smoke` to confirm, then do steps 2–3 above.
+Because the OVA is arm64, an x86-only reviewer can't import it. The SPLASH/OOPSLA AE guidance
+supports ARM VMs (VirtualBox 7.2), but be ready to offer **remote access** (SSH into a machine
+running the VM) if a reviewer has no ARM host — the AEC chairs can help arrange this.

@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 #
-# Provision a fresh Ubuntu 22.04 (jammy) machine into the eggcc artifact:
+# Provision a fresh Ubuntu 24.04 (noble) machine into the eggcc artifact:
 # installs every dependency, clones eggcc, builds it, and pre-generates the figures.
 # Designed to run unattended (all apt installs use -y). Safe to re-run.
 #
-# This is what infra/build_vm.sh runs inside the guest. You can also run it by hand on
-# any fresh Ubuntu 22.04 machine or VM:
+# Run it inside a fresh Ubuntu 24.04 machine or VM (see infra/BUILDING.md):
 #
 #   bash provision.sh [--ref REF] [--repo URL] [--dir DIR] [--pregenerate full|smoke|none]
 #
@@ -50,23 +49,11 @@ if command -v timedatectl >/dev/null 2>&1; then
   done
 fi
 
-# --- Claim the whole disk if the installer left the LVM volume group half-empty ----------
-# Ubuntu Server's guided LVM allocates only ~half the volume group to the root logical volume
-# by default, leaving the rest unused -- too little for the LLVM build + cargo target + Gurobi
-# + a full run. Grow the root LV into any free extents and resize its filesystem. Derives the
-# LV from the actual root mount, so it works whatever the volume group/LV are named.
-# Best-effort and idempotent: a no-op on non-LVM installs or when the LV is already full.
-if command -v lvextend >/dev/null 2>&1; then
-  root_src="$(findmnt -n -o SOURCE / 2>/dev/null || true)"
-  root_fs="$(findmnt -n -o FSTYPE / 2>/dev/null || true)"
-  if printf '%s' "$root_src" | grep -q '^/dev/mapper/'; then
-    sudo lvextend -l +100%FREE "$root_src" || true   # non-zero when already full; ignore
-    case "$root_fs" in
-      ext*) sudo resize2fs "$root_src" || true ;;
-      xfs)  sudo xfs_growfs / || true ;;
-    esac
-  fi
-fi
+# NOTE: disk sizing is intentionally left to the installer / operator. Ubuntu Server's guided
+# LVM allocates only ~half the volume group to the root LV by default, which is too small for
+# the LLVM build + cargo target + Gurobi + a full run -- so when creating the VM, give the
+# root filesystem the whole disk (in the installer, edit ubuntu-lv to use all free space; or
+# afterwards: sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv && sudo resize2fs /dev/ubuntu-vg/ubuntu-lv).
 
 sudo apt-get update -y
 # Base tooling: git/curl to fetch things, graphviz (`dot`) for CFGs, evince to view the
@@ -77,12 +64,18 @@ sudo apt-get install -y \
   python3 python3-venv python3-pip
 
 # --- Desktop environment (graphical, for viewing the result PDFs in-VM) -----------------
-# build_vm.sh installs the base OS from the Ubuntu *Server* ISO (which VirtualBox can
-# unattended-install reliably, unlike the desktop ISO), so we add a minimal GNOME desktop
-# here and switch the VM to boot graphically. The guard skips this on a machine that already
-# has a desktop (e.g. the manual desktop-ISO fallback). Best-effort: if it fails, the
-# artifact still works over the CLI/SSH.
+# The base OS is usually installed from the Ubuntu *Server* ISO, so we add a minimal GNOME
+# desktop here and switch the VM to boot graphically. The guard skips this on a machine that
+# already has a desktop (e.g. if you installed from the Desktop ISO). Best-effort: if it
+# fails, the artifact still works over the CLI/SSH.
 if ! command -v gnome-shell >/dev/null 2>&1; then
+  # Keep the Firefox snap OUT of the desktop install: seeding it (a large squashfs + apparmor)
+  # reliably crashes the VirtualBox 7.2 ARM preview during provisioning. The artifact needs no
+  # browser anyway -- the default CBC path opens none, and Gurobi licensing uses `grbgetkey` in
+  # a terminal. Pinning the transitional `firefox` deb out stops ubuntu-desktop-minimal (where
+  # it is only a Recommends) from pulling the snap.
+  printf 'Package: firefox*\nPin: release o=*\nPin-Priority: -1\n' \
+    | sudo tee /etc/apt/preferences.d/no-firefox-snap >/dev/null
   sudo apt-get install -y ubuntu-desktop-minimal gdm3 \
     && sudo systemctl set-default graphical.target \
     || echo "WARNING: desktop install did not complete; the artifact still works over the CLI."
@@ -103,8 +96,8 @@ if command -v gnome-shell >/dev/null 2>&1; then
   #   - never blank/lock the screen or auto-suspend, so a long reproduce.sh run doesn't drop
   #     the reviewer to the login screen;
   #   - pin the apps the artifact actually uses to the dock (Terminal first, then Files for
-  #     browsing ~/reference, Evince for the PDFs, Firefox for the optional Gurobi license).
-  #     Unknown/uninstalled .desktop ids are simply ignored by GNOME.
+  #     browsing ~/reference, Evince for the PDFs). Unknown/uninstalled .desktop ids are
+  #     simply ignored by GNOME.
   sudo mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
   if [ ! -f /etc/dconf/profile/user ]; then
     printf 'user-db:user\nsystem-db:local\n' | sudo tee /etc/dconf/profile/user >/dev/null
@@ -122,7 +115,7 @@ sleep-inactive-ac-type='nothing'
 sleep-inactive-battery-type='nothing'
 
 [org/gnome/shell]
-favorite-apps=['org.gnome.Terminal.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Evince.desktop', 'firefox_firefox.desktop']
+favorite-apps=['org.gnome.Terminal.desktop', 'org.gnome.Nautilus.desktop', 'org.gnome.Evince.desktop']
 DCONF
   # Remove the old filename from earlier builds so it doesn't linger with stale settings.
   sudo rm -f /etc/dconf/db/local.d/00-eggcc-no-idle
@@ -133,7 +126,7 @@ fi
 # Mirrors install_ubuntu.sh but non-interactively, using a modern signed keyring.
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
   | sudo gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg
-echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" \
+echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-18 main" \
   | sudo tee /etc/apt/sources.list.d/llvm-18.list >/dev/null
 sudo apt-get update -y
 sudo apt-get install -y \

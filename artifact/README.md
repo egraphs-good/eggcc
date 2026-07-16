@@ -105,12 +105,13 @@ in the VM):
 1. **Get a license key.** On your *host* machine's browser, sign in at
    <https://portal.gurobi.com/>, request a free **academic** license, and copy the
    `grbgetkey <KEY>` command it shows you.
-2. **Activate it in the VM.** Type that command in a VM terminal — it contacts Gurobi and
-   writes `~/gurobi.lic`:
+2. **Activate it in the VM.** To avoid retyping the key, SSH into the VM from your host
+   terminal (where paste works — the VM's own clipboard is unreliable) and run it there:
    ```bash
-   grbgetkey <YOUR-KEY>
+   ssh -p 2222 artifact@localhost      # from your HOST terminal; password: artifact
+   grbgetkey <YOUR-KEY>                 # paste it in this ssh session; writes ~/gurobi.lic
    ```
-   (Only the short key string needs to go into the VM — type it, no file transfer.)
+   (Or just type `grbgetkey <YOUR-KEY>` directly in the VM's own terminal.)
 3. **Verify and run:**
    ```bash
    eggcc/infra/setup_gurobi.sh
@@ -123,10 +124,10 @@ paper. Compare this run against the authors' Gurobi set in `~/reference/gurobi/`
 `~/reference/` is the CBC run). The Gurobi run also produces a couple of extra figures the CBC
 run doesn't (e.g. `egraph-size-vs-ILP-time.pdf`).
 
-**If your license is a `gurobi.lic` file instead of a key** (e.g. a WLS license): put it in a
-VirtualBox **shared folder** (VM window → Devices → Shared Folders → add a host folder), then
-point the helper at it: `eggcc/infra/setup_gurobi.sh /path/to/shared/gurobi.lic`. (This VM has
-no web browser, by design — the desktop ships without one.)
+**If your license is a `gurobi.lic` file instead of a key** (e.g. a WLS license): copy it into
+the VM from your host with `scp -P 2222 gurobi.lic artifact@localhost:~/`, then run
+`eggcc/infra/setup_gurobi.sh ~/gurobi.lic`. (This VM has no web browser, by design — the
+desktop ships without one; that's why the key/file comes in over SSH.)
 
 If `grbgetkey` fails to validate (academic licenses check your network), see
 <https://support.gurobi.com/hc/en-us/articles/360040113232>.

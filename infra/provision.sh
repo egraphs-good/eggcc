@@ -57,10 +57,11 @@ fi
 
 sudo apt-get update -y
 # Base tooling: git/curl to fetch things, graphviz (`dot`) for CFGs, evince to view the
-# result PDF, python for graph generation.
+# result PDF, python for graph generation, openssh-server so a reviewer can ssh in from the
+# host (to paste the Gurobi key or scp a license -- the VM clipboard is unreliable).
 sudo apt-get install -y \
   git curl ca-certificates gnupg build-essential \
-  graphviz evince xdg-utils \
+  graphviz evince xdg-utils openssh-server \
   python3 python3-venv python3-pip
 
 # --- Desktop environment (graphical, for viewing the result PDFs in-VM) -----------------

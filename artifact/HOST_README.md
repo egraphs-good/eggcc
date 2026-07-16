@@ -29,3 +29,7 @@ Files app, or run `xdg-open ~/README.md` (or `less ~/README.md`) in a terminal. 
 a quick start (`./reproduce.sh smoke` / `./reproduce.sh full`) and then the full,
 claim-by-claim reproduction guide. The authors' expected figures are already in `~/reference/`
 for comparison.
+
+**Tip:** you can also SSH into the VM from your host — `ssh -p 2222 artifact@localhost`
+(password `artifact`) — which is handy for pasting commands or copying files in with `scp`,
+since the VM's own clipboard can be unreliable.

@@ -74,6 +74,10 @@ echo "Creating arm64 VM '$NAME' (${CPUS} vCPU / ${RAM} MB RAM / ${DISK} MB disk)
 #     in the guest. Use USB HID devices (which need a USB controller -- xHCI).
 "$VBM" modifyvm "$NAME" --cpus "$CPUS" --memory "$RAM" --vram 128 \
   --graphicscontroller vmsvga --usb-xhci on --keyboard usb --mouse usbtablet
+# SSH port-forward (host localhost:2222 -> guest:22) so a reviewer can ssh in from the host
+# to paste the Gurobi key or scp a license -- the in-VM clipboard is unreliable.
+#   ssh -p 2222 artifact@localhost
+"$VBM" modifyvm "$NAME" --natpf1 "ssh,tcp,127.0.0.1,2222,,22"
 
 DISK_PATH="$HOME/VirtualBox VMs/$NAME/$NAME.vdi"
 "$VBM" createmedium disk --filename "$DISK_PATH" --size "$DISK"

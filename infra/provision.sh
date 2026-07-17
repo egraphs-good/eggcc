@@ -55,6 +55,12 @@ fi
 # root filesystem the whole disk (in the installer, edit ubuntu-lv to use all free space; or
 # afterwards: sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv && sudo resize2fs /dev/ubuntu-vg/ubuntu-lv).
 
+# The installer registers the install ISO as an apt source (a `cdrom:`/`file:/cdrom` line).
+# Once the ISO is ejected, `apt-get update` fails on it ("no longer has a Release file"), so
+# disable any cdrom apt source before updating -- keeps apt clean whether the ISO is attached
+# or not, including in the shipped VM.
+sudo sed -i '/cdrom/ s/^[^#]/# &/' /etc/apt/sources.list 2>/dev/null || true
+
 sudo apt-get update -y
 # Base tooling: git/curl to fetch things, graphviz (`dot`) for CFGs, evince to view the
 # result PDF, python for graph generation, openssh-server so a reviewer can ssh in from the
@@ -123,12 +129,20 @@ DCONF
   sudo dconf update || true
 fi
 
+# Don't block boot for ~2 minutes on the network. Once the desktop's NetworkManager manages the
+# interface, systemd-networkd-wait-online never sees "all links online" and waits its full
+# timeout at every boot. Mask both wait-online units -- networking still comes up normally, boot
+# just doesn't stall on it. (Safe/no-op if a unit isn't present.)
+sudo systemctl mask systemd-networkd-wait-online.service 2>/dev/null || true
+sudo systemctl mask NetworkManager-wait-online.service 2>/dev/null || true
+
 # --- LLVM 18 toolchain (eggcc requires clang-18 / opt-18 / llvm-config) -----------------
-# Mirrors install_ubuntu.sh but non-interactively, using a modern signed keyring.
-curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
-  | sudo gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg
-echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-18 main" \
-  | sudo tee /etc/apt/sources.list.d/llvm-18.list >/dev/null
+# Ubuntu 24.04 (noble) ships LLVM 18 in its own 'universe' repo (enabled by default), so we
+# install from there. This deliberately avoids the external apt.llvm.org repo, which has
+# repeatedly flaked (DNS "could not resolve host apt.llvm.org") mid-provision.
+# Remove any stale apt.llvm.org source left by an earlier build -- otherwise its snapshot
+# packages clash with Ubuntu's (e.g. "libllvm18 Breaks llvm-18-dev"). Refresh apt afterwards.
+sudo rm -f /etc/apt/sources.list.d/llvm-18.list /usr/share/keyrings/llvm-snapshot.gpg
 sudo apt-get update -y
 sudo apt-get install -y \
   clang-18 llvm-18 libllvm18 llvm-18-dev llvm-18-runtime \

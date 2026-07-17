@@ -73,7 +73,8 @@ echo "Creating arm64 VM '$NAME' (${CPUS} vCPU / ${RAM} MB RAM / ${DISK} MB disk)
 #   - input: ARM has no PS/2 bus, so the default ps2 keyboard/mouse give a "keyboard failure"
 #     in the guest. Use USB HID devices (which need a USB controller -- xHCI).
 "$VBM" modifyvm "$NAME" --cpus "$CPUS" --memory "$RAM" --vram 128 \
-  --graphicscontroller vmsvga --usb-xhci on --keyboard usb --mouse usbtablet
+  --graphicscontroller vmsvga --usb-xhci on --keyboard usb --mouse usbtablet \
+  --clipboard-mode bidirectional
 # SSH port-forward (host localhost:2222 -> guest:22) so a reviewer can ssh in from the host
 # to paste the Gurobi key or scp a license -- the in-VM clipboard is unreliable.
 #   ssh -p 2222 artifact@localhost

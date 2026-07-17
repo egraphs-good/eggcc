@@ -47,24 +47,25 @@ not import on x86 hosts — see `artifact/HOST_README.md`).
    bash ~/eggcc/infra/provision.sh --ref oflatt-gurobi-optional
    ```
    `provision.sh` installs a minimal GNOME desktop, all dependencies (LLVM 18, CBC, and the
-   Gurobi *solver* — unlicensed), builds eggcc, and pre-generates the **CBC** reference figures
-   into `~/reference/`. Expect several hours (the `full` pre-generation is ~3–4 h; pass
-   `--pregenerate none` to skip it and generate the references yourself). Reboot into the desktop
-   when it finishes. Login: `artifact` / `artifact`.
+   Gurobi *solver* — unlicensed), and builds eggcc. It does **not** generate any figures — you
+   do that in step 2. Reboot into the desktop when it finishes. Login: `artifact` / `artifact`.
 
-## 2. Generate the Gurobi reference figures inside the VM
+## 2. Generate the reference figures inside the VM
 
-Provisioning already pre-filled `~/reference/` with the default **CBC** `full` run — that is
-what most reviewers reproduce — and installed the **Gurobi solver** (unlicensed). Add your own
-license and produce the paper's **Gurobi** run under `~/reference/gurobi/`, exactly as a
-licensed reviewer would (see the README's "Optional — Gurobi" for the `grbgetkey` flow):
+The shipped VM ships two reference sets for reviewers to compare against: `~/reference/` (the
+default **CBC** run) and `~/reference/gurobi/` (the paper's **Gurobi** run). Generate both by
+hand, `full` scale (~3–4 h each):
 
 ```bash
-# in the VM — activate your academic license (writes ~/gurobi.lic), then:
-grbgetkey <YOUR-KEY>                    # or drop a gurobi.lic in the home folder
+# CBC reference (no license needed):
+eggcc/artifact/reproduce.sh full --out-dir ~/reference
+
+# Gurobi reference: activate your academic license first (see the README's "Optional — Gurobi"
+# for the grbgetkey flow), then run into a separate dir:
+grbgetkey <YOUR-KEY>                    # or scp a gurobi.lic in over ssh -p 2222
 eggcc/infra/setup_gurobi.sh            # verifies Gurobi is licensed
 mkdir -p ~/reference/gurobi
-eggcc/artifact/reproduce.sh full --out-dir ~/reference/gurobi   # ~3–4 h; tiger-vs-Gurobi-vs-CBC
+eggcc/artifact/reproduce.sh full --out-dir ~/reference/gurobi   # tiger-vs-Gurobi-vs-CBC
 ```
 
 So the shipped VM has `~/reference/` (CBC, matches the default run) and `~/reference/gurobi/`

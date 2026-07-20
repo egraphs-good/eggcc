@@ -168,32 +168,43 @@ sudo apt-get install -y coinor-libcbc-dev coinor-cbc
 # shipped. Best-effort: a download/arch failure never fails provisioning (CBC still works).
 # Override the version with GUROBI_VERSION=... if needed.
 GUROBI_VERSION="${GUROBI_VERSION:-12.0.1}"
-if ! command -v gurobi_cl >/dev/null 2>&1; then
-  case "$(uname -m)" in
-    x86_64)  GRB_ARCH="linux64" ;;
-    aarch64) GRB_ARCH="armlinux64" ;;
-    *)       GRB_ARCH="" ;;
-  esac
-  if [ -z "$GRB_ARCH" ]; then
-    echo "WARNING: no Gurobi build for arch $(uname -m); skipping Gurobi (CBC still works)."
-  else
-    grb_short="${GUROBI_VERSION%.*}"                    # 12.0.1 -> 12.0
-    grb_tar="gurobi${GUROBI_VERSION}_${GRB_ARCH}.tar.gz"
-    grb_dir="gurobi$(echo "$GUROBI_VERSION" | tr -d .)" # 12.0.1 -> gurobi1201
+case "$(uname -m)" in
+  x86_64)  GRB_ARCH="linux64" ;;
+  aarch64) GRB_ARCH="armlinux64" ;;
+  *)       GRB_ARCH="" ;;
+esac
+if [ -z "$GRB_ARCH" ]; then
+  echo "WARNING: no Gurobi build for arch $(uname -m); skipping Gurobi (CBC still works)."
+else
+  grb_short="${GUROBI_VERSION%.*}"                    # 12.0.1 -> 12.0
+  grb_tar="gurobi${GUROBI_VERSION}_${GRB_ARCH}.tar.gz"
+  grb_dir="gurobi$(echo "$GUROBI_VERSION" | tr -d .)" # 12.0.1 -> gurobi1201
+  GRB_HOME="/opt/${grb_dir}/${GRB_ARCH}"
+  # Download + unpack only if not already present, so a re-provision doesn't re-download.
+  if [ ! -d "$GRB_HOME" ]; then
     if curl -fsSL "https://packages.gurobi.com/${grb_short}/${grb_tar}" -o "/tmp/${grb_tar}"; then
       sudo tar -xzf "/tmp/${grb_tar}" -C /opt
       rm -f "/tmp/${grb_tar}"
-      # Put gurobi_cl on PATH for all login shells (the tiger extractor shells out to it).
-      sudo tee /etc/profile.d/gurobi.sh >/dev/null <<PROF
-export GUROBI_HOME=/opt/${grb_dir}/${GRB_ARCH}
-export PATH="\$GUROBI_HOME/bin:\$PATH"
-PROF
-      export GUROBI_HOME="/opt/${grb_dir}/${GRB_ARCH}"
-      export PATH="$GUROBI_HOME/bin:$PATH"
       echo "Installed Gurobi ${GUROBI_VERSION} (${GRB_ARCH}) to /opt/${grb_dir}."
     else
       echo "WARNING: could not download Gurobi ${GUROBI_VERSION} (${GRB_ARCH}); skipping (CBC still works)."
     fi
+  fi
+  # Wire up the solver whenever it is present -- fresh install AND re-provision. This lives
+  # OUTSIDE the download guard so re-running provision fixes an install missing PATH/linker
+  # config: gurobi_cl on PATH, and its shared libs (libgurobiNN.so) loadable by the dynamic
+  # linker -- including from eggcc's subprocess calls to gurobi_cl.
+  if [ -d "$GRB_HOME" ]; then
+    sudo tee /etc/profile.d/gurobi.sh >/dev/null <<PROF
+export GUROBI_HOME=${GRB_HOME}
+export PATH="\$GUROBI_HOME/bin:\$PATH"
+export LD_LIBRARY_PATH="\$GUROBI_HOME/lib:\$LD_LIBRARY_PATH"
+PROF
+    echo "${GRB_HOME}/lib" | sudo tee /etc/ld.so.conf.d/gurobi.conf >/dev/null
+    sudo ldconfig
+    export GUROBI_HOME="$GRB_HOME"
+    export PATH="$GRB_HOME/bin:$PATH"
+    export LD_LIBRARY_PATH="$GRB_HOME/lib:${LD_LIBRARY_PATH:-}"
   fi
 fi
 

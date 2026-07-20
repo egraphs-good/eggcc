@@ -80,13 +80,21 @@ case "$MODE" in
     echo "[full] running the full nightly (~3-4 h; Gurobi if a license is installed, else CBC)..."
     bash infra/nightly.sh benchmarks/passing --local
     FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
-    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do [ -f "$f" ] && FIGURES+=("$f"); done
+    # Copy the normalized perf charts, but skip the fenwick/raytrace variants (not headline figures).
+    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do
+      case "$f" in *-fenwick.pdf|*-raytrace.pdf) continue ;; esac
+      [ -f "$f" ] && FIGURES+=("$f")
+    done
     ;;
   paper)
     echo "[paper] running the full paper configuration (see README; needs a large machine)..."
     bash infra/nightly.sh benchmarks/passing --local --paper
     FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
-    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do [ -f "$f" ] && FIGURES+=("$f"); done
+    # Copy the normalized perf charts, but skip the fenwick/raytrace variants (not headline figures).
+    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do
+      case "$f" in *-fenwick.pdf|*-raytrace.pdf) continue ;; esac
+      [ -f "$f" ] && FIGURES+=("$f")
+    done
     ;;
 esac
 

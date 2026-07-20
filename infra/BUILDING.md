@@ -60,10 +60,11 @@ hand, `full` scale (~3–4 h each):
 # CBC reference (no license needed):
 eggcc/artifact/reproduce.sh full --out-dir ~/reference
 
-# Gurobi reference: activate your academic license first (see the README's "Optional — Gurobi"
-# for the grbgetkey flow), then run into a separate dir:
-grbgetkey <YOUR-KEY>                    # or scp a gurobi.lic in over ssh -p 2222
-eggcc/infra/setup_gurobi.sh            # verifies Gurobi is licensed
+# Gurobi reference: install your academic license first. Download gurobi.lic from Gurobi's Web
+# License Manager on the host, scp it into the VM, and install it (grbgetkey also works for
+# older Named-User licenses, but WLS/academic licenses need the file):
+#   scp -P 2222 ~/Downloads/gurobi.lic artifact@localhost:~/   # on the HOST
+eggcc/infra/setup_gurobi.sh ~/gurobi.lic   # verifies Gurobi is licensed
 mkdir -p ~/reference/gurobi
 eggcc/artifact/reproduce.sh full --out-dir ~/reference/gurobi   # tiger-vs-Gurobi-vs-CBC
 ```

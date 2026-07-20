@@ -99,24 +99,20 @@ stable. ILP timeouts are expected, not failures.
 
 **Optional — Gurobi (the paper's solver).** The 520× headline is specifically vs Gurobi,
 which is commercial but **free for academics**. The Gurobi solver is already installed in the
-VM — you only need to add a license, and you do it with a one-line command (no browser needed
-in the VM):
+VM; you just add a license *file*:
 
-1. **Get a license key.** On your *host* machine's browser, sign in at
-   <https://portal.gurobi.com/>, request a free **academic** license, and copy the
-   `grbgetkey <KEY>` command it shows you.
-2. **Activate it in the VM.** To avoid retyping the key, SSH into the VM from your host
-   terminal (where paste works — the VM's own clipboard is unreliable) and run it there:
+1. **Get a free academic license.** On your *host* machine, create a Gurobi account and request
+   an academic license at <https://www.gurobi.com/academia/academic-program-and-licenses/>, then
+   download the **`gurobi.lic`** file from Gurobi's Web License Manager.
+2. **Copy it into the VM and install it.** The VM ships without a browser, so bring the file in
+   over SSH (the port-forward is already set up):
    ```bash
-   ssh -p 2222 artifact@localhost      # from your HOST terminal; password: artifact
-   grbgetkey <YOUR-KEY>                 # paste it in this ssh session; writes ~/gurobi.lic
+   # on your HOST terminal (adjust the path to wherever gurobi.lic downloaded):
+   scp -P 2222 ~/Downloads/gurobi.lic artifact@localhost:~/      # password: artifact
+   # then in the VM:
+   eggcc/infra/setup_gurobi.sh ~/gurobi.lic
    ```
-   (Or just type `grbgetkey <YOUR-KEY>` directly in the VM's own terminal.)
-3. **Verify and run:**
-   ```bash
-   eggcc/infra/setup_gurobi.sh
-   ./reproduce.sh full
-   ```
+3. **Run:** `./reproduce.sh full`.
 
 `full` auto-detects the license and adds a **Gurobi** curve to the CDF (Statewalk DP vs Gurobi
 vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matching the
@@ -124,13 +120,10 @@ paper. Compare this run against the authors' Gurobi set in `~/reference/gurobi/`
 `~/reference/` is the CBC run). The Gurobi run also produces a couple of extra figures the CBC
 run doesn't (e.g. `egraph-size-vs-ILP-time.pdf`).
 
-**If your license is a `gurobi.lic` file instead of a key** (e.g. a WLS license): copy it into
-the VM from your host with `scp -P 2222 gurobi.lic artifact@localhost:~/`, then run
-`eggcc/infra/setup_gurobi.sh ~/gurobi.lic`. (This VM has no web browser, by design — the
-desktop ships without one; that's why the key/file comes in over SSH.)
-
-If `grbgetkey` fails to validate (academic licenses check your network), see
-<https://support.gurobi.com/hc/en-us/articles/360040113232>.
+*Older "Named-User" licenses* give a `grbgetkey <KEY>` command instead of a file. If that's what
+you have, SSH in (`ssh -p 2222 artifact@localhost`) and run `grbgetkey <KEY>` — it writes
+`~/gurobi.lic` — then `eggcc/infra/setup_gurobi.sh`. (Academic `grbgetkey` retrieval must happen
+on a recognized academic network; if it errors, use the license-**file** route above instead.)
 
 **Paper-scale runs.** For the paper's exact configuration (100 % of regions, 5-minute
 timeout) you need a large machine: `cd eggcc && bash infra/nightly.sh benchmarks/passing

@@ -109,5 +109,4 @@ import the OVA, and log in, then points them at the in-VM guide. (Reviewers can'
 in-VM `README.md` until they've booted the VM, so this host-side one is required.)
 
 Because the OVA is arm64, an x86-only reviewer can't import it. The SPLASH/OOPSLA AE guidance
-supports ARM VMs (VirtualBox 7.2), but be ready to offer **remote access** (SSH into a machine
-running the VM) if a reviewer has no ARM host — the AEC chairs can help arrange this.
+supports ARM VMs (VirtualBox 7.2), so an arm64 appliance is acceptable to submit.

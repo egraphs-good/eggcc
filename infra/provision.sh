@@ -227,6 +227,15 @@ python3 -m venv "$HOME/.eggcc-venv"
 export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18/
 make runtime
 cargo build --release
+# Fail loudly if the build produced no binary. A broken/half-installed Rust toolchain (e.g.
+# `rustup show` reporting "Missing manifest") makes `cargo build` a silent no-op that exits 0
+# but builds nothing -- which otherwise only surfaces later as "target/release/eggcc: not found".
+if [ ! -x target/release/eggcc ]; then
+  echo "ERROR: 'cargo build --release' did not produce target/release/eggcc." >&2
+  echo "       Likely a broken Rust toolchain -- check 'rustup show', then reinstall it:" >&2
+  echo "         rustup toolchain uninstall <version> && rustup toolchain install <version>" >&2
+  exit 1
+fi
 
 # --- Clean, reviewer-facing home layout -------------------------------------------------
 # Home shows only: README.md (quickstart), reproduce.sh, eggcc/ (source), and the result

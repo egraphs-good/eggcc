@@ -142,7 +142,28 @@ A run is valid if it completes and writes the PDFs; a crash/panic or an empty fi
 bug. Each expected result above is also shipped as a graph in `~/reference/`, so you can
 compare your freshly generated figure against the authors' side by side.
 
-## 4. Layout
+## 4. Reusability
+
+Beyond reproducing the paper, eggcc runs on your own programs and is straightforward to extend:
+
+- **Optimize your own program:** `cd ~/eggcc && cargo run --release -- <file.bril> --run-mode optimize`
+  (`optimize` is the default). Useful flags: `--tiger-ilp` (use the ILP extractor instead of
+  Statewalk DP), `--ilp-solver cbc|gurobi`, `--ilp-timeout-seconds N`. Run `cargo run --release
+  -- --help` for all run modes and options.
+- **Add benchmarks:** drop `.bril` files under `~/eggcc/benchmarks/passing/<suite>/`; the
+  `reproduce.sh`/nightly harness picks them up automatically. (`.rs` inputs also work, but eggcc
+  supports only a small subset of Rust — Bril is the primary input language.)
+- **Key source:**
+  - Statewalk DP extractor (the paper's contribution): `~/eggcc/dag_in_context/src/tiger/`
+  - egglog optimization pipeline + rewrite rules: `~/eggcc/dag_in_context/` (`*.egg` rules,
+    schedule in `src/schedule.rs`)
+  - CLI / compiler driver: `~/eggcc/src/`
+  - measurement + plotting harness: `~/eggcc/infra/`
+- **Build from source:** needs **LLVM 18** (`export LLVM_SYS_180_PREFIX=/usr/lib/llvm-18/`), the
+  Rust toolchain (pinned in `rust-toolchain`), and CBC (`coinor-cbc`); then `cargo build --release`.
+- **License:** MIT — see `~/eggcc/LICENSE`.
+
+## 5. Layout
 
 ```
 ~/

@@ -10,8 +10,10 @@ the VM.** It supports the paper *Efficient Extraction for Effectful E-Graphs*.
   7.2 or newer** (free): <https://www.virtualbox.org/>. Version 7.2 is the first that runs VMs
   on ARM Macs/Windows, so anything older won't work. On a Mac: `brew install --cask virtualbox`.
   **This is an arm64 VM and will not import on Intel/x86 hosts.**
-- A host with **≥ 8 GB RAM free** and **~40 GB free disk**. The VM is configured for 8 GB RAM
-  and 4 CPUs; lower these in the VM's **Settings → System** if your host is smaller.
+- A host with **≥ 8 GB RAM free** and **~60 GB free disk** (the VM's virtual disk is 60 GB,
+  dynamically allocated — it only consumes what's actually written, but a full benchmark run
+  can grow it toward that ceiling, so leave room). The VM is configured for 8 GB RAM and 4
+  CPUs; lower these in the VM's **Settings → System** if your host is smaller.
 
 ## Import and start
 

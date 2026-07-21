@@ -80,13 +80,17 @@ run against whichever matches how they ran `reproduce.sh`.
 
 ## 3. Export and package for submission
 
-First, **in the VM**, remove your personal Gurobi license so it isn't distributed, then shut
-the VM down:
+First, **in the VM**, remove your personal Gurobi license *and* the license key from shell
+history (you typed it into `grbgetkey`), so neither ships in the OVA, then shut the VM down:
 
 ```bash
-rm -f ~/gurobi.lic      # in the VM — do NOT ship your academic license
+rm -f ~/gurobi.lic                                   # the installed license
+find ~ -name 'gurobi.lic' -delete 2>/dev/null        # any stray copies
+unset HISTFILE; history -c; rm -f ~/.bash_history    # drop the license key from history
 sudo poweroff
 ```
+
+(The Gurobi *solver* install is fine to ship — only the license and the key are personal.)
 
 Then, on the host, export the appliance and bundle it with the host-side setup guide (as
 `README.md`) into a single zip for Zenodo:

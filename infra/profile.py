@@ -698,7 +698,7 @@ def run_profile(data_dir, bril_dir, config: NightlyConfig, parallel=False):
     for benchmark in to_run:
       path_key = f"{TMP_DIR}/{benchmark.name}/{benchmark.treatment}"
       if path_key in failed_paths:
-        print(f"Skipping benchmarking due to failure: {benchmark.name} {benchmark.treatment}", flush=True)
+        print(f"Skipping benchmarking, expected for CBC/Gurobi treatments. Treatment: {benchmark.name} {benchmark.treatment}", flush=True)
         continue
       res = bench(benchmark)
       if res is None:

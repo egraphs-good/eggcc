@@ -1,5 +1,38 @@
 # eggcc Artifact — "Efficient Extraction for Effectful E-Graphs"
 
+This is the same guide in two places: uploaded next to `eggcc-artifact.ova` on Zenodo, and as
+`~/README.md` inside the VM. If you haven't booted the VM yet, do **§0 (Setup)** first; once
+you're logged into the desktop, start at **Quick start**.
+
+## 0. Setup — import and boot the VM (skip if you're already in the VM)
+
+This artifact is packaged as a VirtualBox VM.
+
+**Requirements**
+
+- An **ARM host** — an Apple-Silicon Mac (M1/M2/M3/M4) or Windows on ARM — with **VirtualBox
+  7.2 or newer** (free): <https://www.virtualbox.org/>. Version 7.2 is the first that runs VMs
+  on ARM, so anything older won't work. On a Mac: `brew install --cask virtualbox`. **This is an
+  arm64 VM and will not import on Intel/x86 hosts.**
+- **≥ 8 GB RAM free** and **~60 GB free disk** (the virtual disk is 60 GB, dynamically
+  allocated — it only consumes what's actually written, but a full run can grow it toward that
+  ceiling). The VM is configured for 8 GB RAM / 4 CPUs; lower these in the VM's **Settings →
+  System** if your host is smaller.
+
+**Import and start**
+
+1. In VirtualBox: **File → Import Appliance…**, select `eggcc-artifact.ova`, accept the
+   defaults, and click **Import**. (Command-line equivalent: `VBoxManage import eggcc-artifact.ova`.)
+2. Select the **eggcc-artifact** VM and click **Start**.
+3. Log in: user **`artifact`**, password **`artifact`**.
+4. When the desktop loads, open **`~/README.md`** (double-click it in the Files app, or run
+   `xdg-open ~/README.md` or `less ~/README.md` in a terminal) and continue from **Quick
+   start** below — it's this same guide.
+
+**Tip:** you can also SSH into the VM from your host — `ssh -p 2222 artifact@localhost`
+(password `artifact`) — which is handy for pasting commands or copying files in with `scp`,
+since the VM's own clipboard can be unreliable.
+
 ## Quick start
 
 In the VM, open a terminal and run:
@@ -38,9 +71,8 @@ infeasibility (CBC also times out on every PolyBench benchmark).
 
 ## The VM
 
-- **Host:** an ARM machine (Apple-Silicon Mac or Windows on ARM) with VirtualBox 7.2+ (7.2 is
-  the first to run VMs on ARM). This is an arm64 VM — it won't import on Intel/x86 hosts. If you
-  haven't imported the VM yet, see the host-side setup guide shipped next to `eggcc-artifact.ova`.
+- **Host:** an ARM machine (Apple-Silicon Mac or Windows on ARM) with VirtualBox 7.2+; this is
+  an arm64 VM and won't import on Intel/x86 hosts. If you haven't imported the VM yet, see §0.
 - **Guest:** Ubuntu 24.04 Desktop, 4 vCPUs / 8 GB RAM. Login `artifact` / `artifact`.
 - **In your home folder** you'll find `README.md` (this guide, quick start at the top),
   `reproduce.sh`, the source in `eggcc/`, and `reference/` — the authors' pre-generated
@@ -167,7 +199,7 @@ Beyond reproducing the paper, eggcc runs on your own programs and is straightfor
 
 ```
 ~/
-├── README.md                     this guide (quick start at the top; = eggcc/artifact/README.md)
+├── README.md                     this guide (§0 setup, then quick start; = eggcc/artifact/README.md)
 ├── reproduce.sh                  smoke | full   →   your figures land here
 ├── extraction-time-cdf.pdf, normalized-binary-perf-chart-*.pdf, fenwick-cycles-bar-chart.pdf
 │                                 (YOUR figures — appear here after you run reproduce.sh)

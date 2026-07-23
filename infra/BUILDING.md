@@ -1,11 +1,12 @@
 # Building and shipping the eggcc artifact VM
 
 Author-facing guide for building `eggcc-artifact.ova` by hand on an Apple-Silicon Mac.
-Reviewers don't need this — they import and run the VM following the host-side setup guide
-(`artifact/HOST_README.md`, shipped next to the OVA), then the in-VM `README.md`.
+Reviewers don't need this — they import and run the VM following `artifact/README.md`, the
+single unified guide: its §0 covers host-side import/boot (shipped next to the OVA), and the
+rest is the in-VM reproduction guide (also at `~/README.md` inside the VM).
 
 The artifact ships as an **arm64** VM (native on Apple-Silicon Macs and Windows on ARM; it will
-not import on x86 hosts — see `artifact/HOST_README.md`).
+not import on x86 hosts — see `artifact/README.md` §0).
 
 ## 0. Prerequisites
 
@@ -92,26 +93,24 @@ sudo poweroff
 
 (The Gurobi *solver* install is fine to ship — only the license and the key are personal.)
 
-Then, on the host, export the appliance and bundle it with the host-side setup guide (as
-`README.md`) into a single zip for Zenodo:
+Then, on the host, export the appliance:
 
 ```bash
-# on the Mac host (adjust the path to your eggcc checkout):
+# on the Mac host:
 # detach the install ISO first, so it isn't bundled into the OVA and can't boot a reviewer
 # back into the installer (do this with the VM powered off):
 VBoxManage storageattach eggcc-artifact --storagectl SATA --port 1 --device 0 --type dvddrive --medium emptydrive
 VBoxManage export eggcc-artifact -o eggcc-artifact.ova
-
-mkdir -p eggcc-artifact
-cp eggcc-artifact.ova              eggcc-artifact/
-cp ~/eggcc/artifact/HOST_README.md eggcc-artifact/README.md
-zip -r eggcc-artifact.zip eggcc-artifact
 ```
 
-Upload `eggcc-artifact.zip` to Zenodo for a DOI, then submit the DOI to the AE HotCRP. The
-zip's `README.md` (the host-side setup guide) tells reviewers how to install VirtualBox,
-import the OVA, and log in, then points them at the in-VM guide. (Reviewers can't read the
-in-VM `README.md` until they've booted the VM, so this host-side one is required.)
+Upload **two files** to a single Zenodo record — `eggcc-artifact.ova` and
+`~/eggcc/artifact/README.md` — then submit the DOI to the AE HotCRP. Don't wrap them in a
+zip/tarball: Zenodo records hold multiple files, and an OVA is already internally compressed
+(the exported disk is a stream-optimized, gzipped VMDK), so an outer archive would shrink it by
+only ~1–3% while forcing reviewers to unpack a multi-GB download. Uploading `README.md`
+separately also lets Zenodo render it on the record page, so reviewers can read §0 (install
+VirtualBox, import the OVA, log in) *before* downloading anything. That same file is waiting at
+`~/README.md` inside the VM, where its reproduction guide takes over.
 
 Because the OVA is arm64, an x86-only reviewer can't import it. The SPLASH/OOPSLA AE guidance
 supports ARM VMs (VirtualBox 7.2), so an arm64 appliance is acceptable to submit.

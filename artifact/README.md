@@ -122,10 +122,6 @@ so open the two side by side to compare — e.g. `~/extraction-time-cdf.pdf` aga
 not, since both are 1 %-of-regions samples with their own random draw. (If you ran with
 Gurobi, compare against `~/reference/gurobi/` instead — see below.)
 
-(The other paper figures — ILP encoding size (Fig. 6), statewalk-width distribution
-(Fig. 8), and runtime-vs-statewalk-width scaling (Fig. 9) — are also written to
-`eggcc/nightly/output/paper/`.)
-
 Exact times vary with the host and the random region sample; the order-of-magnitude gap is
 stable. ILP timeouts are expected, not failures.
 
@@ -149,8 +145,7 @@ VM; you just add a license *file*:
 `full` auto-detects the license and adds a **Gurobi** curve to the CDF (Statewalk DP vs Gurobi
 vs CBC) and switches the RQ2 charts' ILP treatment to Gurobi (EQCC-GUROBI), matching the
 paper. Compare this run against the authors' Gurobi set in `~/reference/gurobi/` (the default
-`~/reference/` is the CBC run). The Gurobi run also produces a couple of extra figures the CBC
-run doesn't (e.g. `egraph-size-vs-ILP-time.pdf`).
+`~/reference/` is the CBC run).
 
 *Older "Named-User" licenses* give a `grbgetkey <KEY>` command instead of a file. If that's what
 you have, SSH in (`ssh -p 2222 artifact@localhost`) and run `grbgetkey <KEY>` — it writes
@@ -204,7 +199,7 @@ Beyond reproducing the paper, eggcc runs on your own programs and is straightfor
 ├── extraction-time-cdf.pdf, normalized-binary-perf-chart-*.pdf, fenwick-cycles-bar-chart.pdf
 │                                 (YOUR figures — appear here after you run reproduce.sh)
 ├── reference/                    the authors' pre-generated CBC run (matches the default run)
-│   └── gurobi/                   the authors' Gurobi run (matches a Gurobi run; a few extra figures)
+│   └── gurobi/                   the authors' Gurobi run (matches a Gurobi run)
 └── eggcc/                        source
     ├── artifact/                 reproduce.sh, README.md (this file)
     ├── infra/                    nightly.py, graphs.py, plot_cdf.py, setup_gurobi.sh,

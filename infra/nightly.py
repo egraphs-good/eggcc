@@ -57,9 +57,11 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
         print(f"Running profile with data_dir={data_dir}, bril_dir={args.benchmark_dir}, parallel={args.parallel}")
         run_profile(str(data_dir), args.benchmark_dir, config, parallel=args.parallel)
 
-    # Generate the plots
+    # Generate the plots. Artifact/local runs only need the headline figures reproduce.sh
+    # copies out; the real (non-local) nightly renders the full paper/nightly figure set.
     print("Generating graphs...")
-    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
+    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config,
+                render_extra_figures=not is_local)
     data = []
     with open(profile_json) as f:
         data = json.load(f)

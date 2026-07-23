@@ -3,7 +3,7 @@
 # Reproduce the eggcc paper's figures and drop them in a clean location.
 #
 # Usage:
-#   artifact/reproduce.sh [smoke|full|paper] [--out-dir DIR]
+#   artifact/reproduce.sh [smoke|full|paper|regenerate] [--out-dir DIR]
 #
 #   smoke  (default) ~5-10 min : 3 small benchmarks, CBC solver only. Generates a coarse
 #                                sanity CDF (extraction-time-cdf-smoke.pdf) to confirm the
@@ -17,6 +17,9 @@
 #                                samples). NOT feasible on the small VM -- see README
 #                                ("Note on paper-scale runs"); use a large machine.
 #                                Uses Gurobi if a license is installed (infra/setup_gurobi.sh).
+#   regenerate       ~seconds  : re-render the figures from the existing benchmark data
+#                                (nightly/data/profile.json), WITHOUT re-running benchmarks.
+#                                Handy for iterating on the plotting code. Run 'full' first.
 #
 #   --out-dir DIR   copy the produced figures into DIR (the VM's ~/reproduce.sh passes
 #                   --out-dir "$HOME" so figures appear at the clean top level). Default:
@@ -36,11 +39,11 @@ MODE="smoke"
 OUT_DIR=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    smoke|full|paper) MODE="$1"; shift ;;
+    smoke|full|paper|regenerate) MODE="$1"; shift ;;
     --out-dir) OUT_DIR="${2:?--out-dir needs a directory}"; shift 2 ;;
     --out-dir=*) OUT_DIR="${1#*=}"; shift ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
-    *) echo "unknown argument: $1 (usage: $0 [smoke|full|paper] [--out-dir DIR])" >&2; exit 1 ;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1 (usage: $0 [smoke|full|paper|regenerate] [--out-dir DIR])" >&2; exit 1 ;;
   esac
 done
 
@@ -79,24 +82,32 @@ case "$MODE" in
     # regions), so it is feasible on a few cores.
     echo "[full] running the full nightly (~3-4 h; Gurobi if a license is installed, else CBC)..."
     bash infra/nightly.sh benchmarks/passing --local
-    FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
-    # Copy the normalized perf charts, but skip the fenwick/raytrace variants (not headline figures).
-    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do
-      case "$f" in *-fenwick.pdf|*-raytrace.pdf) continue ;; esac
-      [ -f "$f" ] && FIGURES+=("$f")
-    done
     ;;
   paper)
     echo "[paper] running the full paper configuration (see README; needs a large machine)..."
     bash infra/nightly.sh benchmarks/passing --local --paper
-    FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
-    # Copy the normalized perf charts, but skip the fenwick/raytrace variants (not headline figures).
-    for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do
-      case "$f" in *-fenwick.pdf|*-raytrace.pdf) continue ;; esac
-      [ -f "$f" ] && FIGURES+=("$f")
-    done
+    ;;
+  regenerate)
+    # Re-render figures from the last run's data, no benchmarking. nightly.py --update skips
+    # profiling and rebuilds the graphs from nightly/data/profile.json (preserved by --local).
+    if [ ! -f nightly/data/profile.json ]; then
+      echo "[regenerate] no benchmark data at nightly/data/profile.json -- run '$0 full' (or 'paper') first." >&2
+      exit 1
+    fi
+    echo "[regenerate] re-rendering figures from the existing profile.json (no benchmarking)..."
+    bash infra/nightly.sh benchmarks/passing --local --update
     ;;
 esac
+
+# full / paper / regenerate all leave the headline figures in $PAPER; collect them to report/copy.
+if [ "$MODE" != smoke ]; then
+  FIGURES+=("$PAPER/extraction-time-cdf.pdf" "$PAPER/fenwick-cycles-bar-chart.pdf")
+  # the normalized perf charts, skipping the fenwick/raytrace variants (not headline figures)
+  for f in "$PAPER"/normalized-binary-perf-chart-*.pdf; do
+    case "$f" in *-fenwick.pdf|*-raytrace.pdf) continue ;; esac
+    [ -f "$f" ] && FIGURES+=("$f")
+  done
+fi
 
 DEST="${OUT_DIR:-$PAPER}"
 [ "$DEST" != "$PAPER" ] && mkdir -p "$DEST"

@@ -465,6 +465,12 @@ def make_statewalk_width_performance_scatter_multi(
     if not isinstance(y_break_runtimes, set):
       y_break_runtimes = set(y_break_runtimes)
 
+  # The y-axis break assumes the data has an empty gap between break_low and break_high.
+  # Real runs (a different machine, region sample, or timing noise) can land a point inside
+  # that gap, or introduce timeout/infeasible points the split can't render. Rather than
+  # abort the whole nightly, drop the break and render a normal axis, with a warning.
+  use_break = y_break is not None
+
   plotted_any = False
   plot_entries = []
 
@@ -498,21 +504,35 @@ def make_statewalk_width_performance_scatter_multi(
       infeasible_x = np.array(results["infeasible_x"])
       infeasible_y = np.array(results["infeasible_y"])
 
-      if y_break is not None:
+      if use_break:
         if results["is_ilp_runtime"]:
-          raise ValueError(
-            "y-axis break is only supported for treatments without ILP runtimes"
+          print(
+            f"WARNING: y-axis break is only supported for treatments without ILP runtimes, "
+            f"but treatment {label} has them; rendering {output} without the axis break."
           )
-        if y_break_runtimes is None or treatment.runtime in y_break_runtimes:
-          between_mask = (y_array > break_low) & (y_array < break_high)
-          if np.any(between_mask):
-            raise ValueError(
-              f"Found runtime values between {break_low} and {break_high} seconds for treatment {label}; cannot apply axis break"
+          use_break = False
+        if use_break and (y_break_runtimes is None or treatment.runtime in y_break_runtimes):
+          n_between = int(np.count_nonzero((y_array > break_low) & (y_array < break_high)))
+          if n_between:
+            print(
+              f"WARNING: {n_between} runtime value(s) for treatment {label} fell between "
+              f"{break_low}s and {break_high}s, inside the axis-break gap (the break assumes "
+              f"that gap is empty); rendering {output} without the axis break instead. "
+              f"Widen the y_break bounds in graphs.py to restore the broken axis."
             )
-        if timeout_x.size:
-          raise ValueError("y-axis break does not support timeout points")
-        if infeasible_x.size:
-          raise ValueError("y-axis break does not support infeasible points")
+            use_break = False
+        if use_break and timeout_x.size:
+          print(
+            f"WARNING: treatment {label} has timeout points, which the y-axis break cannot "
+            f"render; rendering {output} without the axis break."
+          )
+          use_break = False
+        if use_break and infeasible_x.size:
+          print(
+            f"WARNING: treatment {label} has infeasible points, which the y-axis break cannot "
+            f"render; rendering {output} without the axis break."
+          )
+          use_break = False
 
       plot_entries.append(
         {
@@ -547,7 +567,7 @@ def make_statewalk_width_performance_scatter_multi(
     if scale_by_egraph_size:
       title += " (Width × Size)"
 
-    if y_break is not None:
+    if use_break:
       lower_y_values = []
       upper_y_values = []
       for entry in plot_entries:

@@ -893,7 +893,13 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
-def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig):
+def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig, render_extra_figures=True):
+  # render_extra_figures=False (set for artifact/--local runs) renders only the headline
+  # figures reproduce.sh copies out: the extraction-time CDF, the normalized perf charts, and
+  # the Fenwick chart. Everything else -- statewalk-width, heatmap, ILP-encoding, jitter,
+  # region-extract, and the LaTeX macros -- are paper/nightly extras the artifact does not
+  # ship, so skipping them shortens the reviewer's run and removes their failure modes from it.
+
   # Graphs report the per-region ILP timeout the data was generated with (e.g. "30 s"
   # for the default nightly, "5 min" for paper).
   set_ilp_timeout_seconds(getattr(config, "ilp_timeout_seconds", 5 * 60))
@@ -916,19 +922,21 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     print("INFO: No Gurobi timing data; rendering ILP graphs from CBC/tiger data only.")
 
   # Always available (no ILP timing data required)
-  make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
+  if render_extra_figures:
+    make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
   make_fenwick_cycles_bar_chart(data, f'{graphs_folder}/fenwick-cycles-bar-chart.pdf')
 
   if has_comparison:
     # CDF plots tiger + CBC series (plus the Gurobi series when it ran)
     make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False, include_gurobi=has_gurobi)
-    # tiger greedy extraction time (no Gurobi needed)
-    make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
-    if has_gurobi:
-      make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
-      make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
-    else:
-      print("Skipping ILP-time region plot and extraction-time-histogram (require Gurobi)")
+    if render_extra_figures:
+      # tiger greedy extraction time (no Gurobi needed)
+      make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+      if has_gurobi:
+        make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+        make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+      else:
+        print("Skipping ILP-time region plot and extraction-time-histogram (require Gurobi)")
   else:
     print("Skipping all region-timing graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
 
@@ -950,8 +958,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
   # Statewalk-width and ILP-encoding graphs. Tiger/CBC graphs render whenever the
-  # COMPARISON treatment ran; the Gurobi-specific graphs need has_gurobi.
-  if has_comparison:
+  # COMPARISON treatment ran; the Gurobi-specific graphs need has_gurobi. All of these are
+  # paper/nightly extras, so the artifact's headline-only figure set skips the whole block.
+  if has_comparison and render_extra_figures:
     make_statewalk_width_histogram(
       data,
       f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
@@ -1045,6 +1054,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       )
     else:
       print("Skipping Gurobi-only ILP graphs (ilp-time heatmaps, Gurobi solve-time scatter, peggy comparison)")
+  elif not render_extra_figures:
+    print("Skipping statewalk and ILP-related graphs (artifact figure set: only the headline figures are rendered)")
   else:
     print("Skipping statewalk and ILP-related graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
   
@@ -1122,8 +1133,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   # nightlymacros.tex is pervasively Gurobi-dependent (Gurobi speedups, timeout counts,
   # ilp_extract_time). The frontend already treats its absence as expected without Gurobi.
-  if has_gurobi:
+  # It is a paper artifact, not a reproduce.sh figure, so the artifact figure set skips it.
+  if has_gurobi and render_extra_figures:
     make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
+  elif has_gurobi:
+    print("Skipping macro generation (artifact figure set: only the headline figures are rendered)")
   else:
     print("Skipping macro generation (nightlymacros.tex requires Gurobi data)")
 

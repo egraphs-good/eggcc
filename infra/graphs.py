@@ -758,56 +758,8 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   plt.tight_layout()
   plt.savefig(output_file)
 
-# TODO change back after anonymization is lifted
-def to_paper_names_treatment(treatment):
-  if treatment == 'llvm-O0-O0':
-    return 'LLVM-O0'
-  if treatment == 'llvm-O3-O0':
-    return 'LLVM-O3-O0'
-  if treatment == 'eggcc-O0-O0':
-    # eggcc-O0-O0 is the default (Statewalk DP) extraction; keep the DP paper label.
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
-  if treatment == 'eggcc-O3-O0':
-    return 'EQCC-O3-O0'
-  if treatment == 'eggcc-ablation-O0-O0':
-    return 'EQCC-Ablation-O0-O0'
-  if treatment == 'eggcc-ablation-O3-O0':
-    return 'EQCC-Ablation-O3-O0'
-  if treatment == 'eggcc-ablation-O3-O3':
-    return 'EQCC-Ablation-O3-O3'
-  if treatment == 'rvsdg-round-trip-to-executable':
-    return 'RVSDG-Executable'
-  if treatment == 'llvm-O1-O0':
-    return 'LLVM-O1-O0'
-  if treatment == 'llvm-O2-O0':
-    return 'LLVM-O2-O0'
-  if treatment == 'llvm-O3-O3':
-    return 'LLVM-O3-O3'
-  if treatment == 'eggcc-sequential-O0-O0':
-    return 'EQCC-Sequential-O0-O0'
-  if treatment == 'eggcc-O3-O3':
-    return 'EQCC-O3-O3'
-  if treatment == 'eggcc-WITHCTX-O0-O0':
-    return 'EQCC-WITHCTX-O0-O0'
-  if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
-    # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
-  if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
-    # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
-  if treatment == 'eggcc-tiger-WL-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
-  if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return f'EQCC-GUROBI-O0'
-  if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
-  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
-  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
-  if treatment == 'eggcc-tiger-ILP-COMPARISON':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
-  raise KeyError(f"Unknown treatment {treatment}")
+# to_paper_names_treatment now lives in graph_helpers (no matplotlib dependency,
+# so table generation can import it); re-exported here by `from graph_helpers import *`.
 
 
 
@@ -991,6 +943,16 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       y_break=(0.6, 4.5),
       y_break_runtimes={'tiger'},
     )
+    # Split, log-log version of the above: the overlaid linear plot hides the trend
+    # (one 4.9 s outlier flattens ~99.9% of the points onto the axis). This is the
+    # version the paper uses.
+    make_statewalk_width_split_scatters(
+      data,
+      [f'{graphs_folder}/statewalk-width-vs-tiger-time-optoff.pdf',
+       f'{graphs_folder}/statewalk-width-vs-tiger-time-opton.pdf'],
+      [tiger_optimizations_off, tiger_optimizations_on],
+      is_average=False,
+    )
     # CBC is always present; add the Gurobi series only when it ran.
     ilp_scatter_treatments = [ilp_cbc] + ([ilp_gurobi] if has_gurobi else [])
     make_statewalk_width_performance_scatter_multi(
@@ -999,6 +961,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       ilp_scatter_treatments,
       is_average=False,
       scale_by_egraph_size=False,
+      # Log y to match the two tiger panels it sits beside in the paper's figure,
+      # and because ~98% of solved ILP points otherwise pile up at the bottom.
+      log_y=True,
     )
 
     make_egraph_size_vs_statewalk_width_heatmap(

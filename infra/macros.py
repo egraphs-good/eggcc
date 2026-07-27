@@ -181,7 +181,8 @@ def make_macros(profile, benchmark_suites, output_file):
       out.write(
         format_latex_macro(
           "MaxRaytraceRegionalizedEgraphTerms",
-          f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
+          max(sample["egraph_size"] for sample in raytrace_timings),
+          group_thousands=True,
         )
       )
       out.write(
@@ -276,6 +277,25 @@ def make_macros(profile, benchmark_suites, output_file):
       format_latex_macro(
         "MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs",
         f"{max(tiger_region_times):.4f}",
+      )
+    )
+
+    # Same, with tiger's optimizations disabled. The paper's statewalk-width figure
+    # contrasts the two, so it needs the un-optimized maximum as well.
+    tiger_region_times_unopt = [
+      duration_to_seconds(sample["extract_time_liveoff_satelliteoff"])
+      for sample in region_points
+    ]
+    out.write(
+      format_latex_macro(
+        "AvgTigerLiveOffSatelliteOffRegionExtractTimeSecs",
+        f"{mean(tiger_region_times_unopt):.6f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxTigerLiveOffSatelliteOffRegionExtractTimeSecs",
+        f"{max(tiger_region_times_unopt):.4f}",
       )
     )
 

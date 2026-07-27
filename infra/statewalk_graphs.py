@@ -434,6 +434,111 @@ def make_statewalk_width_performance_scatter(
   plt.savefig(output)
 
 
+def make_statewalk_width_split_scatters(
+  data,
+  outputs,
+  treatments: Iterable[StatewalkTreatment],
+  is_average,
+  scale_by_egraph_size=False,
+  width_min=None,
+  width_max=None,
+):
+  """One log-log scatter per treatment, written to `outputs` in order.
+
+  This is the split alternative to make_statewalk_width_performance_scatter_multi,
+  which overlays all treatments on one linear axis with a break. Overlaying hides
+  the trend: a single 4.9 s outlier stretches the linear axis until ~99.9% of
+  points are crushed onto it, and ~95% of regions have width 1 so they pile up at
+  the left. Separate panels on log-log axes make both the growth without
+  optimizations and the flatness with them legible.
+
+  All panels share one set of x/y limits, so the panels can be compared directly.
+  That is the entire point of the figure, so the limits are deliberately not
+  autoscaled per panel.
+  """
+  output_list = list(outputs)
+  treatment_list = list(treatments)
+  if len(output_list) != len(treatment_list):
+    raise ValueError(
+      f"Expected one output path per treatment, got {len(output_list)} outputs "
+      f"and {len(treatment_list)} treatments"
+    )
+  if not treatment_list:
+    raise ValueError("Expected at least one treatment")
+
+  benchmarks = dedup([b.get('benchmark') for b in data])
+
+  entries = []
+  for treatment in treatment_list:
+    points = all_region_extract_points(treatment.region_run_method, data, benchmarks)
+    results = _collect_statewalk_scatter_points(
+      points, treatment, is_average, scale_by_egraph_size, width_min, width_max,
+    )
+    if results["is_ilp_runtime"]:
+      raise ValueError(
+        f"make_statewalk_width_split_scatters is for tiger runtimes only, but "
+        f"{treatment.display_name()} reports timeouts/infeasibility"
+      )
+    entries.append({
+      "treatment": treatment,
+      "x": np.array(results["x_values"]),
+      "y": np.array(results["y_values"]),
+    })
+
+  if not any(e["x"].size for e in entries):
+    print("WARNING: No data plotted in make_statewalk_width_split_scatters")
+    return
+
+  # Log axes cannot show non-positive values; every recorded duration and width
+  # should be positive, so fail loudly rather than silently dropping points.
+  for e in entries:
+    if e["x"].size and (e["x"] <= 0).any():
+      raise ValueError(f"Non-positive statewalk width for {e['treatment'].display_name()}")
+    if e["y"].size and (e["y"] <= 0).any():
+      raise ValueError(f"Non-positive runtime for {e['treatment'].display_name()}")
+
+  all_x = np.concatenate([e["x"] for e in entries if e["x"].size])
+  all_y = np.concatenate([e["y"] for e in entries if e["y"].size])
+  x_lim = (all_x.min() * 0.6, all_x.max() * 1.8)
+  y_lim = (all_y.min() * 0.5, all_y.max() * 2.5)
+
+  if scale_by_egraph_size:
+    x_label = f"Statewalk Width{' Average' if is_average else ''} × E-graph Size"
+  else:
+    x_label = f"Statewalk Width{' Average' if is_average else ''}"
+
+  fsize = 27
+  for output, entry in zip(output_list, entries):
+    treatment = entry["treatment"]
+    plt.figure(figsize=(10, 8))
+    plt.scatter(
+      entry["x"],
+      entry["y"],
+      color=treatment.color(),
+      s=110,
+      alpha=0.25,
+      linewidths=1.0,
+      edgecolors=treatment.color(),
+    )
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(*x_lim)
+    plt.ylim(*y_lim)
+    plt.xlabel(x_label, fontsize=fsize)
+    plt.ylabel('Extraction Time (Seconds)', fontsize=fsize)
+    plt.title(treatment.display_name(), fontsize=fsize)
+    plt.xticks(fontsize=fsize)
+    plt.yticks(fontsize=fsize)
+    plt.grid(True, which='major', alpha=0.3)
+    plt.tight_layout()
+    # bbox_inches='tight' matches the other statewalk figures. The panels have
+    # identical axes and ticks, so they crop to identical page sizes and therefore
+    # still share a scale once \includegraphics scales them to the same width.
+    plt.savefig(output, bbox_inches='tight')
+    plt.close()
+    print(f"Wrote statewalk width split scatter for '{treatment.display_name()}' to {output}")
+
+
 def make_statewalk_width_performance_scatter_multi(
   data,
   output,
@@ -444,10 +549,15 @@ def make_statewalk_width_performance_scatter_multi(
   width_max=None,
   y_break=None,
   y_break_runtimes=None,
+  log_y=False,
 ):
   treatment_list = list(treatments)
   if len(treatment_list) < 1:
     raise ValueError("Expected at least one treatment for multi scatter plot")
+  if log_y and y_break is not None:
+    # The break splits the axis into two linear sub-axes; a log scale makes the
+    # wide range readable without one, so the two are mutually exclusive.
+    raise ValueError("log_y cannot be combined with y_break")
 
   benchmarks = dedup([b.get('benchmark') for b in data])
 
@@ -733,6 +843,11 @@ def make_statewalk_width_performance_scatter_multi(
       ax.grid(alpha=0.3)
       ax.tick_params(axis='both', which='major', labelsize=26)
       ax.set_xscale('log')
+      if log_y:
+        # Runtimes here span ~4 orders of magnitude, so a linear axis crushes the
+        # great majority of points onto the bottom. Timeout/infeasible markers sit
+        # at the timeout value, which is positive, so they survive the log scale.
+        ax.set_yscale('log')
 
       if legend_entries:
         legend_handles = [legend_entries[label] for label in legend_entries]

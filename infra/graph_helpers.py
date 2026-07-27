@@ -335,10 +335,75 @@ def geometric_mean(values):
   return math.exp(log_sum / count)
 
 
-# Clock rate of the machine the nightly benchmarks run on, used to convert the
-# cycle counts reported by the profiler into wall-clock time. Measured on the
-# nightly runner; update this if the benchmarking machine changes.
-CPU_HZ = 4_000_000_000
+# TODO change back after anonymization is lifted
+def to_paper_names_treatment(treatment):
+  if treatment == 'llvm-O0-O0':
+    return 'LLVM-O0'
+  if treatment == 'llvm-O3-O0':
+    return 'LLVM-O3-O0'
+  if treatment == 'eggcc-O0-O0':
+    # eggcc-O0-O0 is the default (Statewalk DP) extraction; keep the DP paper label.
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-O3-O0':
+    return 'EQCC-O3-O0'
+  if treatment == 'eggcc-ablation-O0-O0':
+    return 'EQCC-Ablation-O0-O0'
+  if treatment == 'eggcc-ablation-O3-O0':
+    return 'EQCC-Ablation-O3-O0'
+  if treatment == 'eggcc-ablation-O3-O3':
+    return 'EQCC-Ablation-O3-O3'
+  if treatment == 'rvsdg-round-trip-to-executable':
+    return 'RVSDG-Executable'
+  if treatment == 'llvm-O1-O0':
+    return 'LLVM-O1-O0'
+  if treatment == 'llvm-O2-O0':
+    return 'LLVM-O2-O0'
+  if treatment == 'llvm-O3-O3':
+    return 'LLVM-O3-O3'
+  if treatment == 'eggcc-sequential-O0-O0':
+    return 'EQCC-Sequential-O0-O0'
+  if treatment == 'eggcc-O3-O3':
+    return 'EQCC-O3-O3'
+  if treatment == 'eggcc-WITHCTX-O0-O0':
+    return 'EQCC-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
+  if treatment == 'eggcc-tiger-O0-O0':
+    # Older runs (e.g. the OOPSLA submission) carried Statewalk DP as its own
+    # treatment rather than folding it into eggcc-O0-O0; same paper label.
+    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-tiger-WL-O0-O0':
+    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
+  if treatment == 'eggcc-tiger-ILP-O0-O0':
+    return f'EQCC-GUROBI-O0'
+  if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
+  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
+  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
+  if treatment == 'eggcc-tiger-ILP-COMPARISON':
+    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
+  raise KeyError(f"Unknown treatment {treatment}")
+
+
+# TSC rate of the machine the nightly benchmarks run on, used to convert the
+# rdtsc cycle counts reported by the profiler into wall-clock time. Update this
+# if the benchmarking machine changes.
+#
+# Measured on the nightly runner with `dmesg | grep -i tsc`, which reports
+# "Detected 1999.906 MHz processor". This matches the AMD EPYC 7702P's 2.0 GHz
+# nominal clock (an invariant TSC ticks at the nominal rate, not the 3.35 GHz
+# boost rate). The previous value here was 4_000_000_000, which is 19% above
+# even that CPU's boost ceiling and made every absolute time 2x too small.
+#
+# Only absolute times are affected; every ratio/speedup is computed from raw
+# cycle counts and is invariant to this constant.
+CPU_HZ = 1_999_906_000
 
 
 def cycles_to_ms(cycles):

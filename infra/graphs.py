@@ -758,13 +758,6 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   plt.tight_layout()
   plt.savefig(output_file)
 
-# to_paper_names_treatment now lives in graph_helpers (no matplotlib dependency,
-# so table generation can import it); re-exported here by `from graph_helpers import *`.
-
-
-
-  
-
 def get_code_size(benchmark, suites_path):
   # search for all files in the benchmark folder
   files = []

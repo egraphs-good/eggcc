@@ -397,9 +397,8 @@ def to_paper_names_treatment(treatment):
 #
 # Measured on the nightly runner with `dmesg | grep -i tsc`, which reports
 # "Detected 1999.906 MHz processor". This matches the AMD EPYC 7702P's 2.0 GHz
-# nominal clock (an invariant TSC ticks at the nominal rate, not the 3.35 GHz
-# boost rate). The previous value here was 4_000_000_000, which is 19% above
-# even that CPU's boost ceiling and made every absolute time 2x too small.
+# nominal clock; an invariant TSC ticks at the nominal rate, not the 3.35 GHz
+# boost rate.
 #
 # Only absolute times are affected; every ratio/speedup is computed from raw
 # cycle counts and is invariant to this constant.

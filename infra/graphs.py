@@ -506,6 +506,9 @@ def make_jitter(profile, upper_x_bound, output):
   y_label_map = {}
   outlier_x = []
   outlier_y = []
+  # Seeded locally rather than using the global random state, so this plot is
+  # reproducible regardless of what else drew before it.
+  jitter_rng = random.Random(JITTER_SEED)
 
   for idx, benchmark in enumerate(filtered):
     benchmark_name = benchmark.get('benchmark', f'benchmark_{idx}')
@@ -526,7 +529,7 @@ def make_jitter(profile, upper_x_bound, output):
     for cycle in benchmark.get('cycles', [])[:100]:
       normalized = cycle / baseline_mean
       # Add a small random jitter to y value to prevent overlap
-      jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[GRAPH_RUN_MODES.index(run_method)]
+      jittered_y = y_label_map[benchmark_name] + jitter_rng.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[GRAPH_RUN_MODES.index(run_method)]
       if upper_x_bound != None and normalized > upper_x_bound:
           # Record outlier data
           outlier_x.append(upper_x_bound)
@@ -577,6 +580,7 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
+@with_paper_font
 def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True, ilp_label="Gurobi"):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)

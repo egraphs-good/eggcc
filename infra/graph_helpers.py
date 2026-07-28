@@ -5,6 +5,30 @@ EGGCC_NAME = "eggcc"
 TIGER_NAME = "Statewalk DP"
 TIGER_INLINE_NAME = "DP"
 
+# Several plots jitter overlapping points. Draw that jitter from a fixed seed so
+# regenerating a figure does not move the points around: otherwise the same data
+# yields a visibly different figure on every run.
+JITTER_SEED = 0
+
+# Figures in the paper render at this font size. Apply it with the decorator
+# below rather than assigning plt.rcParams: a global assignment leaks into every
+# figure drawn afterwards in the same process, so a chart's appearance ends up
+# depending on the order make_graphs happens to call things (and on whether
+# optional stages ran at all). The decorator scopes it to one function.
+PAPER_FONT_SIZE = 18
+
+
+def with_paper_font(fn):
+  import functools
+
+  @functools.wraps(fn)
+  def wrapper(*args, **kwargs):
+    import matplotlib.pyplot as plt
+    with plt.rc_context({"font.size": PAPER_FONT_SIZE}):
+      return fn(*args, **kwargs)
+
+  return wrapper
+
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 # note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
@@ -49,6 +73,9 @@ COLOR_MAP = {
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
   "eggcc-O0-O0": "green",
+  # Older runs (e.g. the OOPSLA submission) carry Statewalk DP as its own
+  # treatment instead of folding it into eggcc-O0-O0; render it the same.
+  "eggcc-tiger-O0-O0": "green",
   "eggcc-sequential-O0-O0": "pink",
   "eggcc-O3-O0": "brown",
   "eggcc-O3-O3": "lightblue",
@@ -72,6 +99,7 @@ SHAPE_MAP = {
   "llvm-O3-O0": "o",
   "llvm-O3-O3": "o",
   "eggcc-O0-O0": "o",
+  "eggcc-tiger-O0-O0": "o",   # see COLOR_MAP note above
   "eggcc-sequential-O0-O0": "o",
   "eggcc-O3-O0": "o",
   "eggcc-O3-O3": "o",
@@ -343,15 +371,15 @@ def to_paper_names_treatment(treatment):
     return 'LLVM-O3-O0'
   if treatment == 'eggcc-O0-O0':
     # eggcc-O0-O0 is the default (Statewalk DP) extraction; keep the DP paper label.
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-O3-O0':
-    return 'EQCC-O3-O0'
+    return 'EGGCC-O3-O0'
   if treatment == 'eggcc-ablation-O0-O0':
-    return 'EQCC-Ablation-O0-O0'
+    return 'EGGCC-Ablation-O0-O0'
   if treatment == 'eggcc-ablation-O3-O0':
-    return 'EQCC-Ablation-O3-O0'
+    return 'EGGCC-Ablation-O3-O0'
   if treatment == 'eggcc-ablation-O3-O3':
-    return 'EQCC-Ablation-O3-O3'
+    return 'EGGCC-Ablation-O3-O3'
   if treatment == 'rvsdg-round-trip-to-executable':
     return 'RVSDG-Executable'
   if treatment == 'llvm-O1-O0':
@@ -361,33 +389,33 @@ def to_paper_names_treatment(treatment):
   if treatment == 'llvm-O3-O3':
     return 'LLVM-O3-O3'
   if treatment == 'eggcc-sequential-O0-O0':
-    return 'EQCC-Sequential-O0-O0'
+    return 'EGGCC-Sequential-O0-O0'
   if treatment == 'eggcc-O3-O3':
-    return 'EQCC-O3-O3'
+    return 'EGGCC-O3-O3'
   if treatment == 'eggcc-WITHCTX-O0-O0':
-    return 'EQCC-WITHCTX-O0-O0'
+    return 'EGGCC-WITHCTX-O0-O0'
   if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
     # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
     # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
   if treatment == 'eggcc-tiger-O0-O0':
     # Older runs (e.g. the OOPSLA submission) carried Statewalk DP as its own
     # treatment rather than folding it into eggcc-O0-O0; same paper label.
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
   if treatment == 'eggcc-tiger-WL-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-WL-O0'
   if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return f'EQCC-GUROBI-O0'
+    return f'EGGCC-GUROBI-O0'
   if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
   if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
   if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
   if treatment == 'eggcc-tiger-ILP-COMPARISON':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-Comparison'
   raise KeyError(f"Unknown treatment {treatment}")
 
 

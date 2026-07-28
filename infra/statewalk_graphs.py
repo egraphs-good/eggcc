@@ -262,7 +262,10 @@ def _collect_statewalk_scatter_points(
   def _jitter(values, magnitude=0.5):
     if not values:
       return values
-    noise = np.random.uniform(-magnitude, magnitude, size=len(values))
+    # A generator seeded per call, rather than the global numpy state, so the
+    # jitter depends only on the input and not on how many plots ran before it.
+    rng = np.random.default_rng(JITTER_SEED)
+    noise = rng.uniform(-magnitude, magnitude, size=len(values))
     jittered = []
     for value, delta in zip(values, noise):
       jittered_value = value + float(delta)
@@ -415,10 +418,10 @@ def make_statewalk_width_performance_scatter(
     x_label += f" ({SCATTER_WIDTH_CONFIGURATION})"
 
   plt.xlabel(x_label)
-  ylabel = 'Runtime (Seconds)'
+  ylabel = 'Extraction Time (Seconds)'
   plt.ylabel(ylabel)
 
-  title = f"Statewalk Width vs Runtime – {treatment.display_name()}"
+  title = f"Statewalk Width vs Extraction Time – {treatment.display_name()}"
   if is_average and not scale_by_egraph_size:
     title += ' (Average Width)'
   if scale_by_egraph_size:
@@ -669,7 +672,7 @@ def make_statewalk_width_performance_scatter_multi(
     else:
       x_label = f"Statewalk Width{' Average' if is_average else ''}"
 
-    title = "Statewalk Width vs Runtime"
+    title = "Statewalk Width vs Extraction Time"
     if any(t.runtime != "tiger" for t in treatment_list):
       title += " (ILP)"
     else:
@@ -792,7 +795,7 @@ def make_statewalk_width_performance_scatter_multi(
         legend_labels = list(legend_entries.keys())
         ax_lower.legend(legend_handles, legend_labels, loc='upper left', fontsize=24)
 
-      fig.text(0.01, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
+      fig.text(0.01, 0.46, 'Extraction Time (Seconds)', va='center', rotation='vertical', fontsize=24)
 
       fig.tight_layout(rect=[0.0, 0.14, 1.0, 0.98], pad=0.8)
       fig.subplots_adjust(hspace=0.18, bottom=0.18, left=0.16)
@@ -837,7 +840,7 @@ def make_statewalk_width_performance_scatter_multi(
           )
 
       ax.set_xlabel(x_label, fontsize=24)
-      ax.set_ylabel('Runtime (Seconds)', fontsize=24, labelpad=20)
+      ax.set_ylabel('Extraction Time (Seconds)', fontsize=24, labelpad=20)
       ax.set_title(title, fontsize=28)
 
       ax.grid(alpha=0.3)
@@ -970,7 +973,7 @@ def make_egraph_size_vs_statewalk_width_heatmap(
 
   mesh = plt.pcolormesh(size_edges, width_edges, avg_heat.T, cmap=cmap, shading='auto')
   cbar = plt.colorbar(mesh)
-  cbar.set_label(f"{treatment.display_name()} Runtime (Seconds)")
+  cbar.set_label(f"{treatment.display_name()} Extraction Time (Seconds)")
 
   legend_handles = []
   legend_labels = []

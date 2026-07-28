@@ -248,7 +248,7 @@ def make_extraction_time_cdf(data, output, use_log_x, use_exp_y, include_gurobi=
     return
 
   ax.set_xlabel('Time (Seconds)', fontsize=15)
-  ax.set_ylabel('Percent of Benchmarks', fontsize=15)
+  ax.set_ylabel('Percent of Regionalized E-Graphs', fontsize=15)
   ax.set_title('CDF of Extraction Times', fontsize=18)
 
   if max_time <= 0:

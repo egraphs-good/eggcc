@@ -95,18 +95,29 @@ SolverMetrics run_solver_for_metrics(const EGraph &gr, EClassId root,
 void compute_ilp_metrics(ExtractRegionTiming &sample, const EGraph &gr,
                          EClassId root,
                          const vector<vector<Cost>> &rstatewalk_cost) {
-    SolverMetrics gurobi_metrics =
-      run_solver_for_metrics(gr, root, rstatewalk_cost, true);
-    sample.ilp_timed_out = gurobi_metrics.timed_out;
-    sample.ilp_infeasible = gurobi_metrics.infeasible;
-    sample.ilp_encoding_num_vars = gurobi_metrics.encoding_vars;
-    sample.ilp_duration_ns = gurobi_metrics.duration_ns;
+    sample.ilp_ran = g_config.time_ilp_run_gurobi;
+    if (sample.ilp_ran) {
+      SolverMetrics gurobi_metrics =
+        run_solver_for_metrics(gr, root, rstatewalk_cost, true);
+      sample.ilp_timed_out = gurobi_metrics.timed_out;
+      sample.ilp_infeasible = gurobi_metrics.infeasible;
+      sample.ilp_encoding_num_vars = gurobi_metrics.encoding_vars;
+      sample.ilp_duration_ns = gurobi_metrics.duration_ns;
+    } else {
+      // Gurobi was skipped (e.g. gurobi_cl not installed): leave the ilp_* fields
+      // empty. The encoding size is solver-independent, so take it from CBC below.
+      sample.ilp_timed_out = false;
+      sample.ilp_infeasible = false;
+      sample.ilp_duration_ns = std::nullopt;
+    }
 
-  
     SolverMetrics cbc_metrics = run_solver_for_metrics(gr, root, rstatewalk_cost, false);
     sample.cbc_ilp_duration_ns = cbc_metrics.duration_ns;
     sample.cbc_ilp_timed_out = cbc_metrics.timed_out;
     sample.cbc_ilp_infeasible = cbc_metrics.infeasible;
+    if (!sample.ilp_ran) {
+      sample.ilp_encoding_num_vars = cbc_metrics.encoding_vars;
+    }
 }
 
 vector<ExtractRegionTiming>
@@ -248,6 +259,8 @@ bool write_extract_region_timings_json(
       << sample.tiger_duration_liveoff_satelliteon_ns
       << ", \"tiger_duration_liveoff_satelliteoff_ns\": "
       << sample.tiger_duration_liveoff_satelliteoff_ns
+          << ", \"ilp_ran\": "
+          << (sample.ilp_ran ? "true" : "false")
           << ", \"ilp_duration_ns\": ";
       if (sample.ilp_duration_ns.has_value()) {
         out << sample.ilp_duration_ns.value();

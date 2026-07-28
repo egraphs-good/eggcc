@@ -37,7 +37,7 @@ Each element of the top-level JSON array represents a (benchmark, runMethod) pai
 ```
 {
   "benchmark": "matmul",
-  "runMethod": "eggcc-tiger-O0-O0",
+  "runMethod": "eggcc-O0-O0",
   "suite": "polybench",
   "path": "benchmarks/passing/polybench/matmul.bril",
   "cycles": false,

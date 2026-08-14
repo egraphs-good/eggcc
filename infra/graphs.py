@@ -842,6 +842,16 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
+# Paper figures for the OOPSLA submission were rendered from runs that carried
+# Statewalk DP as its own treatment (eggcc-tiger-O0-O0) rather than folding it into
+# eggcc-O0-O0. Both names exist in those runs with DIFFERENT numbers, so plotting a
+# submission-era profile with the current default silently charts the wrong rows --
+# it does not error. simple_table.py already exposes --dp-treatment for this; this is
+# the same knob for the graphs. The default is the current data format, so this is a
+# no-op for normal nightly runs.
+DP_TREATMENT = os.environ.get("EGGCC_DP_TREATMENT", "eggcc-O0-O0")
+
+
 def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig, render_extra_figures=True):
   # render_extra_figures=False (set for artifact/--local runs) renders only the headline
   # figures reproduce.sh copies out: the extraction-time CDF, the normalized perf charts, and
@@ -1045,11 +1055,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
         width = 6
         height = 5.0
 
-      chart_treatments = ["eggcc-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
+      chart_treatments = [DP_TREATMENT, ilp_chart_treatment, "llvm-O0-O0"]
 
       if suite == "bril":
-        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") <= 3.0]
-        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") > 3.0]
+        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, DP_TREATMENT) <= 3.0]
+        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, DP_TREATMENT) > 3.0]
 
         make_normalized_chart(
           profile_for_suite,

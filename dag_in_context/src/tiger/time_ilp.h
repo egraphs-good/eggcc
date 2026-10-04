@@ -11,12 +11,16 @@
 // solver reports infeasibility we still record the runtime so downstream consumers can
 // measure how long the attempt took. The CBC-specific fields are populated when a
 // separate CBC run is available; otherwise they remain empty/default-initialized.
+// ilp_ran is false when the Gurobi run was skipped (e.g. gurobi_cl is not installed),
+// in which case the ilp_* fields below carry no meaning and CBC is the only ILP solver
+// with real data.
 struct ExtractRegionTiming {
     size_t egraph_size;
     long long tiger_duration_liveon_satelliteon_ns;
     long long tiger_duration_liveon_satelliteoff_ns;
     long long tiger_duration_liveoff_satelliteon_ns;
     long long tiger_duration_liveoff_satelliteoff_ns;
+    bool ilp_ran;
     std::optional<long long> ilp_duration_ns;
     bool ilp_timed_out;
     bool ilp_infeasible;

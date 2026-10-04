@@ -4,24 +4,45 @@ import matplotlib.pyplot as plt
 import csv
 import json
 
+from graph_helpers import with_paper_font
+
+def dp_treatment_in(profile_data):
+    """Name of the Statewalk DP treatment in this run.
+
+    Runs made before DP became the default extraction (e.g. the OOPSLA
+    submission) carry it as its own treatment, and their 'eggcc-O0-O0' rows are a
+    different configuration entirely -- reading those instead silently plots the
+    wrong extraction times.
+    """
+    methods = {run['runMethod'] for run in profile_data}
+    if 'eggcc-tiger-O0-O0' in methods:
+        return 'eggcc-tiger-O0-O0'
+    return 'eggcc-O0-O0'
+
+
 def get_eggcc_df(profile_data):
+    dp = dp_treatment_in(profile_data)
     result = []
     for run in profile_data:
-        if run['runMethod'] == 'eggcc-tiger-O0-O0' or run['runMethod'] == 'eggcc-tiger-ILP-O0-O0':
+        if run['runMethod'] == dp or run['runMethod'] == 'eggcc-tiger-ILP-O0-O0':
             bril_file = run['path']
             eggcc_time = run['eggccCompileTimeSecs']
             extraction_time = run['eggccExtractionTimeSecs']
             with open(bril_file, 'r') as file:
                 line_count = sum(1 for line in file 
                                  if line.strip() and not line.strip().startswith('#'))
-            result.append([run['runMethod'], line_count, eggcc_time, extraction_time])
+            # Store the canonical label: downstream selection (ratio_plot_single's
+            # eggcc= default) matches on 'eggcc-O0-O0' regardless of which treatment
+            # name this run happens to use.
+            label = 'eggcc-O0-O0' if run['runMethod'] == dp else run['runMethod']
+            result.append([label, line_count, eggcc_time, extraction_time])
     df = pd.DataFrame(result, columns=['runMethod', 'length','compile','extraction'])
     return df
 
+@with_paper_font
 def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_figure):
     eggcc_data = get_eggcc_df(eggcc_profile)
     # Set plotting parameters
-    plt.rcParams["font.size"] = 18
     transparency = 0.2
     size = 150
 
@@ -66,12 +87,12 @@ def make_peggy_comparison_graph(eggcc_profile, peggy_file, eggcc_figure, peggy_f
         ax=axs,
         eggcc_color="blue",
         ilp_color="green",
-        eggcc='eggcc-tiger-O0-O0',
+        eggcc='eggcc-O0-O0',
         ilp='eggcc-tiger-ILP-O0-O0',
         label_eggcc="Statewalk DP",
         label_ilp="ILP",
     )
-    axs.set_title("Statewalk DP Share of Optimization Time in EQCC", fontsize=28)
+    axs.set_title("Statewalk DP Share of Optimization Time in EGGCC", fontsize=28)
     
     # Adjust layout and save
     plt.tight_layout()

@@ -13,7 +13,6 @@ const COLORS = {
   "eggcc-ablation-O3-O0": "green",
   "eggcc-ablation-O3-O3": "orange",
   "eggcc-ILP-O0-O0": "red",
-  "eggcc-tiger-O0-O0": "cyan",
   "eggcc-tiger-WL-O0-O0": "magenta",
   "eggcc-tiger-ILP-O0-O0": "green",
   "eggcc-tiger-ILP-CBC-O0-O0": "olive",

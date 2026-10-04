@@ -22,6 +22,9 @@ target/
 # Generated nightly files
 /nightly
 
+# Gurobi writes a log into the working directory when solving
+gurobi.log
+
 # Profiler output
 profile.json
 

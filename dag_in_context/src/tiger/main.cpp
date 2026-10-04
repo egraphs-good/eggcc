@@ -63,6 +63,22 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
             ++i;
+        } else if (strcmp(argv[i], "--ilp-timeout-seconds") == 0) {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "--ilp-timeout-seconds requires a value\n");
+                return 1;
+            }
+            try {
+                g_config.ilp_timeout_seconds = std::stoi(argv[i + 1]);
+            } catch (const std::exception &e) {
+                std::fprintf(stderr, "Invalid value for --ilp-timeout-seconds: %s\n", argv[i + 1]);
+                return 1;
+            }
+            if (g_config.ilp_timeout_seconds <= 0) {
+                std::fprintf(stderr, "--ilp-timeout-seconds must be positive, got: %s\n", argv[i + 1]);
+                return 1;
+            }
+            ++i;
         }
     }
 
@@ -73,6 +89,10 @@ int main(int argc, char *argv[]) {
         }
         g_config.ilp_minimize_objective = false;
     }
+
+    // When --time-ilp is combined with --ilp-solver cbc, skip the Gurobi run so timing
+    // works on machines without gurobi_cl. CBC is always timed.
+    g_config.time_ilp_run_gurobi = use_gurobi_solver;
     pair<EGraph, vector<EClassId> > res = parse_egglog_json();
     EGraph &g = res.first;
     vector<EClassId> &roots = res.second;

@@ -1,0 +1,12 @@
+# Python dependencies for the eggcc nightly (infra/nightly.py and graph generation).
+# Install with:  pip install -r infra/requirements.txt
+#
+# Versions are pinned to the set the nightly has been verified against. Bump them
+# together and re-run a local nightly if you need newer releases.
+matplotlib==3.11.0
+numpy==2.5.1
+pandas==3.0.3
+
+# Pillow (PIL) is only needed for the standalone infra/visualize_raytrace_result.py
+# helper, not for the nightly itself. Uncomment if you use that script:
+# pillow

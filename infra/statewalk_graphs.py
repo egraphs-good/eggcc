@@ -66,7 +66,7 @@ class StatewalkTreatment:
     raise ValueError(f"Unknown runtime source {self.runtime}")
 
   def timeout_label(self) -> str:
-    return "Timeout (5 min)"
+    return f"Timeout ({format_timeout_label()})"
 
   def timeout_color(self) -> str:
     if self.runtime == "ilp_cbc":
@@ -98,7 +98,7 @@ class StatewalkTreatment:
     if self.runtime == "tiger":
       if self.liveness_on and self.satellite_on:
         return COLOR_MAP.get("eggcc-tiger-WL-O0-O0", "magenta")
-      return COLOR_MAP.get("eggcc-tiger-O0-O0", "blue")
+      return COLOR_MAP.get("eggcc-O0-O0", "blue")
     if self.runtime == "ilp_gurobi":
       return COLOR_MAP.get("eggcc-tiger-ILP-O0-O0", "green")
     if self.runtime == "ilp_cbc":
@@ -262,7 +262,10 @@ def _collect_statewalk_scatter_points(
   def _jitter(values, magnitude=0.5):
     if not values:
       return values
-    noise = np.random.uniform(-magnitude, magnitude, size=len(values))
+    # A generator seeded per call, rather than the global numpy state, so the
+    # jitter depends only on the input and not on how many plots ran before it.
+    rng = np.random.default_rng(JITTER_SEED)
+    noise = rng.uniform(-magnitude, magnitude, size=len(values))
     jittered = []
     for value, delta in zip(values, noise):
       jittered_value = value + float(delta)
@@ -306,11 +309,11 @@ def _collect_statewalk_scatter_points(
     if is_ilp_runtime:
       if sample.get(infeasible_field, False):
         infeasible_x.append(x_magnitude)
-        infeasible_y.append(ILP_TIMEOUT_SECONDS)
+        infeasible_y.append(get_ilp_timeout_seconds())
         continue
       if sample.get(timeout_field, False):
         timeout_x.append(x_magnitude)
-        timeout_y.append(ILP_TIMEOUT_SECONDS)
+        timeout_y.append(get_ilp_timeout_seconds())
         continue
 
     runtime_value = sample.get(duration_field)
@@ -415,10 +418,10 @@ def make_statewalk_width_performance_scatter(
     x_label += f" ({SCATTER_WIDTH_CONFIGURATION})"
 
   plt.xlabel(x_label)
-  ylabel = 'Runtime (Seconds)'
+  ylabel = 'Extraction Time (Seconds)'
   plt.ylabel(ylabel)
 
-  title = f"Statewalk Width vs Runtime – {treatment.display_name()}"
+  title = f"Statewalk Width vs Extraction Time – {treatment.display_name()}"
   if is_average and not scale_by_egraph_size:
     title += ' (Average Width)'
   if scale_by_egraph_size:
@@ -434,6 +437,111 @@ def make_statewalk_width_performance_scatter(
   plt.savefig(output)
 
 
+def make_statewalk_width_split_scatters(
+  data,
+  outputs,
+  treatments: Iterable[StatewalkTreatment],
+  is_average,
+  scale_by_egraph_size=False,
+  width_min=None,
+  width_max=None,
+):
+  """One log-log scatter per treatment, written to `outputs` in order.
+
+  This is the split alternative to make_statewalk_width_performance_scatter_multi,
+  which overlays all treatments on one linear axis with a break. Overlaying hides
+  the trend: a single 4.9 s outlier stretches the linear axis until ~99.9% of
+  points are crushed onto it, and ~95% of regions have width 1 so they pile up at
+  the left. Separate panels on log-log axes make both the growth without
+  optimizations and the flatness with them legible.
+
+  All panels share one set of x/y limits, so the panels can be compared directly.
+  That is the entire point of the figure, so the limits are deliberately not
+  autoscaled per panel.
+  """
+  output_list = list(outputs)
+  treatment_list = list(treatments)
+  if len(output_list) != len(treatment_list):
+    raise ValueError(
+      f"Expected one output path per treatment, got {len(output_list)} outputs "
+      f"and {len(treatment_list)} treatments"
+    )
+  if not treatment_list:
+    raise ValueError("Expected at least one treatment")
+
+  benchmarks = dedup([b.get('benchmark') for b in data])
+
+  entries = []
+  for treatment in treatment_list:
+    points = all_region_extract_points(treatment.region_run_method, data, benchmarks)
+    results = _collect_statewalk_scatter_points(
+      points, treatment, is_average, scale_by_egraph_size, width_min, width_max,
+    )
+    if results["is_ilp_runtime"]:
+      raise ValueError(
+        f"make_statewalk_width_split_scatters is for tiger runtimes only, but "
+        f"{treatment.display_name()} reports timeouts/infeasibility"
+      )
+    entries.append({
+      "treatment": treatment,
+      "x": np.array(results["x_values"]),
+      "y": np.array(results["y_values"]),
+    })
+
+  if not any(e["x"].size for e in entries):
+    print("WARNING: No data plotted in make_statewalk_width_split_scatters")
+    return
+
+  # Log axes cannot show non-positive values; every recorded duration and width
+  # should be positive, so fail loudly rather than silently dropping points.
+  for e in entries:
+    if e["x"].size and (e["x"] <= 0).any():
+      raise ValueError(f"Non-positive statewalk width for {e['treatment'].display_name()}")
+    if e["y"].size and (e["y"] <= 0).any():
+      raise ValueError(f"Non-positive runtime for {e['treatment'].display_name()}")
+
+  all_x = np.concatenate([e["x"] for e in entries if e["x"].size])
+  all_y = np.concatenate([e["y"] for e in entries if e["y"].size])
+  x_lim = (all_x.min() * 0.6, all_x.max() * 1.8)
+  y_lim = (all_y.min() * 0.5, all_y.max() * 2.5)
+
+  if scale_by_egraph_size:
+    x_label = f"Statewalk Width{' Average' if is_average else ''} × E-graph Size"
+  else:
+    x_label = f"Statewalk Width{' Average' if is_average else ''}"
+
+  fsize = 27
+  for output, entry in zip(output_list, entries):
+    treatment = entry["treatment"]
+    plt.figure(figsize=(10, 8))
+    plt.scatter(
+      entry["x"],
+      entry["y"],
+      color=treatment.color(),
+      s=110,
+      alpha=0.25,
+      linewidths=1.0,
+      edgecolors=treatment.color(),
+    )
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(*x_lim)
+    plt.ylim(*y_lim)
+    plt.xlabel(x_label, fontsize=fsize)
+    plt.ylabel('Extraction Time (Seconds)', fontsize=fsize)
+    plt.title(treatment.display_name(), fontsize=fsize)
+    plt.xticks(fontsize=fsize)
+    plt.yticks(fontsize=fsize)
+    plt.grid(True, which='major', alpha=0.3)
+    plt.tight_layout()
+    # bbox_inches='tight' matches the other statewalk figures. The panels have
+    # identical axes and ticks, so they crop to identical page sizes and therefore
+    # still share a scale once \includegraphics scales them to the same width.
+    plt.savefig(output, bbox_inches='tight')
+    plt.close()
+    print(f"Wrote statewalk width split scatter for '{treatment.display_name()}' to {output}")
+
+
 def make_statewalk_width_performance_scatter_multi(
   data,
   output,
@@ -444,10 +552,15 @@ def make_statewalk_width_performance_scatter_multi(
   width_max=None,
   y_break=None,
   y_break_runtimes=None,
+  log_y=False,
 ):
   treatment_list = list(treatments)
-  if len(treatment_list) < 2:
-    raise ValueError("Expected at least two treatments for multi scatter plot")
+  if len(treatment_list) < 1:
+    raise ValueError("Expected at least one treatment for multi scatter plot")
+  if log_y and y_break is not None:
+    # The break splits the axis into two linear sub-axes; a log scale makes the
+    # wide range readable without one, so the two are mutually exclusive.
+    raise ValueError("log_y cannot be combined with y_break")
 
   benchmarks = dedup([b.get('benchmark') for b in data])
 
@@ -464,6 +577,12 @@ def make_statewalk_width_performance_scatter_multi(
       raise ValueError("y_break_runtimes must be an iterable of runtime identifiers when provided")
     if not isinstance(y_break_runtimes, set):
       y_break_runtimes = set(y_break_runtimes)
+
+  # The y-axis break assumes the data has an empty gap between break_low and break_high.
+  # Real runs (a different machine, region sample, or timing noise) can land a point inside
+  # that gap, or introduce timeout/infeasible points the split can't render. Rather than
+  # abort the whole nightly, drop the break and render a normal axis, with a warning.
+  use_break = y_break is not None
 
   plotted_any = False
   plot_entries = []
@@ -498,21 +617,35 @@ def make_statewalk_width_performance_scatter_multi(
       infeasible_x = np.array(results["infeasible_x"])
       infeasible_y = np.array(results["infeasible_y"])
 
-      if y_break is not None:
+      if use_break:
         if results["is_ilp_runtime"]:
-          raise ValueError(
-            "y-axis break is only supported for treatments without ILP runtimes"
+          print(
+            f"WARNING: y-axis break is only supported for treatments without ILP runtimes, "
+            f"but treatment {label} has them; rendering {output} without the axis break."
           )
-        if y_break_runtimes is None or treatment.runtime in y_break_runtimes:
-          between_mask = (y_array > break_low) & (y_array < break_high)
-          if np.any(between_mask):
-            raise ValueError(
-              f"Found runtime values between {break_low} and {break_high} seconds for treatment {label}; cannot apply axis break"
+          use_break = False
+        if use_break and (y_break_runtimes is None or treatment.runtime in y_break_runtimes):
+          n_between = int(np.count_nonzero((y_array > break_low) & (y_array < break_high)))
+          if n_between:
+            print(
+              f"WARNING: {n_between} runtime value(s) for treatment {label} fell between "
+              f"{break_low}s and {break_high}s, inside the axis-break gap (the break assumes "
+              f"that gap is empty); rendering {output} without the axis break instead. "
+              f"Widen the y_break bounds in graphs.py to restore the broken axis."
             )
-        if timeout_x.size:
-          raise ValueError("y-axis break does not support timeout points")
-        if infeasible_x.size:
-          raise ValueError("y-axis break does not support infeasible points")
+            use_break = False
+        if use_break and timeout_x.size:
+          print(
+            f"WARNING: treatment {label} has timeout points, which the y-axis break cannot "
+            f"render; rendering {output} without the axis break."
+          )
+          use_break = False
+        if use_break and infeasible_x.size:
+          print(
+            f"WARNING: treatment {label} has infeasible points, which the y-axis break cannot "
+            f"render; rendering {output} without the axis break."
+          )
+          use_break = False
 
       plot_entries.append(
         {
@@ -539,7 +672,7 @@ def make_statewalk_width_performance_scatter_multi(
     else:
       x_label = f"Statewalk Width{' Average' if is_average else ''}"
 
-    title = "Statewalk Width vs Runtime"
+    title = "Statewalk Width vs Extraction Time"
     if any(t.runtime != "tiger" for t in treatment_list):
       title += " (ILP)"
     else:
@@ -547,7 +680,7 @@ def make_statewalk_width_performance_scatter_multi(
     if scale_by_egraph_size:
       title += " (Width × Size)"
 
-    if y_break is not None:
+    if use_break:
       lower_y_values = []
       upper_y_values = []
       for entry in plot_entries:
@@ -662,7 +795,7 @@ def make_statewalk_width_performance_scatter_multi(
         legend_labels = list(legend_entries.keys())
         ax_lower.legend(legend_handles, legend_labels, loc='upper left', fontsize=24)
 
-      fig.text(0.01, 0.46, 'Runtime (Seconds)', va='center', rotation='vertical', fontsize=24)
+      fig.text(0.01, 0.46, 'Extraction Time (Seconds)', va='center', rotation='vertical', fontsize=24)
 
       fig.tight_layout(rect=[0.0, 0.14, 1.0, 0.98], pad=0.8)
       fig.subplots_adjust(hspace=0.18, bottom=0.18, left=0.16)
@@ -707,12 +840,17 @@ def make_statewalk_width_performance_scatter_multi(
           )
 
       ax.set_xlabel(x_label, fontsize=24)
-      ax.set_ylabel('Runtime (Seconds)', fontsize=24, labelpad=20)
+      ax.set_ylabel('Extraction Time (Seconds)', fontsize=24, labelpad=20)
       ax.set_title(title, fontsize=28)
 
       ax.grid(alpha=0.3)
       ax.tick_params(axis='both', which='major', labelsize=26)
       ax.set_xscale('log')
+      if log_y:
+        # Runtimes here span ~4 orders of magnitude, so a linear axis crushes the
+        # great majority of points onto the bottom. Timeout/infeasible markers sit
+        # at the timeout value, which is positive, so they survive the log scale.
+        ax.set_yscale('log')
 
       if legend_entries:
         legend_handles = [legend_entries[label] for label in legend_entries]
@@ -835,7 +973,7 @@ def make_egraph_size_vs_statewalk_width_heatmap(
 
   mesh = plt.pcolormesh(size_edges, width_edges, avg_heat.T, cmap=cmap, shading='auto')
   cbar = plt.colorbar(mesh)
-  cbar.set_label(f"{treatment.display_name()} Runtime (Seconds)")
+  cbar.set_label(f"{treatment.display_name()} Extraction Time (Seconds)")
 
   legend_handles = []
   legend_labels = []

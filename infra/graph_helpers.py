@@ -5,6 +5,30 @@ EGGCC_NAME = "eggcc"
 TIGER_NAME = "Statewalk DP"
 TIGER_INLINE_NAME = "DP"
 
+# Several plots jitter overlapping points. Draw that jitter from a fixed seed so
+# regenerating a figure does not move the points around: otherwise the same data
+# yields a visibly different figure on every run.
+JITTER_SEED = 0
+
+# Figures in the paper render at this font size. Apply it with the decorator
+# below rather than assigning plt.rcParams: a global assignment leaks into every
+# figure drawn afterwards in the same process, so a chart's appearance ends up
+# depending on the order make_graphs happens to call things (and on whether
+# optional stages ran at all). The decorator scopes it to one function.
+PAPER_FONT_SIZE = 18
+
+
+def with_paper_font(fn):
+  import functools
+
+  @functools.wraps(fn)
+  def wrapper(*args, **kwargs):
+    import matplotlib.pyplot as plt
+    with plt.rc_context({"font.size": PAPER_FONT_SIZE}):
+      return fn(*args, **kwargs)
+
+  return wrapper
+
 GRAPH_RUN_MODES = ["llvm-O0-O0", "eggcc-O0-O0", "llvm-O3-O0"]
 
 # note: use ["..."] for indexing samples instead of .get(...) to fail fast on missing keys
@@ -17,7 +41,28 @@ if profile.TO_ABLATE != "":
 
 # need ilp and graph run modes for this script to work
 NECESSARY_MODES = GRAPH_RUN_MODES + ["eggcc-ILP-O0-O0"]
-ILP_TIMEOUT_SECONDS = 5 * 60
+
+# Per-region ILP solver timeout (seconds) used to generate the current run's data.
+# make_graphs sets this from the nightly config so graphs report the real timeout
+# (e.g. "30 s" for the default nightly, "5 min" for paper). Defaults to 5 minutes.
+_ILP_TIMEOUT_SECONDS = 5 * 60
+
+
+def set_ilp_timeout_seconds(seconds):
+  global _ILP_TIMEOUT_SECONDS
+  _ILP_TIMEOUT_SECONDS = int(seconds)
+
+
+def get_ilp_timeout_seconds():
+  return _ILP_TIMEOUT_SECONDS
+
+
+def format_timeout_label(seconds=None):
+  """Human-readable timeout, e.g. '5 min' or '30 s'."""
+  s = get_ilp_timeout_seconds() if seconds is None else int(seconds)
+  if s % 60 == 0:
+    return f"{s // 60} min"
+  return f"{s} s"
 
 # copied from chart.js
 COLOR_MAP = {
@@ -27,14 +72,16 @@ COLOR_MAP = {
   "llvm-O2-O0": "orange",
   "llvm-O3-O0": "purple",
   "llvm-O3-O3": "gold",
-  "eggcc-O0-O0": "blue",
+  "eggcc-O0-O0": "green",
+  # Older runs (e.g. the OOPSLA submission) carry Statewalk DP as its own
+  # treatment instead of folding it into eggcc-O0-O0; render it the same.
+  "eggcc-tiger-O0-O0": "green",
   "eggcc-sequential-O0-O0": "pink",
   "eggcc-O3-O0": "brown",
   "eggcc-O3-O3": "lightblue",
   "eggcc-ablation-O0-O0": "blue",
   "eggcc-ablation-O3-O0": "green",
   "eggcc-ablation-O3-O3": "orange",
-  "eggcc-tiger-O0-O0": "green",
   "eggcc-tiger-WL-O0-O0": "magenta",
   "eggcc-tiger-ILP-O0-O0": "#3784ff",
   "eggcc-tiger-ILP-CBC-O0-O0": "olive",
@@ -52,6 +99,7 @@ SHAPE_MAP = {
   "llvm-O3-O0": "o",
   "llvm-O3-O3": "o",
   "eggcc-O0-O0": "o",
+  "eggcc-tiger-O0-O0": "o",   # see COLOR_MAP note above
   "eggcc-sequential-O0-O0": "o",
   "eggcc-O3-O0": "o",
   "eggcc-O3-O3": "o",
@@ -59,7 +107,6 @@ SHAPE_MAP = {
   "eggcc-ablation-O3-O0": "o",
   "eggcc-ablation-O3-O3": "o",
   "eggcc-tiger-WL-O0-O0": "o",
-  "eggcc-tiger-O0-O0": "o",
   "eggcc-tiger-ILP-O0-O0": "^",
   "eggcc-tiger-ILP-CBC-O0-O0": "^",
   "eggcc-tiger-ILP-NOMIN-O0-O0": "^",
@@ -107,8 +154,13 @@ def get_row(data, benchmark_name, run_method):
       return row
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
 
+# ILP extraction treatments whose timeouts/infeasibilities are drawn on the normalized
+# charts. The chart uses the Gurobi one when Gurobi is available and the CBC one otherwise.
+ILP_EXTRACTION_TREATMENTS = {"eggcc-tiger-ILP-O0-O0", "eggcc-tiger-ILP-CBC-O0-O0"}
+
+
 def is_ilp_timeout(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
@@ -118,12 +170,26 @@ def is_ilp_timeout(data, benchmark_name, run_method):
 
 
 def is_ilp_infeasible(data, benchmark_name, run_method):
-  if run_method != "eggcc-tiger-ILP-O0-O0":
+  if run_method not in ILP_EXTRACTION_TREATMENTS:
     return False
   for row in data:
     if row['benchmark'] == benchmark_name and row['runMethod'] == run_method:
       return row["failed"] and ("ILP solver reported infeasibility" in row["error"])
   raise KeyError(f"Missing benchmark {benchmark_name} with runMethod {run_method}")
+
+
+def has_run_cycles(data, benchmark_name, run_method):
+  """True if this benchmark+treatment produced a non-empty cycles list.
+
+  A treatment can fail without being a flagged region timeout or a reported
+  infeasibility -- e.g. ILP extraction exceeds the wall-clock timeout, so the eggcc
+  process is killed and no binary is produced (cycles == False). Charts must skip
+  such treatments instead of averaging an empty list."""
+  for row in data:
+    if row.get('benchmark') == benchmark_name and row.get('runMethod') == run_method:
+      cycles = row.get('cycles')
+      return isinstance(cycles, list) and len(cycles) > 0
+  return False
 
 def get_cycles(data, benchmark_name, run_method):
   return get_row(data, benchmark_name, run_method)['cycles']
@@ -158,6 +224,40 @@ def all_region_extract_points(treatment, data, benchmarks):
       res = res + timings
 
   return res
+
+
+# The treatment that records per-region tiger/CBC/Gurobi timing samples.
+COMPARISON_TREATMENT = "eggcc-tiger-ILP-COMPARISON"
+
+
+def comparison_ran(data):
+  """True if the COMPARISON treatment produced any region-timing samples.
+
+  When true, tiger and CBC timing data are available for every sample, so all the
+  tiger-only and CBC graphs can be generated (regardless of Gurobi)."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    if row.get("extractRegionTimings"):
+      return True
+  return False
+
+
+def has_gurobi_ilp_data(data):
+  """True if any COMPARISON sample recorded a real Gurobi run.
+
+  Samples set ilp_ran=False when Gurobi was skipped (e.g. gurobi_cl not installed).
+  Older data predates the field, so a missing ilp_ran is treated as a Gurobi run."""
+  for row in data:
+    if row.get("runMethod") != COMPARISON_TREATMENT:
+      continue
+    timings = row.get("extractRegionTimings")
+    if not timings:
+      continue
+    for sample in timings:
+      if sample.get("ilp_ran", True):
+        return True
+  return False
 
 
 def dedup(lst):
@@ -263,10 +363,74 @@ def geometric_mean(values):
   return math.exp(log_sum / count)
 
 
-# Clock rate of the machine the nightly benchmarks run on, used to convert the
-# cycle counts reported by the profiler into wall-clock time. Measured on the
-# nightly runner; update this if the benchmarking machine changes.
-CPU_HZ = 4_000_000_000
+# TODO change back after anonymization is lifted
+def to_paper_names_treatment(treatment):
+  if treatment == 'llvm-O0-O0':
+    return 'LLVM-O0'
+  if treatment == 'llvm-O3-O0':
+    return 'LLVM-O3-O0'
+  if treatment == 'eggcc-O0-O0':
+    # eggcc-O0-O0 is the default (Statewalk DP) extraction; keep the DP paper label.
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-O3-O0':
+    return 'EGGCC-O3-O0'
+  if treatment == 'eggcc-ablation-O0-O0':
+    return 'EGGCC-Ablation-O0-O0'
+  if treatment == 'eggcc-ablation-O3-O0':
+    return 'EGGCC-Ablation-O3-O0'
+  if treatment == 'eggcc-ablation-O3-O3':
+    return 'EGGCC-Ablation-O3-O3'
+  if treatment == 'rvsdg-round-trip-to-executable':
+    return 'RVSDG-Executable'
+  if treatment == 'llvm-O1-O0':
+    return 'LLVM-O1-O0'
+  if treatment == 'llvm-O2-O0':
+    return 'LLVM-O2-O0'
+  if treatment == 'llvm-O3-O3':
+    return 'LLVM-O3-O3'
+  if treatment == 'eggcc-sequential-O0-O0':
+    return 'EGGCC-Sequential-O0-O0'
+  if treatment == 'eggcc-O3-O3':
+    return 'EGGCC-O3-O3'
+  if treatment == 'eggcc-WITHCTX-O0-O0':
+    return 'EGGCC-WITHCTX-O0-O0'
+  if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
+    # not talking about context in the paper
+    return f'EGGCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
+  if treatment == 'eggcc-tiger-O0-O0':
+    # Older runs (e.g. the OOPSLA submission) carried Statewalk DP as its own
+    # treatment rather than folding it into eggcc-O0-O0; same paper label.
+    return f'EGGCC-{TIGER_INLINE_NAME}-O0'
+  if treatment == 'eggcc-tiger-WL-O0-O0':
+    return f'EGGCC-{TIGER_INLINE_NAME}-WL-O0'
+  if treatment == 'eggcc-tiger-ILP-O0-O0':
+    return f'EGGCC-GUROBI-O0'
+  if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
+  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
+  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
+  if treatment == 'eggcc-tiger-ILP-COMPARISON':
+    return f'EGGCC-{TIGER_INLINE_NAME}-ILP-Comparison'
+  raise KeyError(f"Unknown treatment {treatment}")
+
+
+# TSC rate of the machine the nightly benchmarks run on, used to convert the
+# rdtsc cycle counts reported by the profiler into wall-clock time. Update this
+# if the benchmarking machine changes.
+#
+# Measured on the nightly runner with `dmesg | grep -i tsc`, which reports
+# "Detected 1999.906 MHz processor". This matches the AMD EPYC 7702P's 2.0 GHz
+# nominal clock; an invariant TSC ticks at the nominal rate, not the 3.35 GHz
+# boost rate.
+#
+# Only absolute times are affected; every ratio/speedup is computed from raw
+# cycle counts and is invariant to this constant.
+CPU_HZ = 1_999_906_000
 
 
 def cycles_to_ms(cycles):

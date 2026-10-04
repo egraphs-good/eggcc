@@ -1,4 +1,4 @@
-.PHONY: test test-clean nits nightly runtime
+.PHONY: test test-clean nits nightly runtime gurobi-setup
 
 DIRS = . dag_in_context
 
@@ -34,3 +34,8 @@ runtime:
 
 nightly:
 	bash infra/nightly.sh "benchmarks/passing"
+
+# Install/verify an optional Gurobi license so the nightly auto-detects Gurobi.
+# Usage: make gurobi-setup LICENSE=path/to/gurobi.lic  (LICENSE optional -- omit to just verify)
+gurobi-setup:
+	bash infra/setup_gurobi.sh "$(LICENSE)"

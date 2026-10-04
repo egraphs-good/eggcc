@@ -109,7 +109,7 @@ fn build_tiger_rs(manifest_dir: &str, target_dir: &Path, profile: &str) {
         .status()
         .expect("failed to invoke cargo for tiger-rs binary");
     if !status.success() {
-        panic!("cargo build for tiger-rs failed with status {}", status);
+        panic!("cargo build for tiger-rs failed with status {status}");
     }
 
     let src = nested_target.join(profile).join(binary_name("tiger-rs"));

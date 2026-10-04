@@ -390,6 +390,9 @@ pub struct EggccConfig {
     pub ablate: Option<String>,
     /// Use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
+    /// Run the original C++ tiger binary instead of the Rust port (`tiger-rs`).
+    /// Kept for side-by-side comparison while the port is being worked on.
+    pub tiger_cpp: bool,
     /// When true, collect region timing samples by running both the tiger and ILP extractors.
     pub time_ilp: bool,
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Regions are selected randomly.
@@ -488,6 +491,7 @@ impl Default for EggccConfig {
             optimize_functions: None,
             ablate: None,
             tiger_ilp: false,
+            tiger_cpp: false,
             time_ilp: false,
             percent_regions: 100.0,
             ilp_timeout_seconds: 5 * 60,
@@ -673,8 +677,13 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let tiger_bin = find_tiger_binary("tiger-rs")
-        .ok_or_else(|| "tiger-rs binary not found; build the tiger tools first".to_string())
+    let tiger_bin_name = if eggcc_config.tiger_cpp {
+        "tiger"
+    } else {
+        "tiger-rs"
+    };
+    let tiger_bin = find_tiger_binary(tiger_bin_name)
+        .ok_or_else(|| format!("{tiger_bin_name} binary not found; build the tiger tools first"))
         .unwrap();
 
     let mut tiger_args: Vec<OsString> = Vec::new();

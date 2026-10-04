@@ -5,8 +5,8 @@ expression: visualization.result
 # ARGS: 1
 @main(v0: int) {
   c1_: int = const 0;
-  v2_: bool = gt v0 c1_;
-  v3_: bool = lt v0 c1_;
+  v2_: bool = lt v0 c1_;
+  v3_: bool = gt v0 c1_;
   v4_: bool = and v2_ v3_;
   c5_: int = const 1;
   c6_: int = const 1;
@@ -17,8 +17,8 @@ expression: visualization.result
   ret;
   jmp .b10_;
 .b9_:
-  v11_: bool = gt v0 c1_;
-  v12_: bool = lt v0 c1_;
+  v11_: bool = lt v0 c1_;
+  v12_: bool = gt v0 c1_;
   v13_: bool = and v11_ v12_;
   c14_: int = const 3;
   v15_: int = id c14_;

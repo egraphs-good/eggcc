@@ -93,7 +93,7 @@ def make_macros(profile, benchmark_suites, output_file):
     else:
       bril_better_count = 0
       for benchmark in bril_benchmarks:
-        eggcc_cycles = get_cycles(profile, benchmark, "eggcc-tiger-O0-O0")
+        eggcc_cycles = get_cycles(profile, benchmark, "eggcc-O0-O0")
         llvm_cycles = get_cycles(profile, benchmark, "llvm-O3-O0")
 
         eggcc_mean = mean(eggcc_cycles)
@@ -141,7 +141,7 @@ def make_macros(profile, benchmark_suites, output_file):
 
     tiger_times_on_gurobi_solved = []
     for benchmark in ilp_gurobi_solved_benchmarks:
-      tiger_row = get_row(profile, benchmark, 'eggcc-tiger-O0-O0')
+      tiger_row = get_row(profile, benchmark, 'eggcc-O0-O0')
       extraction_time = tiger_row["eggccExtractionTimeSecs"]
       if extraction_time is False or extraction_time is None:
         raise ValueError(
@@ -150,7 +150,7 @@ def make_macros(profile, benchmark_suites, output_file):
       tiger_times_on_gurobi_solved.append(extraction_time)
 
     if not tiger_times_on_gurobi_solved:
-      raise ValueError("No eggcc-tiger-O0-O0 extraction times available for Gurobi-solved benchmarks")
+      raise ValueError("No eggcc-O0-O0 extraction times available for Gurobi-solved benchmarks")
     out.write(
       format_latex_macro(
         "AvgEggcctigerO0O0ExtractionTimeSecsOnILPGurobiSolvedBenchmarks",
@@ -181,7 +181,8 @@ def make_macros(profile, benchmark_suites, output_file):
       out.write(
         format_latex_macro(
           "MaxRaytraceRegionalizedEgraphTerms",
-          f"{max(sample["egraph_size"] for sample in raytrace_timings):.4f}",
+          max(sample["egraph_size"] for sample in raytrace_timings),
+          group_thousands=True,
         )
       )
       out.write(
@@ -276,6 +277,25 @@ def make_macros(profile, benchmark_suites, output_file):
       format_latex_macro(
         "MaxTigerLiveOnSatelliteOnRegionExtractTimeSecs",
         f"{max(tiger_region_times):.4f}",
+      )
+    )
+
+    # Same, with tiger's optimizations disabled. The paper's statewalk-width figure
+    # contrasts the two, so it needs the un-optimized maximum as well.
+    tiger_region_times_unopt = [
+      duration_to_seconds(sample["extract_time_liveoff_satelliteoff"])
+      for sample in region_points
+    ]
+    out.write(
+      format_latex_macro(
+        "AvgTigerLiveOffSatelliteOffRegionExtractTimeSecs",
+        f"{mean(tiger_region_times_unopt):.6f}",
+      )
+    )
+    out.write(
+      format_latex_macro(
+        "MaxTigerLiveOffSatelliteOffRegionExtractTimeSecs",
+        f"{max(tiger_region_times_unopt):.4f}",
       )
     )
 

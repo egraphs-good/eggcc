@@ -74,6 +74,11 @@ fn test_tuple_ith() -> crate::Result {
     let ctx = Assumption::dummy();
     let build = format!(
         "
+    ;; Fresh placeholder contexts for the loop bodies below.
+    ;; (unstable-fresh! ...) only works inside rule actions, so at the top
+    ;; level we use throwaway nullary constructors instead.
+    (constructor LoopCtx1 () Assumption)
+    (constructor LoopCtx2 () Assumption)
     (let tup (Concat
                   (Concat (Single (Const (Int 0) {emptyt} {ctx})) (Single (Const (Int 1) {emptyt} {ctx})))
                   (Concat (Single (Const (Int 2) {emptyt} {ctx})) (Single (Const (Int 3) {emptyt} {ctx})))))
@@ -81,10 +86,9 @@ fn test_tuple_ith() -> crate::Result {
     ;; Gets of tup and tup2 are only generated when tup and tup2 are in critical positions
     ;; like inputs to a DoWhile, 
     (let tup_type (TupleT (TCons (IntT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TNil)))))))
-    (let body (Concat (Const (Bool true) tup_type (TmpCtx)) (Arg tup_type (TmpCtx))))
+    (let body (Concat (Const (Bool true) tup_type (LoopCtx1)) (Arg tup_type (LoopCtx1))))
     (let loop (DoWhile tup body))
-    (union (TmpCtx) (InLoop tup body))
-    (delete (TmpCtx))
+    (union (LoopCtx1) (InLoop tup body))
     
     ;; with print
     (let tup2 (Concat 
@@ -94,10 +98,9 @@ fn test_tuple_ith() -> crate::Result {
                                 (Single (Const (Int 2) {emptyt} {ctx}))))
                 (Single (Const (Int 3) {emptyt} {ctx}))))
     (let tup2_type (TupleT (TCons (StateT) (TCons (IntT) (TCons (IntT) (TCons (IntT) (TNil)))))))
-    (let body2 (Concat (Const (Bool true) tup2_type (TmpCtx)) (Arg tup2_type (TmpCtx))))
+    (let body2 (Concat (Const (Bool true) tup2_type (LoopCtx2)) (Arg tup2_type (LoopCtx2))))
     (let loop2 (DoWhile tup2 body2))
-    (union (TmpCtx) (InLoop tup2 body2))
-    (delete (TmpCtx))
+    (union (LoopCtx2) (InLoop tup2 body2))
     "
     );
 

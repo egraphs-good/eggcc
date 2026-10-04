@@ -39,7 +39,7 @@ impl Pointer {
     // if the pointer is out of bounds
     fn addr(&self) -> usize {
         if self.offset < 0 || self.offset as usize >= self.size {
-            panic!("Pointer out of bounds {:?}", self);
+            panic!("Pointer out of bounds {self:?}");
         }
         self.start_addr + self.offset as usize
     }
@@ -56,8 +56,8 @@ pub enum Value {
 impl Value {
     pub fn bril_print(&self) -> String {
         match self {
-            Const(Constant::Int(n)) => format!("{}", n),
-            Const(Constant::Bool(b)) => format!("{}", b),
+            Const(Constant::Int(n)) => format!("{n}"),
+            Const(Constant::Bool(b)) => format!("{b}"),
             Const(Constant::Float(f)) => {
                 if f.is_infinite() {
                     format!("{}Infinity", if f.is_sign_positive() { "" } else { "-" })
@@ -67,7 +67,7 @@ impl Value {
                     // handles +0.0 and -0.0 cases
                     "0.00000000000000000".to_string()
                 } else {
-                    format!("{:.17}", f)
+                    format!("{f:.17}")
                 }
             }
             Ptr(Pointer { .. }) => todo!("How does bril print pointers?"),
@@ -86,7 +86,7 @@ impl Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Const(constant) => write!(f, "{}", constant),
+            Const(constant) => write!(f, "{constant}"),
             Ptr(Pointer {
                 start_addr: addr,
                 size,
@@ -97,7 +97,7 @@ impl Display for Value {
             Tuple(vs) => {
                 write!(f, "(")?;
                 for v in vs {
-                    write!(f, "{}, ", v)?;
+                    write!(f, "{v}, ")?;
                 }
                 write!(f, ")")
             }
@@ -175,28 +175,28 @@ impl<'a> VirtualMachine<'a> {
     fn interp_int_expr(&mut self, e: &RcExpr, arg: &Value) -> i64 {
         match self.interpret_expr(e, arg) {
             Const(Constant::Int(n)) => n,
-            other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
+            other => panic!("Expected integer. Got {other:?} from expr {e:?}"),
         }
     }
 
     fn interp_float_expr(&mut self, e: &RcExpr, arg: &Value) -> OrderedFloat<f64> {
         match self.interpret_expr(e, arg) {
             Const(Constant::Float(n)) => n,
-            other => panic!("Expected integer. Got {:?} from expr {:?}", other, e),
+            other => panic!("Expected integer. Got {other:?} from expr {e:?}"),
         }
     }
 
     fn interp_bool_expr(&mut self, e: &RcExpr, arg: &Value) -> bool {
         match self.interpret_expr(e, arg) {
             Const(Constant::Bool(b)) => b,
-            other => panic!("Expected boolean. Got {:?} from expr {:?}", other, e),
+            other => panic!("Expected boolean. Got {other:?} from expr {e:?}"),
         }
     }
 
     fn interp_pointer_expr(&mut self, e: &RcExpr, arg: &Value) -> Pointer {
         match self.interpret_expr(e, arg) {
             Ptr(ptr) => ptr,
-            other => panic!("Expected pointer. Got {:?} from expr {:?}", other, e),
+            other => panic!("Expected pointer. Got {other:?} from expr {e:?}"),
         }
     }
 
@@ -377,15 +377,11 @@ impl<'a> VirtualMachine<'a> {
             Expr::Top(top, e1, e2, e3) => self.interpret_top(top, e1, e2, e3, arg),
             Expr::Get(e_tuple, i) => {
                 let Tuple(vals) = self.interpret_expr(e_tuple, arg) else {
-                    panic!(
-                        "get expects a tuple as its first argument. Got {:?}",
-                        e_tuple
-                    )
+                    panic!("get expects a tuple as its first argument. Got {e_tuple:?}")
                 };
                 if *i >= vals.len() {
                     panic!(
-                        "get index out of bounds. Got index {} for tuple {:?}. Expression:\n{}",
-                        i, vals, expr
+                        "get index out of bounds. Got index {i} for tuple {vals:?}. Expression:\n{expr}"
                     )
                 }
                 vals[*i].clone()
@@ -405,10 +401,10 @@ impl<'a> VirtualMachine<'a> {
             Expr::Single(e) => Tuple(vec![self.interpret_expr(e, arg)]),
             Expr::Concat(e1, e2) => {
                 let Tuple(mut v1) = self.interpret_expr(e1, arg) else {
-                    panic!("expected tuple in extend's first argument in: {:?}", e1)
+                    panic!("expected tuple in extend's first argument in: {e1:?}")
                 };
                 let Tuple(v2) = self.interpret_expr(e2, arg) else {
-                    panic!("expected tuple in extend's second argument in {:?}", e2)
+                    panic!("expected tuple in extend's second argument in {e2:?}")
                 };
                 v1.extend(v2);
                 Tuple(v1)
@@ -447,8 +443,7 @@ impl<'a> VirtualMachine<'a> {
                     assert_eq!(
                         pred_output_val.len(),
                         1 + vals.len(),
-                        "expected pred_output to have one more element than input in {:?}",
-                        pred_output
+                        "expected pred_output to have one more element than input in {pred_output:?}"
                     );
                     pred = pred_output_val[0].clone();
                     vals = pred_output_val[1..].to_vec();
@@ -526,7 +521,7 @@ fn test_interpreter() {
         res.log,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             .into_iter()
-            .map(|i| format!("{}", i))
+            .map(|i| format!("{i}"))
             .collect::<Vec<String>>()
     );
 }

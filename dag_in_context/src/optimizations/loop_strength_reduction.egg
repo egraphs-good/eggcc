@@ -69,29 +69,30 @@
 
         ; We need to create a new type, with one more input
         (let new-arg-ty (TupleT (TLConcat ty-list (TCons (IntT) (TNil)))))
-        (let replace-arg (SubTuple (Arg new-arg-ty (TmpCtx)) 0 n))
+        (let fresh-ctx (unstable-fresh! Assumption))
+        (let replace-arg (SubTuple (Arg new-arg-ty fresh-ctx) 0 n))
 
         ; Value of d in loop. Add context to addend
-        (let d-out (Bop (Add) (Get (Arg new-arg-ty (TmpCtx)) n)
-                   (Subst (TmpCtx) replace-arg addend)))
+        (let d-out (Bop (Add) (Get (Arg new-arg-ty fresh-ctx) n)
+                   (Subst fresh-ctx replace-arg addend)))
 
         ; build the old body, making sure to set the correct arg type and context
         (let new-body
           (Concat
-            (Subst (TmpCtx) replace-arg pred-and-outputs)
+            (Subst fresh-ctx replace-arg pred-and-outputs)
             (Single d-out)))
 
         (let new-loop (DoWhile new-inputs new-body))
 
-        (let new-c (Subst (TmpCtx) replace-arg c-out))
+        (let new-c (Subst fresh-ctx replace-arg c-out))
 
         ; Now that we have the new loop, union the temporary context with the actual ctx
-        (union (TmpCtx) (InLoop new-inputs new-body))
+        (union fresh-ctx (InLoop new-inputs new-body))
 
         ; Substitute d for the *i expression
         (let new-mul
             (Bop (Mul) new-c (Get replace-arg i)))
-        (union (Get (Arg new-arg-ty (TmpCtx)) n) new-mul)
+        (union (Get (Arg new-arg-ty fresh-ctx) n) new-mul)
 
         ; Subsume the multiplication in the new loop to prevent
         ; from firing loop strength reduction again on the new loop
@@ -105,7 +106,6 @@
 
         ; Project all but last
         (union old-loop (SubTuple new-loop 0 n))
-        (delete (TmpCtx))
     )
     :ruleset loop-strength-reduction
 )

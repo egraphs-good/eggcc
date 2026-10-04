@@ -109,7 +109,7 @@ fn simple_inv_detect() -> crate::Result {
     );
 
     egglog_test(
-        &format!("(let loop {})", myloop),
+        &format!("(let loop {myloop})"),
         &check,
         vec![],
         Value::Tuple(vec![]),
@@ -248,7 +248,7 @@ fn test_invariant_hoist() -> crate::Result {
     .with_arg_types(output_ty.clone(), new_out_ty)
     .add_ctx_with_cache(Assumption::dummy(), &mut cache);
 
-    let build = format!("(let loop {}) \n", my_loop);
+    let build = format!("(let loop {my_loop}) \n");
     let check = format!(
         "(check {})
          (check (= loop (SubTuple {} 0 4)))",

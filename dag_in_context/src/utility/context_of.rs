@@ -13,7 +13,7 @@ fn test_context_of() -> crate::Result {
     let (build, build_cache) = function("main", base(intt()), base(intt()), body.clone())
         .func_with_arg_types()
         .func_add_ctx();
-    let ctx = format!("{}", ctx);
+    let ctx = format!("{ctx}");
 
     // If statement should have the context of its predicate
     let check = format!(
@@ -56,7 +56,6 @@ fn test_context_of_base_case() -> crate::Result {
 }
 
 #[test]
-#[should_panic]
 fn test_context_of_panics_if_two() {
     use crate::ast::*;
     use crate::schema::Assumption;
@@ -72,13 +71,20 @@ fn test_context_of_panics_if_two() {
         (let conflict-expr (Bop (And) (Const (Bool false) (Base (BoolT)) ctx1) (Const (Bool true) (Base (BoolT)) ctx2)))");
     let check = "";
 
-    let _ = crate::egglog_test(
+    // egglog now surfaces the single-context invariant violation as a caught
+    // (panic ...) returned as an Err, rather than unwinding as a Rust panic.
+    let result = crate::egglog_test(
         &build,
         check,
         vec![],
         crate::ast::emptyv(),
         crate::ast::emptyv(),
         vec![],
+    );
+    let err = result.expect_err("expected a single-context invariant violation");
+    assert!(
+        format!("{err:?}").contains("nonequivalent context"),
+        "unexpected error: {err:?}"
     );
 }
 

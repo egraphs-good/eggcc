@@ -23,14 +23,14 @@ use crate::{
 impl Display for Constant {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();
-        write!(f, "{}", termdag.to_string(&term))
+        write!(f, "{}", termdag.to_string(term))
     }
 }
 
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();
-        write!(f, "{}", termdag.to_string(&term))
+        write!(f, "{}", termdag.to_string(term))
     }
 }
 
@@ -38,14 +38,14 @@ impl Display for Expr {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let rcexpr = RcExpr::new(self.clone());
         let (term, termdag) = rcexpr.to_egglog();
-        write!(f, "{}", termdag.to_string(&term))
+        write!(f, "{}", termdag.to_string(term))
     }
 }
 
 impl Display for Assumption {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();
-        write!(f, "{}", termdag.to_string(&term))
+        write!(f, "{}", termdag.to_string(term))
     }
 }
 
@@ -112,7 +112,7 @@ impl UnaryOp {
 impl Display for TreeProgram {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let (term, termdag) = self.to_egglog();
-        write!(f, "{}", termdag.to_string(&term))
+        write!(f, "{}", termdag.to_string(term))
     }
 }
 
@@ -552,7 +552,7 @@ impl TreeProgram {
                     return;
                 }
             }
-            panic!("Function {} not found", name);
+            panic!("Function {name} not found");
         }
     }
 }

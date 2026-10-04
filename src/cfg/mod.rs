@@ -158,7 +158,7 @@ impl Display for BlockName {
             BlockName::Entry => write!(f, "entry___"),
             BlockName::Exit => write!(f, "exit___"),
             BlockName::Placeholder(n) => write!(f, "__{n}__"),
-            BlockName::Named(s) => write!(f, "{}", s),
+            BlockName::Named(s) => write!(f, "{s}"),
         }
     }
 }

@@ -21,10 +21,7 @@ fn build_binary(tiger_dir: &Path, sources: &[&str], output: &Path, extra_flags: 
         .expect("failed to invoke C++ compiler for tiger binaries");
 
     if !status.success() {
-        panic!(
-            "failed to compile {:?} -> {:?} with status {}",
-            sources, output, status
-        );
+        panic!("failed to compile {sources:?} -> {output:?} with status {status}");
     }
 }
 

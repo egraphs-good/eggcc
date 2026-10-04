@@ -9,11 +9,13 @@ import os
 import sys
 import subprocess
 import shutil
+import json
 from pathlib import Path
 
 from profile import NightlyConfig, run_profile, gurobi_available
 from graphs import make_graphs
 from generate_line_counts import generate_latex
+from simple_table import write_compact_table_latex
 
 class TeeWriter:
     """Write to both a file and the original stream."""
@@ -39,6 +41,8 @@ def run_cmd(cmd, cwd=None):
         print(f"Command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
 
+
+
 def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, output_dir, 
                 paper_dir, data_dir, output_data_dir, profile_json, is_local):
     """Main nightly workflow - run profiler, generate graphs, and package output."""
@@ -53,9 +57,16 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
         print(f"Running profile with data_dir={data_dir}, bril_dir={args.benchmark_dir}, parallel={args.parallel}")
         run_profile(str(data_dir), args.benchmark_dir, config, parallel=args.parallel)
 
-    # Generate the plots
+    # Generate the plots. Artifact/local runs only need the headline figures reproduce.sh
+    # copies out; the real (non-local) nightly renders the full paper/nightly figure set.
     print("Generating graphs...")
-    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config)
+    make_graphs(str(output_dir), str(paper_dir), str(profile_json), "benchmarks/passing", config,
+                render_extra_figures=not is_local)
+    data = []
+    with open(profile_json) as f:
+        data = json.load(f)
+
+    write_compact_table_latex(data, paper_dir)
 
     # Generate latex after running the profiler (depends on profile.json)
     print("Generating line counts...")
@@ -74,7 +85,12 @@ def run_nightly(args, config, top_dir, script_dir, resource_dir, nightly_dir, ou
 
     # Copy data over to output
     if data_dir.exists():
-        shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
+        # in local mode copy over
+        if is_local:
+            shutil.copytree(data_dir, output_data_dir, dirs_exist_ok=True)
+        else:
+            # otherwise move
+            shutil.move(str(data_dir), str(output_data_dir))
 
     # Gzip all JSON and SVGs in the nightly dir (only in non-local mode)
     if not is_local:

@@ -37,7 +37,7 @@ fn remove_dead_code_fn(func: RcExpr) -> RcExpr {
                 new_body,
             ))
         }
-        _ => panic!("Expected function, got {:?}", func),
+        _ => panic!("Expected function, got {func:?}"),
     }
 }
 
@@ -186,7 +186,7 @@ impl DeadCodeRemover {
                 if dead_indicies.is_empty() {
                     expr.clone()
                 } else {
-                    panic!("Found argument used directly, but code was supposed to be dead at indicies {:?}", dead_indicies)
+                    panic!("Found argument used directly, but code was supposed to be dead at indicies {dead_indicies:?}")
                 }
             }
             Expr::DoWhile(inputs, body) => {

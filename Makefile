@@ -38,4 +38,4 @@ nightly:
 # Install/verify an optional Gurobi license so the nightly auto-detects Gurobi.
 # Usage: make gurobi-setup LICENSE=path/to/gurobi.lic  (LICENSE optional -- omit to just verify)
 gurobi-setup:
-	bash infra/setup_gurobi.sh $(LICENSE)
+	bash infra/setup_gurobi.sh "$(LICENSE)"

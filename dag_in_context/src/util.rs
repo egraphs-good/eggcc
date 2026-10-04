@@ -115,6 +115,9 @@ where
     S2: AsRef<OsStr>,
     I: IntoIterator<Item = S2>,
 {
+    // Suppress unused variable warning on macOS where we can't set RLIMIT_AS.
+    let _ = &memory_limit_bytes;
+
     // Write the input to a temporary file so the child can read it directly without
     // relying on manually managed filesystem paths.
     let mut temp_file = tempfile()?;

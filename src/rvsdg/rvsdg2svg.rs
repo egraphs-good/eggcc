@@ -178,10 +178,10 @@ fn port(x: f32, y: f32, color: &str) -> Xml {
         [
             ("fill", color),
             ("stroke", "black"),
-            ("stroke-width", &format!("{}", STROKE_WIDTH)),
-            ("r", &format!("{}", PORT_RADIUS)),
-            ("cx", &format!("{}", x)),
-            ("cy", &format!("{}", y)),
+            ("stroke-width", &format!("{STROKE_WIDTH}")),
+            ("r", &format!("{PORT_RADIUS}")),
+            ("cx", &format!("{x}")),
+            ("cy", &format!("{y}")),
         ],
         "",
     )
@@ -201,10 +201,10 @@ impl Node {
                         [
                             ("fill", "#FFFF80"),
                             ("stroke", "black"),
-                            ("width", &format!("{}", SIMPLE_NODE_SIZE)),
-                            ("height", &format!("{}", SIMPLE_NODE_SIZE)),
-                            ("stroke-width", &format!("{}", STROKE_WIDTH)),
-                            ("rx", &format!("{}", CORNER_RADIUS)),
+                            ("width", &format!("{SIMPLE_NODE_SIZE}")),
+                            ("height", &format!("{SIMPLE_NODE_SIZE}")),
+                            ("stroke-width", &format!("{STROKE_WIDTH}")),
+                            ("rx", &format!("{CORNER_RADIUS}")),
                         ],
                         "",
                     ),
@@ -215,7 +215,7 @@ impl Node {
                             ("fill", "black"),
                             ("x", &format!("{}", SIMPLE_NODE_SIZE * 0.5)),
                             ("y", &format!("{}", FONT_SIZE * 1.25)),
-                            ("font-size", &format!("{}", FONT_SIZE)),
+                            ("font-size", &format!("{FONT_SIZE}")),
                         ],
                         text,
                     ),
@@ -256,8 +256,8 @@ impl Node {
                         ("stroke", "black"),
                         ("width", &format!("{}", size.width)),
                         ("height", &format!("{}", size.height)),
-                        ("stroke-width", &format!("{}", STROKE_WIDTH)),
-                        ("rx", &format!("{}", CORNER_RADIUS)),
+                        ("stroke-width", &format!("{STROKE_WIDTH}")),
+                        ("rx", &format!("{CORNER_RADIUS}")),
                     ],
                     "",
                 );
@@ -265,9 +265,9 @@ impl Node {
                     "text",
                     [
                         ("fill", "black"),
-                        ("x", &format!("{}", REGION_SPACING)),
-                        ("y", &format!("{}", FONT_SIZE)),
-                        ("font-size", &format!("{}", FONT_SIZE)),
+                        ("x", &format!("{REGION_SPACING}")),
+                        ("y", &format!("{FONT_SIZE}")),
+                        ("font-size", &format!("{FONT_SIZE}")),
                     ],
                     name,
                 );
@@ -293,7 +293,7 @@ impl Node {
                                 ("fill", "black"),
                                 ("x", &format!("{}", x + s.width * 0.5)),
                                 ("y", &format!("{}", FONT_SIZE * 2.0)),
-                                ("font-size", &format!("{}", FONT_SIZE)),
+                                ("font-size", &format!("{FONT_SIZE}")),
                             ],
                             label,
                         );
@@ -337,8 +337,8 @@ impl Node {
                         ("stroke", "black"),
                         ("width", &format!("{}", size.width)),
                         ("height", &format!("{}", size.height)),
-                        ("stroke-width", &format!("{}", STROKE_WIDTH)),
-                        ("rx", &format!("{}", CORNER_RADIUS)),
+                        ("stroke-width", &format!("{STROKE_WIDTH}")),
+                        ("rx", &format!("{CORNER_RADIUS}")),
                     ],
                     "",
                 );
@@ -346,9 +346,9 @@ impl Node {
                     "text",
                     [
                         ("fill", "black"),
-                        ("x", &format!("{}", REGION_SPACING)),
-                        ("y", &format!("{}", FONT_SIZE)),
-                        ("font-size", &format!("{}", FONT_SIZE)),
+                        ("x", &format!("{REGION_SPACING}")),
+                        ("y", &format!("{FONT_SIZE}")),
+                        ("font-size", &format!("{FONT_SIZE}")),
                     ],
                     "loop",
                 );
@@ -550,9 +550,9 @@ impl Region {
                 "path",
                 [
                     ("fill", "transparent"),
-                    ("stroke", &format!("{:?}", edge_color)),
+                    ("stroke", &format!("{edge_color:?}")),
                     ("stroke-linecap", "round"),
-                    ("stroke-width", &format!("{}", STROKE_WIDTH)),
+                    ("stroke-width", &format!("{STROKE_WIDTH}")),
                     ("d", &path_string),
                 ],
                 "",
@@ -576,10 +576,10 @@ impl Region {
             [
                 ("fill", "white"),
                 ("stroke", "black"),
-                ("stroke-width", &format!("{}", STROKE_WIDTH)),
+                ("stroke-width", &format!("{STROKE_WIDTH}")),
                 ("width", &format!("{}", size.width)),
                 ("height", &format!("{}", size.height)),
-                ("rx", &format!("{}", CORNER_RADIUS)),
+                ("rx", &format!("{CORNER_RADIUS}")),
             ],
             "",
         );
@@ -767,7 +767,7 @@ impl RvsdgProgram {
             // assert that it doesn't have a transform yet
             assert!(!xml.attributes.contains_key("transform"));
             xml.attributes
-                .insert("transform".to_owned(), format!("translate(0, {})", height));
+                .insert("transform".to_owned(), format!("translate(0, {height})"));
             xmls.push(xml);
             height += size.height;
             width = width.max(size.width);
@@ -776,8 +776,8 @@ impl RvsdgProgram {
             "svg",
             [
                 ("version", "1.1"),
-                ("width", &format!("{}", width)),
-                ("height", &format!("{}", height)),
+                ("width", &format!("{width}")),
+                ("height", &format!("{height}")),
                 ("xmlns", "http://www.w3.org/2000/svg"),
             ],
             &xmls

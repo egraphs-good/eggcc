@@ -137,8 +137,8 @@
     (let new-if-false-ctx (InIf false new-if-cond new-if-inp))
 
     (let new-loop-arg-ty (TupleT (TLConcat inputs-ty-list passthrough-tys)))
-    (let new-loop-arg (Arg new-loop-arg-ty (TmpCtx)))
-    (let new-loop-context (TmpCtx))
+    (let new-loop-context (unstable-fresh! Assumption))
+    (let new-loop-arg (Arg new-loop-arg-ty new-loop-context))
 
     ;; body
     ;; loop begins by running the then branch of the if statement, which uses the first if-inputs-length elements of arg
@@ -182,5 +182,4 @@
     (union new-loop-context (InLoop (Arg new-loop-arg-ty new-if-true-ctx) new-loop-outputs))
 
     (subsume (DoWhile inpW outW))
-    (delete (TmpCtx))
 ) :ruleset loop-inversion)

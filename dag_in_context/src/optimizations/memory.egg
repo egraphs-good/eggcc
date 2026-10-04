@@ -8,16 +8,14 @@
 (constructor ExprSet-union (ExprSet ExprSet) ExprSet)
 (rewrite (ExprSet-union (ES set1) (ES set2)) (ES (set-union set1 set2))
          :ruleset memory-helpers)
-(relation ExprSet-contains (ExprSet Expr))
-(rule ((ES set1) (set-contains set1 x))
-      ((ExprSet-contains (ES set1) x))
-      :ruleset memory-helpers)
 (constructor ExprSet-insert (ExprSet Expr) ExprSet)
 (rewrite (ExprSet-insert (ES set1) x)
          (ES (set-insert set1 x))
          :ruleset memory-helpers)
 (function ExprSet-length (ExprSet) i64 :no-merge)
-(rewrite (ExprSet-length (ES set1)) (set-length set1) :ruleset memory-helpers)
+(rule ((ES set1))
+      ((set (ExprSet-length (ES set1)) (set-length set1)))
+      :ruleset memory-helpers)
 
 ; ============================
 ; Pointees
@@ -323,9 +321,9 @@
 ; compute first two
 (rule ((= e (DoWhile inputs pred-body))
        (PointsToCells e aps))
-      ((set (PointsToCellsAtIter aps inputs pred-body 0)
+      ((union (PointsToCellsAtIter aps inputs pred-body 0)
             (PointsToCells inputs aps))
-       (set (PointsToCellsAtIter aps inputs pred-body 1)
+       (union (PointsToCellsAtIter aps inputs pred-body 1)
             (UnionPointees
               (PointsToCellsAtIter aps inputs pred-body 0)
               (PointeesDropFirst
@@ -344,7 +342,7 @@
        (Resolved-Pointees pointees0)
        (Resolved-Pointees pointees1)
        (!= pointees0 pointees1))
-      ((set (PointsToCellsAtIter aps inputs pred-body (+ i 2))
+      ((union (PointsToCellsAtIter aps inputs pred-body (+ i 2))
             (UnionPointees
               pointees1
               (PointeesDropFirst
@@ -353,7 +351,7 @@
 
 (rule ((= pointees (PointsToCellsAtIter aps inputs pred-body i))
        (= pointees (PointsToCellsAtIter aps inputs pred-body (succ i))))
-      ((set (PointsToCells (DoWhile inputs pred-body) aps)
+      ((union (PointsToCells (DoWhile inputs pred-body) aps)
             pointees))
       :ruleset memory)
 
@@ -399,7 +397,7 @@
 
 ; After a load, the ptr points to the loaded value
 (rule ((= f (Bop (Load) ptr state)))
-      ((set (PointsToExpr (Get f 1) ptr) (Get f 0)))
+      ((union (PointsToExpr (Get f 1) ptr) (Get f 0)))
       :ruleset memory-helpers)
 
 ; If we load and we already know what the pointer points to
@@ -434,7 +432,7 @@
        (HasArgType addr argty)
        (= otherdata (PointsToExpr state otheraddr))
        (DontAlias addr otheraddr (TypeToPointees argty)))
-      ((set (PointsToExpr e otheraddr) otherdata))
+      ((union (PointsToExpr e otheraddr) otherdata))
       :ruleset memory-helpers)
 
 ; For a write, mark the given expression as containing `data`.

@@ -82,7 +82,7 @@ fn check_no_duplicates(globs: Vec<&str>) {
                 .unwrap()
                 .to_string();
             if names.contains(&name) {
-                panic!("Duplicate filename {}.", name);
+                panic!("Duplicate filename {name}.");
             }
             names.insert(name);
         }

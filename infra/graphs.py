@@ -506,6 +506,9 @@ def make_jitter(profile, upper_x_bound, output):
   y_label_map = {}
   outlier_x = []
   outlier_y = []
+  # Seeded locally rather than using the global random state, so this plot is
+  # reproducible regardless of what else drew before it.
+  jitter_rng = random.Random(JITTER_SEED)
 
   for idx, benchmark in enumerate(filtered):
     benchmark_name = benchmark.get('benchmark', f'benchmark_{idx}')
@@ -526,7 +529,7 @@ def make_jitter(profile, upper_x_bound, output):
     for cycle in benchmark.get('cycles', [])[:100]:
       normalized = cycle / baseline_mean
       # Add a small random jitter to y value to prevent overlap
-      jittered_y = y_label_map[benchmark_name] + random.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[GRAPH_RUN_MODES.index(run_method)]
+      jittered_y = y_label_map[benchmark_name] + jitter_rng.uniform(0.0, BENCHMARK_SPACE) + RUN_MODE_Y_OFFSETS[GRAPH_RUN_MODES.index(run_method)]
       if upper_x_bound != None and normalized > upper_x_bound:
           # Record outlier data
           outlier_x.append(upper_x_bound)
@@ -577,6 +580,7 @@ def normalized(profile, benchmark, treatment):
   return mean(treatment_cycles) / mean(baseline)
 
 # make a bar chart given a profile.json
+@with_paper_font
 def make_normalized_chart(profile, output_file, treatments, y_max, width, height, xanchor, yanchor, benchmarks_to_include=None, legend=True, ilp_label="Gurobi"):
   # for each benchmark
   grouped_by_benchmark = group_by_benchmark(profile)
@@ -758,62 +762,6 @@ def make_normalized_chart(profile, output_file, treatments, y_max, width, height
   plt.tight_layout()
   plt.savefig(output_file)
 
-# TODO change back after anonymization is lifted
-def to_paper_names_treatment(treatment):
-  if treatment == 'llvm-O0-O0':
-    return 'LLVM-O0'
-  if treatment == 'llvm-O3-O0':
-    return 'LLVM-O3-O0'
-  if treatment == 'eggcc-O0-O0':
-    return 'EQCC-O0-O0'
-  if treatment == 'eggcc-O3-O0':
-    return 'EQCC-O3-O0'
-  if treatment == 'eggcc-ablation-O0-O0':
-    return 'EQCC-Ablation-O0-O0'
-  if treatment == 'eggcc-ablation-O3-O0':
-    return 'EQCC-Ablation-O3-O0'
-  if treatment == 'eggcc-ablation-O3-O3':
-    return 'EQCC-Ablation-O3-O3'
-  if treatment == 'rvsdg-round-trip-to-executable':
-    return 'RVSDG-Executable'
-  if treatment == 'llvm-O1-O0':
-    return 'LLVM-O1-O0'
-  if treatment == 'llvm-O2-O0':
-    return 'LLVM-O2-O0'
-  if treatment == 'llvm-O3-O3':
-    return 'LLVM-O3-O3'
-  if treatment == 'eggcc-sequential-O0-O0':
-    return 'EQCC-Sequential-O0-O0'
-  if treatment == 'eggcc-O3-O3':
-    return 'EQCC-O3-O3'
-  if treatment == 'eggcc-WITHCTX-O0-O0':
-    return 'EQCC-WITHCTX-O0-O0'
-  if treatment == 'eggcc-tiger-WITHCTX-O0-O0':
-    # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
-  if treatment == 'eggcc-tiger-nohacker-WITHCTX-O0-O0':
-    # not talking about context in the paper
-    return f'EQCC-{TIGER_INLINE_NAME}-NOHACKER-O0'
-  if treatment == 'eggcc-tiger-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-O0'
-  if treatment == 'eggcc-tiger-WL-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-WL-O0'
-  if treatment == 'eggcc-tiger-ILP-O0-O0':
-    return f'EQCC-GUROBI-O0'
-  if treatment == 'eggcc-tiger-ILP-CBC-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-CBC-O0'
-  if treatment == 'eggcc-tiger-ILP-WITHCTX-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-WITHCTX-O0'
-  if treatment == 'eggcc-tiger-ILP-NOMIN-O0-O0':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-NOMIN-O0'
-  if treatment == 'eggcc-tiger-ILP-COMPARISON':
-    return f'EQCC-{TIGER_INLINE_NAME}-ILP-Comparison'
-  raise KeyError(f"Unknown treatment {treatment}")
-
-
-
-  
-
 def get_code_size(benchmark, suites_path):
   # search for all files in the benchmark folder
   files = []
@@ -894,7 +842,13 @@ def make_code_size_vs_compile_and_extraction_time(profile, compile_time_output, 
 
 
 
-def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig):
+def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_folder, config: NightlyConfig, render_extra_figures=True):
+  # render_extra_figures=False (set for artifact/--local runs) renders only the headline
+  # figures reproduce.sh copies out: the extraction-time CDF, the normalized perf charts, and
+  # the Fenwick chart. Everything else -- statewalk-width, heatmap, ILP-encoding, jitter,
+  # region-extract, and the LaTeX macros -- are paper/nightly extras the artifact does not
+  # ship, so skipping them shortens the reviewer's run and removes their failure modes from it.
+
   # Graphs report the per-region ILP timeout the data was generated with (e.g. "30 s"
   # for the default nightly, "5 min" for paper).
   set_ilp_timeout_seconds(getattr(config, "ilp_timeout_seconds", 5 * 60))
@@ -917,19 +871,21 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
     print("INFO: No Gurobi timing data; rendering ILP graphs from CBC/tiger data only.")
 
   # Always available (no ILP timing data required)
-  make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
+  if render_extra_figures:
+    make_jitter(data, 4, f'{graphs_folder}/jitter-plot-max-4.png')
   make_fenwick_cycles_bar_chart(data, f'{graphs_folder}/fenwick-cycles-bar-chart.pdf')
 
   if has_comparison:
     # CDF plots tiger + CBC series (plus the Gurobi series when it ran)
     make_extraction_time_cdf(data, f'{graphs_folder}/extraction-time-cdf.pdf', use_log_x=True, use_exp_y=False, include_gurobi=has_gurobi)
-    # tiger greedy extraction time (no Gurobi needed)
-    make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
-    if has_gurobi:
-      make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
-      make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
-    else:
-      print("Skipping ILP-time region plot and extraction-time-histogram (require Gurobi)")
+    if render_extra_figures:
+      # tiger greedy extraction time (no Gurobi needed)
+      make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-tiger-time.pdf', plot_ilp=False)
+      if has_gurobi:
+        make_region_extract_plot(data, f'{graphs_folder}/egraph-size-vs-ILP-time.pdf', plot_ilp=True)
+        make_extraction_time_histogram(data, f'{graphs_folder}/extraction-time-histogram.pdf')
+      else:
+        print("Skipping ILP-time region plot and extraction-time-histogram (require Gurobi)")
   else:
     print("Skipping all region-timing graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
 
@@ -951,8 +907,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
   ilp_cbc = StatewalkTreatment(runtime="ilp_cbc", liveness_on=False, satellite_on=False)
 
   # Statewalk-width and ILP-encoding graphs. Tiger/CBC graphs render whenever the
-  # COMPARISON treatment ran; the Gurobi-specific graphs need has_gurobi.
-  if has_comparison:
+  # COMPARISON treatment ran; the Gurobi-specific graphs need has_gurobi. All of these are
+  # paper/nightly extras, so the artifact's headline-only figure set skips the whole block.
+  if has_comparison and render_extra_figures:
     make_statewalk_width_histogram(
       data,
       f'{graphs_folder}/statewalk-width-histogram-with-liveness.pdf',
@@ -983,6 +940,16 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       y_break=(0.6, 4.5),
       y_break_runtimes={'tiger'},
     )
+    # Split, log-log version of the above: the overlaid linear plot hides the trend
+    # (one 4.9 s outlier flattens ~99.9% of the points onto the axis). This is the
+    # version the paper uses.
+    make_statewalk_width_split_scatters(
+      data,
+      [f'{graphs_folder}/statewalk-width-vs-tiger-time-optoff.pdf',
+       f'{graphs_folder}/statewalk-width-vs-tiger-time-opton.pdf'],
+      [tiger_optimizations_off, tiger_optimizations_on],
+      is_average=False,
+    )
     # CBC is always present; add the Gurobi series only when it ran.
     ilp_scatter_treatments = [ilp_cbc] + ([ilp_gurobi] if has_gurobi else [])
     make_statewalk_width_performance_scatter_multi(
@@ -991,6 +958,9 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       ilp_scatter_treatments,
       is_average=False,
       scale_by_egraph_size=False,
+      # Log y to match the two tiger panels it sits beside in the paper's figure,
+      # and because ~98% of solved ILP points otherwise pile up at the bottom.
+      log_y=True,
     )
 
     make_egraph_size_vs_statewalk_width_heatmap(
@@ -1046,6 +1016,8 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
       )
     else:
       print("Skipping Gurobi-only ILP graphs (ilp-time heatmaps, Gurobi solve-time scatter, peggy comparison)")
+  elif not render_extra_figures:
+    print("Skipping statewalk and ILP-related graphs (artifact figure set: only the headline figures are rendered)")
   else:
     print("Skipping statewalk and ILP-related graphs (eggcc-tiger-ILP-COMPARISON produced no data)")
   
@@ -1073,11 +1045,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
         width = 6
         height = 5.0
 
-      chart_treatments = ["eggcc-tiger-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
+      chart_treatments = ["eggcc-O0-O0", ilp_chart_treatment, "llvm-O0-O0"]
 
       if suite == "bril":
-        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") <= 3.0]
-        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-tiger-O0-O0") > 3.0]
+        benchmarks_under3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") <= 3.0]
+        benchmarks_over3 = [b for b in suite_benchmarks if normalized(data, b, "eggcc-O0-O0") > 3.0]
 
         make_normalized_chart(
           profile_for_suite,
@@ -1123,8 +1095,11 @@ def make_graphs(output_folder, graphs_folder, profile_file, benchmark_suite_fold
 
   # nightlymacros.tex is pervasively Gurobi-dependent (Gurobi speedups, timeout counts,
   # ilp_extract_time). The frontend already treats its absence as expected without Gurobi.
-  if has_gurobi:
+  # It is a paper artifact, not a reproduce.sh figure, so the artifact figure set skips it.
+  if has_gurobi and render_extra_figures:
     make_macros(data, benchmark_suites, f'{graphs_folder}/nightlymacros.tex')
+  elif has_gurobi:
+    print("Skipping macro generation (artifact figure set: only the headline figures are rendered)")
   else:
     print("Skipping macro generation (nightlymacros.tex requires Gurobi data)")
 

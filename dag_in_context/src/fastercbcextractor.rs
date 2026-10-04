@@ -766,9 +766,11 @@ fn pull_up_costs(vars: &mut IndexMap<ClassId, ClassILP>, roots: &[ClassId], conf
                 }
                 changed = true;
 
+                let min_cost_nn = NotNan::new(min_cost).unwrap();
+
                 // Now remove it from each member
                 for c in &mut vars[child].costs {
-                    *c -= min_cost;
+                    *c -= min_cost_nn;
                     assert!(c.into_inner() >= 0.0);
                 }
                 // Add it onto each node in the parent that refers to this class.
@@ -783,7 +785,7 @@ fn pull_up_costs(vars: &mut IndexMap<ClassId, ClassILP>, roots: &[ClassId], conf
                 assert!(!indices.is_empty());
 
                 for id in indices {
-                    vars[parent].costs[id] += min_cost;
+                    vars[parent].costs[id] += min_cost_nn;
                 }
             }
         }
@@ -913,7 +915,9 @@ fn remove_high_cost(
                 };
 
                 if cost
-                    > &(initial_result_cost - lowest_root_cost_sum + this_root + EPSILON_ALLOWANCE)
+                    > &(initial_result_cost - lowest_root_cost_sum
+                        + this_root
+                        + NotNan::new(EPSILON_ALLOWANCE).unwrap())
                 {
                     class_details.remove(i);
                     removed += 1;

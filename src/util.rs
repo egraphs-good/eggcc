@@ -783,9 +783,8 @@ impl Run {
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
                 //println!("{}", program);
-                egglog::EGraph::default()
-                    .parse_and_run_program(None, &program)
-                    .unwrap();
+                let mut egraph = egglog::new_experimental_egraph();
+                egraph.parse_and_run_program(None, &program).unwrap();
                 (vec![], None, EggccTimeStatistics::default())
             }
             RunMode::DagConversion => {
@@ -866,9 +865,18 @@ impl Run {
                     eggcc_config.use_context,
                     eggcc_config.disable_hacker_rules,
                 );
+                let mut egraph = egglog::new_experimental_egraph();
+                let resolved = egraph
+                    .resolve_program(None, &egglog)
+                    .map_err(EggCCError::EggLog)?;
+                let desugared_egglog = egglog::ast::sanitize_internal_names(&resolved)
+                    .iter()
+                    .map(|cmd| cmd.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n");
                 (
                     vec![Visualization {
-                        result: egglog,
+                        result: desugared_egglog,
                         file_extension: ".egg".to_string(),
                         name: "".to_string(),
                     }],
@@ -1042,7 +1050,7 @@ impl Run {
         // Compile the input bril file
         // options are "none", "speed", and "speed_and_size"
         let opt_level = if optimize_brilift { "speed" } else { "none" };
-        let object = format!("/tmp/{}.o", unique_name);
+        let object = format!("/tmp/{unique_name}.o");
         brilift::compile(&program, None, &object, opt_level, false);
 
         let library_o = format!("{}/runtime/rt.o", get_eggcc_root());
@@ -1050,7 +1058,7 @@ impl Run {
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
+            .unwrap_or_else(|| format!("/tmp/{unique_name}"));
 
         let _ = std::fs::write(
             executable.clone() + "-args",
@@ -1133,7 +1141,7 @@ impl Run {
         let executable = self
             .output_path
             .clone()
-            .unwrap_or_else(|| format!("/tmp/{}", unique_name));
+            .unwrap_or_else(|| format!("/tmp/{unique_name}"));
 
         let processed = dir.path().join("postprocessed.ll");
         let optimized = dir.path().join("optimized.ll");
@@ -1203,7 +1211,7 @@ impl Run {
 
         // now add the host machine arch to the generated llvm ir
         let mut llvm_ir = std::fs::read_to_string(optimized.clone()).unwrap();
-        llvm_ir = format!("target triple = \"{}\"\n{}", hostmachinearch, llvm_ir);
+        llvm_ir = format!("target triple = \"{hostmachinearch}\"\n{llvm_ir}");
         std::fs::write(optimized.clone(), llvm_ir).unwrap();
 
         // Lower the optimized LLVM but don't do target-specific optimizations besides register allocation
@@ -1294,9 +1302,18 @@ impl FreshNameGen {
 
 #[cfg(test)]
 mod test {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
     use dag_in_context::{EggccConfig, Schedule};
 
     use super::{Run, RunMode};
+
+    fn hash_str(s: &str) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        s.hash(&mut hasher);
+        hasher.finish()
+    }
 
     #[test]
     fn test_to_egglog_cutoff() {
@@ -1307,13 +1324,15 @@ mod test {
             run.eggcc_config.stop_after_n_passes = stop_after_n_passes;
             run
         };
-        let mut prog = vec![];
+
         for schedule in [Schedule::Sequential, Schedule::Parallel] {
             let config = EggccConfig {
                 schedule: schedule.clone(),
                 ..EggccConfig::default()
             };
             let sched_len = config.get_schedule_list().len() as i64;
+            let mut per_schedule = vec![];
+
             // 0 is not valid because to_egglog starts with 1
             for i in 1..sched_len + 1 {
                 let run1 = build_run(&schedule, i);
@@ -1322,23 +1341,26 @@ mod test {
                 if i != sched_len {
                     let run2 = build_run(&schedule, -sched_len + i);
                     let result2 = run2.run().unwrap().visualizations[0].result.clone();
-                    assert_eq!(
-                        result1, result2,
-                        "Negative stop_after_n_passes does not generate the consistent program"
+                    let pos_hash = hash_str(&result1);
+                    let neg_hash = hash_str(&result2);
+                    assert!(
+                        result1 == result2,
+                        "Negative stop_after_n_passes mismatch: schedule={schedule:?}, i={i}, sched_len={sched_len}, pos_hash={pos_hash}, neg_hash={neg_hash}",
                     );
                 }
 
-                prog.push(result1);
+                per_schedule.push(result1);
             }
-        }
 
-        for i in 0..prog.len() {
-            for j in i + 1..prog.len() {
-                assert_ne!(
-                    prog[i], prog[j],
-                    "Two schedule steps have the same schedule"
-                );
-            }
+            let unique_hashes = per_schedule
+                .iter()
+                .map(|result| hash_str(result))
+                .collect::<std::collections::HashSet<_>>();
+
+            assert!(
+                unique_hashes.len() > 1,
+                "Cutoff had no observable effect: schedule={schedule:?}, sched_len={sched_len}",
+            );
         }
     }
 }

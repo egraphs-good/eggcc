@@ -79,8 +79,7 @@ fn type_to_bril_type(ty: Type) -> Option<bril_rs::Type> {
         Type::TupleT(inner) => {
             assert!(
                 inner.is_empty(),
-                "Expected no tuple types in type_to_bril_type. Got: {:?}",
-                inner
+                "Expected no tuple types in type_to_bril_type. Got: {inner:?}"
             );
             None
         }
@@ -317,7 +316,7 @@ impl<'a> TreeToRvsdg<'a> {
                 } else if let Some(eop) = effect_op_from_binary_op(op.clone()) {
                     self.push_basic(BasicExpr::Effect(eop, vec![l, r]))
                 } else {
-                    panic!("Unknown binary op {:?}", op)
+                    panic!("Unknown binary op {op:?}")
                 }
             }
             Expr::Uop(op, child) => {
@@ -339,17 +338,14 @@ impl<'a> TreeToRvsdg<'a> {
                 } else if let Some(eop) = effect_op_from_unary_op(op.clone()) {
                     self.push_basic(BasicExpr::Effect(eop, vec![child]))
                 } else {
-                    panic!("Unknown unary op {:?}", op)
+                    panic!("Unknown unary op {op:?}")
                 }
             }
             Expr::Get(child, index) => {
                 let child = self.convert_expr(child.clone());
                 assert!(
                     child.len() > *index,
-                    "Index out of bounds. Got child {:?} with index {:?}. Expression: {}",
-                    child,
-                    index,
-                    expr
+                    "Index out of bounds. Got child {child:?} with index {index:?}. Expression: {expr}"
                 );
                 vec![child[*index]]
             }

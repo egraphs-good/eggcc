@@ -9,8 +9,8 @@ name = "files"
 
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog", rev = "161a36f" }
-egraph-serialize = "0.2.0"
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
+egraph-serialize = "0.3.0"
 log = "0.4.19"
 thiserror = "1"
 lalrpop-util = { version = "0.20.2", features = ["lexer"] }
@@ -32,7 +32,7 @@ rs2bril = { git = "https://github.com/uwplse/bril", rev = "06117c089c2d235ff8d04
 ] }
 brillvm = { git = "https://github.com/uwplse/bril", rev = "06117c089c2d235ff8d040bb3d0cfd1e2a1c4880" }
 
-ordered-float = "3.7.0"
+ordered-float = "5"
 serde_json = "1.0.103"
 dot-structures = "0.1.1"
 graphviz-rust = "0.8.0"

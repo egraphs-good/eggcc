@@ -13,7 +13,7 @@ use crate::{
     schema_helpers::AssumptionRef,
     to_egglog::TreeToEgglog,
 };
-use egglog::{ast::Span, Term, TermDag};
+use egglog::{ast::Span, TermDag, TermId};
 use indexmap::IndexMap;
 
 use std::{hash::Hash, rc::Rc, vec};
@@ -118,13 +118,12 @@ impl PrettyPrinter {
         let binding = pp.mk_fresh("EXPR".into());
         let bounded_expr = format!("(let {} {})", binding.clone(), str_expr);
         let prog = prologue().to_owned() + &bounded_expr;
-        let mut egraph = egglog::EGraph::default();
+        let mut egraph = egglog::new_experimental_egraph();
         egraph.parse_and_run_program(None, &prog).unwrap();
-        let mut termdag = TermDag::default();
         let (sort, value) = egraph
-            .eval_expr(&egglog::ast::Expr::Var(Span::Panic, binding.into()))
+            .eval_expr(&egglog::ast::Expr::Var(Span::Panic, binding.clone()))
             .unwrap();
-        let (_, extracted) = egraph.extract(value, &mut termdag, &sort).unwrap();
+        let (termdag, extracted, _) = egraph.extract_value(&sort, value).unwrap();
         let mut converter = FromEgglog {
             termdag: &termdag,
             conversion_cache: IndexMap::default(),
@@ -418,8 +417,8 @@ impl Expr {
             Expr::Const(c, ..) => match c {
                 Bool(true) => "ttrue()".into(),
                 Bool(false) => "tfalse()".into(),
-                Int(n) => format!("int({})", n),
-                Float(f) => format!("float({})", f),
+                Int(n) => format!("int({n})"),
+                Float(f) => format!("float({f})"),
             },
             Expr::Top(op, x, y, z) => {
                 format!(
@@ -517,7 +516,7 @@ impl Assumption {
             Assumption::InSwitch(is, pred, inputs) => {
                 format!("inswitch({is}, \n{}, \n{})", pred.to_ast(), inputs.to_ast())
             }
-            Assumption::WildCard(str) => format!("{}.clone()", str),
+            Assumption::WildCard(str) => format!("{str}.clone()"),
         }
     }
 
@@ -534,7 +533,7 @@ impl Assumption {
 }
 
 impl BaseType {
-    pub(crate) fn to_egglog(&self) -> (Term, TermDag) {
+    pub(crate) fn to_egglog(&self) -> (TermId, TermDag) {
         let mut state = TreeToEgglog::new();
         let term = self.to_egglog_internal(&mut state.termdag);
         (term, state.termdag)
@@ -589,7 +588,7 @@ impl Type {
                 format!("tuplet!({vec_ty_str})")
             }
             Type::Unknown => panic!("found unknown in to_ast"),
-            Type::Symbolic(str) => format!("{}.clone()", str),
+            Type::Symbolic(str) => format!("{str}.clone()"),
         }
     }
 
@@ -603,7 +602,7 @@ impl Type {
                     .map(|bt| bt.abbrev())
                     .collect::<Vec<_>>()
                     .join("_");
-                format!("tpl_{}", vec_ty_str)
+                format!("tpl_{vec_ty_str}")
             }
             Type::Unknown => "unknown".into(),
             Type::Symbolic(str) => str.into(),

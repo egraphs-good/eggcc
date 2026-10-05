@@ -1,4 +1,4 @@
-;; Effect-safe extraction (egglog-experimental's `extract :effsafe`) needs to
+;; Effect-safe extraction (egglog-experimental's `:extractor effsafe`) needs to
 ;; know which e-classes carry the program state. An expression is effectful
 ;; when its type contains StateT; function roots always are.
 ;;
@@ -22,6 +22,7 @@
 (rule ((= f (Function name in out body))) ((set-effectful f)) :ruleset effectful-marking)
 
 ;; Contexts refer back to the regions they describe, so they cannot be
-;; extracted as finite terms. Extraction emits a dummy context instead and
-;; eggcc re-adds real contexts afterwards.
-(effsafe-placeholder Assumption (DumC))
+;; extracted as finite terms. Extraction emits this dummy context instead
+;; (configured from Rust as the placeholder for Assumption) and eggcc re-adds
+;; real contexts afterwards. Nothing ever constructs it in the e-graph.
+(constructor DumC () Assumption :unextractable)

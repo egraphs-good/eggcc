@@ -70,6 +70,16 @@ fn new_single_threaded_egraph() -> egglog::EGraph {
         effsafe::EggccCostModel,
         effsafe::EggccRegionCosts,
     );
+    // Contexts refer back to the regions they describe, so they cannot be
+    // extracted as finite terms. Extraction emits a dummy context instead and
+    // eggcc re-adds real contexts afterwards (see `effectful.egg`).
+    egglog::effsafe_state(&mut egraph)
+        .config
+        .placeholders
+        .insert(
+            "Assumption".to_string(),
+            egglog::ast::Expr::Call(egglog::span!(), "DumC".to_string(), vec![]),
+        );
     egraph
 }
 

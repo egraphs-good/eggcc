@@ -682,7 +682,6 @@ dependencies = [
  "symbol_table",
  "tempfile",
  "thiserror 1.0.69",
- "tiger",
 ]
 
 [[package]]
@@ -911,16 +910,19 @@ dependencies = [
 [[package]]
 name = "egglog-experimental"
 version = "3.0.0"
-source = "git+https://github.com/egraphs-good/egglog-experimental?rev=b14ef1d#b14ef1d7f68fc7b893b3fd83c6a6b3cd9e303085"
+source = "git+https://github.com/oflatt-claude/egglog-experimental?rev=e181470#e181470f5c1a1b2b81488688f294cf2c6eb8198e"
 dependencies = [
  "egglog",
  "egglog-ast",
  "egglog-reports",
  "fixedbitset 0.5.7",
  "hashbrown 0.16.1",
+ "indexmap",
  "lazy_static",
  "log",
  "num",
+ "rand_mt",
+ "rustc-hash 2.1.1",
  "stacker",
 ]
 
@@ -2410,16 +2412,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
 dependencies = [
  "num_cpus",
-]
-
-[[package]]
-name = "tiger"
-version = "0.1.0"
-dependencies = [
- "egglog-experimental",
- "indexmap",
- "rand_mt",
- "rustc-hash 1.1.0",
 ]
 
 [[package]]

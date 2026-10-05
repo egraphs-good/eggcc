@@ -31,6 +31,7 @@ pub mod ast;
 mod config;
 pub mod dag2svg;
 pub mod dag_typechecker;
+pub mod effsafe;
 pub mod from_egglog;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
@@ -63,7 +64,10 @@ fn new_single_threaded_egraph() -> egglog::EGraph {
             .num_threads(1)
             .build_global();
     });
-    egglog::new_experimental_egraph()
+    egglog::new_experimental_egraph_with_effsafe(
+        effsafe::EggccCostModel,
+        std::sync::Arc::new(effsafe::EggccRegionCosts),
+    )
 }
 
 fn prologue_for_config(config: &EggccConfig) -> String {
@@ -72,6 +76,7 @@ fn prologue_for_config(config: &EggccConfig) -> String {
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
         include_str!("utility/terms.egg"),
+        include_str!("utility/effectful.egg"),
         &optimizations::is_valid::rules().join("\n"),
         &optimizations::is_resolved::rules().join("\n"),
         &optimizations::body_contains::rules().join("\n"),
@@ -346,7 +351,7 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
     let config = EggccConfig::default();
-    let (res, _, _) = extract(&config, program, &fns, &egraph, None);
+    let (res, _, _) = extract(&config, program, &fns, &mut egraph, None);
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
     let (res_with_ctx, _) = res.add_dummy_ctx();
@@ -385,8 +390,8 @@ pub struct EggccConfig {
     /// Use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
     /// Run the original C++ tiger binary (as a subprocess on the serialized
-    /// e-graph) instead of the in-process Rust port. Kept as the reference
-    /// extractor for comparison while the port is being worked on.
+    /// e-graph) instead of egglog-experimental's in-process effect-safe
+    /// extractor. Kept as the reference extractor for comparison.
     pub tiger_cpp: bool,
     /// When true, collect region timing samples by running both the tiger and ILP extractors.
     pub time_ilp: bool,
@@ -607,16 +612,36 @@ fn program_from_function_terms(
     res
 }
 
-/// Extract with the Rust tiger extractor, in process, straight from the egglog e-graph.
-fn extract_with_tiger_rs(
+/// Extract with egglog-experimental's effect-safe extractor, in process.
+///
+/// Marks effectful e-classes (see `utility/effectful.egg`), extracts every
+/// `Function`, and converts the terms back to a program.
+fn extract_with_effsafe(
     original_prog: &TreeProgram,
     batch: &[String],
-    egraph: &egglog::EGraph,
+    egraph: &mut egglog::EGraph,
 ) -> (TreeProgram, Duration) {
     let start = Instant::now();
-    let (function_terms, termdag) = tiger::extract_from_egglog(egraph);
-    let extracted = program_from_function_terms(original_prog, batch, &function_terms, &termdag)
-        .override_arg_types();
+    let outputs = egraph
+        .parse_and_run_program(
+            None,
+            "(run-schedule (saturate effectful-marking))\n(effsafe-extract-all Effectful Function :include-subsumed)",
+        )
+        .unwrap_or_else(|err| panic!("effect-safe extraction failed: {err}"));
+    let output = outputs
+        .iter()
+        .find_map(|output| match output {
+            egglog::CommandOutput::UserDefined(output) => output
+                .as_ref()
+                .as_any()
+                .downcast_ref::<egglog::EffsafeExtractOutput>(
+            ),
+            _ => None,
+        })
+        .expect("effsafe-extract-all produced no output");
+    let extracted =
+        program_from_function_terms(original_prog, batch, &output.terms, &output.termdag)
+            .override_arg_types();
     (extracted, start.elapsed())
 }
 
@@ -923,7 +948,7 @@ fn run_tiger_pipeline(
 
 /// Extract the functions in `batch` from the e-graph.
 ///
-/// Uses the Rust tiger extractor unless the config asks for the C++ one
+/// Uses egglog-experimental's effect-safe extractor unless the config asks for the C++ one
 /// (`--tiger-cpp`, or the ILP modes which only the C++ binary implements).
 /// `serialized` lets the caller pass an already serialized e-graph for the
 /// C++ path; otherwise it is serialized here when needed.
@@ -933,7 +958,7 @@ fn extract(
     eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
     batch: &[String],
-    egraph: &egglog::EGraph,
+    egraph: &mut egglog::EGraph,
     serialized: Option<&egraph_serialize::EGraph>,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
     if eggcc_config.uses_cpp_tiger() {
@@ -947,7 +972,7 @@ fn extract(
         };
         run_tiger_pipeline(eggcc_config, original_prog, batch, serialized)
     } else {
-        let (prog, duration) = extract_with_tiger_rs(original_prog, batch, egraph);
+        let (prog, duration) = extract_with_effsafe(original_prog, batch, egraph);
         (prog, vec![], duration)
     }
 }
@@ -1055,7 +1080,7 @@ pub fn optimize(
                 );
             }
             let (iter_result, region_timings, extract_time) =
-                extract(eggcc_config, &res, &batch, &egraph, serialized.as_ref());
+                extract(eggcc_config, &res, &batch, &mut egraph, serialized.as_ref());
 
             eggcc_extraction_time += extract_time;
             eggcc_serialization_time += serialization_duration;

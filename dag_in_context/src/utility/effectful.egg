@@ -1,0 +1,28 @@
+;; Effect-safe extraction (egglog-experimental's effsafe-extract) needs to know
+;; which e-classes carry the program state. An expression is effectful when its
+;; type contains StateT; function roots always are.
+;;
+;; The `:regions` annotations on If and DoWhile in schema.egg mark the children
+;; that start subregions (branches and loop bodies).
+
+(relation EffectfulBaseType (BaseType))
+(relation EffectfulTypeList (TypeList))
+(relation EffectfulType (Type))
+(relation Effectful (Expr))
+
+(ruleset effectful-marking)
+
+(rule ((= t (StateT))) ((EffectfulBaseType t)) :ruleset effectful-marking)
+(rule ((= t (PointerT b)) (EffectfulBaseType b)) ((EffectfulBaseType t)) :ruleset effectful-marking)
+(rule ((= l (TCons b rest)) (EffectfulBaseType b)) ((EffectfulTypeList l)) :ruleset effectful-marking)
+(rule ((= l (TCons b rest)) (EffectfulTypeList rest)) ((EffectfulTypeList l)) :ruleset effectful-marking)
+(rule ((= t (Base b)) (EffectfulBaseType b)) ((EffectfulType t)) :ruleset effectful-marking)
+(rule ((= t (TupleT l)) (EffectfulTypeList l)) ((EffectfulType t)) :ruleset effectful-marking)
+
+(rule ((HasType e ty) (EffectfulType ty)) ((Effectful e)) :ruleset effectful-marking)
+(rule ((= f (Function name in out body))) ((Effectful f)) :ruleset effectful-marking)
+
+;; Contexts refer back to the regions they describe, so they cannot be
+;; extracted as finite terms. Extraction emits a dummy context instead and
+;; eggcc re-adds real contexts afterwards.
+(effsafe-placeholder Assumption (DumC))

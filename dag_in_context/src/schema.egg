@@ -180,10 +180,10 @@
 ; Switch on a list of lazily-evaluated branches.
 ; pred must be an integer
 ;                 pred  inputs   branches     chosen
-(constructor Switch (Expr  Expr     ListExpr)    Expr)
+(constructor Switch (Expr  Expr     ListExpr)    Expr :unextractable)
 ; If is like switch, but with a boolean predicate
 ;             pred inputs   then else
-(constructor If (Expr Expr     Expr Expr) Expr)
+(constructor If (Expr Expr     Expr Expr) Expr :regions (2 3))
 
 
 ; A do-while loop.
@@ -195,7 +195,7 @@
 ; pred-and-body must be a flat tuple (pred, out1, out2, ..., outi)
 ; input must be the same type as (out1, out2, ..., outi)
 ;                  input   pred-and-body
-(constructor DoWhile (Expr    Expr)                   Expr)
+(constructor DoWhile (Expr    Expr)                   Expr :regions (1))
 
 
 ; =================================

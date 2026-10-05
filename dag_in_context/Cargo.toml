@@ -6,14 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "b14ef1d", package = "egglog-experimental" }
+egglog = { git = "https://github.com/oflatt-claude/egglog-experimental", rev = "e181470", package = "egglog-experimental" }
 smallvec = "1.11.1"
 strum = "0.25"
 strum_macros = "0.25"
 main_error = "0.1.2"
 thiserror = "1.0"
 egraph-serialize = "0.3.0"
-tiger = { path = "../tiger" }
 bril-rs = { git = "https://github.com/uwplse/bril", rev = "06117c089c2d235ff8d040bb3d0cfd1e2a1c4880" }
 indexmap = "2.0.0"
 rustc-hash = "1.1.0"

@@ -506,12 +506,9 @@ impl Default for EggccConfig {
     }
 }
 
-fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
-    let binary_name = if cfg!(windows) {
-        format!("{binary}.exe")
-    } else {
-        binary.to_string()
-    };
+/// Locate the C++ tiger binary that build.rs compiles next to the eggcc binary.
+fn find_cpp_tiger_binary() -> Option<PathBuf> {
+    let binary_name = if cfg!(windows) { "tiger.exe" } else { "tiger" };
 
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
 
@@ -535,7 +532,7 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
         if !seen.insert(dir.clone()) {
             continue;
         }
-        let candidate = dir.join(&binary_name);
+        let candidate = dir.join(binary_name);
         if candidate.is_file() {
             return Some(candidate);
         }
@@ -544,10 +541,9 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
     None
 }
 
-// This function is a helper for extracting using egglog's built-in extraction, which doesn't consider linearity.
-// We currently only use it for extracting from the egraph tiger produces, which doesn't do any unions (it just encodes a single program).
 /// Read the extracted `Function` terms back out of the e-graph the C++ tiger
-/// output was run in.
+/// output was run in. That e-graph holds a single program (no unions), so
+/// egglog's own extraction is enough here.
 fn extract_program_with_egglog(
     original_prog: &TreeProgram,
     batch: &[String],
@@ -705,9 +701,8 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let tiger_bin = find_tiger_binary("tiger")
-        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
-        .unwrap();
+    let tiger_bin =
+        find_cpp_tiger_binary().expect("C++ tiger binary not found; build the tiger tools first");
 
     let mut tiger_args: Vec<OsString> = Vec::new();
     if eggcc_config.tiger_ilp {

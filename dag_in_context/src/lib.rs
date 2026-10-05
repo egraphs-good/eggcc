@@ -64,10 +64,13 @@ fn new_single_threaded_egraph() -> egglog::EGraph {
             .num_threads(1)
             .build_global();
     });
-    egglog::new_experimental_egraph_with_effsafe(
+    let mut egraph = egglog::new_experimental_egraph();
+    egglog::set_effsafe_cost_models(
+        &mut egraph,
         effsafe::EggccCostModel,
-        std::sync::Arc::new(effsafe::EggccRegionCosts),
-    )
+        effsafe::EggccRegionCosts,
+    );
+    egraph
 }
 
 fn prologue_for_config(config: &EggccConfig) -> String {

@@ -1,5 +1,8 @@
-// Port of greedy.h / greedy.cpp — bag-based greedy cost + statewalk greedy extraction.
-// Direct line-by-line translation.
+//! Greedy bottom-up extraction with *bag* costs.
+//!
+//! A bag cost is the sum of the costs of the distinct e-classes a term uses,
+//! so shared subterms are only paid for once. It is cheap to maintain but not
+//! guaranteed optimal, which is fine for an estimate.
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -8,493 +11,398 @@ use std::hash::BuildHasherDefault;
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 
-// SCost::bag is keyed by integer EClassId. SipHash (IndexMap's default) is
-// noticeably slower than FxHash on this hot path; the C++ side uses
-// `unordered_map<EClassId, Cost>` with a trivial integer hash. Mirror that.
-type FxBuildHasher = BuildHasherDefault<FxHasher>;
-
-use crate::egraphin::{
-    compute_reverse_index, EClassId, EGraph, EGraphMapping, ENode, ENodeId, Extraction,
-    ExtractionENode, ExtractionENodeId, UNEXTRACTABLE_ECLASS,
+use crate::cost::{enode_cost, if_branches_cost, loop_body_cost, Cost, INFINITE};
+use crate::egraph::{
+    EClassId, EGraph, EGraphMapping, ENode, ENodeId, ExtractedNode, Extraction, ExtractionId,
 };
 
-pub type Cost = u64;
+type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
-pub const INF: Cost = u64::MAX;
-
-// bag-based greedy cost
-// it is unstable because it does not guarantee the lowest cost
-// but that is ok for getting an estimate
-
-#[derive(Clone)]
-pub struct SCost {
+/// The cost of a term as a bag of the e-classes it uses.
+#[derive(Clone, Debug)]
+pub struct BagCost {
+    /// Sum of `bag`, plus the term's own e-node costs.
     pub sum: Cost,
-    pub bag: IndexMap<EClassId, Cost, FxBuildHasher>,
+    /// Cheapest known cost of each e-class the term depends on.
+    bag: FxIndexMap<EClassId, Cost>,
 }
 
-impl SCost {
-    pub fn new(v: Cost) -> Self {
-        SCost {
-            sum: v,
-            bag: IndexMap::with_hasher(FxBuildHasher::default()),
+impl BagCost {
+    pub fn new(own: Cost) -> Self {
+        BagCost {
+            sum: own,
+            bag: FxIndexMap::default(),
         }
     }
 
-    // Mirror of C++ `SCost& operator += (SCost &a, const pair<EClassId, SCost> &cb)`.
-    pub fn add_assign_pair(&mut self, cb: &(EClassId, SCost)) {
-        let mut overhead: Cost = cb.1.sum;
-        for (cid_ref, c_ref) in cb.1.bag.iter() {
-            let cid: EClassId = *cid_ref;
-            let c: Cost = *c_ref;
+    pub fn infinite() -> Self {
+        BagCost::new(INFINITE)
+    }
+
+    /// Account for depending on `class`, whose chosen term costs `child`.
+    pub fn add_child(&mut self, class: EClassId, child: &BagCost) {
+        let mut overhead = child.sum;
+        for (&cid, &c) in &child.bag {
             overhead -= c;
-            if self.bag.contains_key(&cid) {
-                if self.bag[&cid] > c {
-                    self.sum -= self.bag[&cid] - c;
-                    self.bag.insert(cid, c);
+            self.add_class(cid, c);
+        }
+        self.add_class(class, overhead);
+    }
+
+    fn add_class(&mut self, class: EClassId, cost: Cost) {
+        match self.bag.get_mut(&class) {
+            Some(known) => {
+                if *known > cost {
+                    self.sum -= *known - cost;
+                    *known = cost;
                 }
-            } else {
-                self.bag.insert(cid, c);
-                self.sum += c;
+            }
+            None => {
+                self.bag.insert(class, cost);
+                self.sum += cost;
             }
         }
-        if self.bag.contains_key(&cb.0) {
-            if self.bag[&cb.0] > overhead {
-                self.sum -= self.bag[&cb.0] - overhead;
-                self.bag.insert(cb.0, overhead);
-            }
-        } else {
-            self.bag.insert(cb.0, overhead);
-            self.sum += overhead;
-        }
+    }
+
+    fn set_zero(&mut self) {
+        self.sum = 0;
+        self.bag.clear();
     }
 }
 
-impl PartialEq for SCost {
+impl PartialEq for BagCost {
     fn eq(&self, other: &Self) -> bool {
         self.sum == other.sum
     }
 }
 
-impl Eq for SCost {}
+impl Eq for BagCost {}
 
-impl PartialOrd for SCost {
+impl PartialOrd for BagCost {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for SCost {
+impl Ord for BagCost {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.sum.cmp(&other.sum)
     }
 }
 
-pub fn isType(op: &str) -> bool {
-    op == "IntT"
-        || op == "BoolT"
-        || op == "FloatT"
-        || op == "PointerT"
-        || op == "StateT"
-        || op == "Base"
-        || op == "TupleT"
-        || op == "TNil"
-        || op == "TCons"
+/// Dijkstra-style state shared by the greedy passes: the best known cost and
+/// pick per e-class, and a work heap ordered by cost (ties: larger id first).
+struct Greedy<'g> {
+    g: &'g EGraph,
+    parents: Vec<Vec<(EClassId, ENodeId)>>,
+    /// Children of each e-node whose e-class has not been settled yet.
+    remaining: Vec<Vec<usize>>,
+    best: Vec<BagCost>,
+    pick: Vec<Option<ENodeId>>,
+    heap: BinaryHeap<(Reverse<Cost>, EClassId)>,
 }
 
-pub fn get_enode_cost(n: &ENode) -> Cost {
-    if n.is_primitive() {
-        return 0;
-    }
-    let op: &str = n.op.as_str();
-    if op == "Const" {
-        return 10;
-    } else if op == "Arg" || isType(op) || op == "Int" || op == "Bool" || op == "Float" {
-        return 0;
-    } else if op == "Empty" || op == "Single" || op == "Concat" || op == "Nil" || op == "Cons" {
-        return 0;
-    } else if op == "Get" {
-        return 1;
-    } else if op == "Abs"
-        || op == "Bitand"
-        || op == "Neg"
-        || op == "Add"
-        || op == "PtrAdd"
-        || op == "Sub"
-        || op == "And"
-        || op == "Or"
-        || op == "Not"
-        || op == "Shl"
-        || op == "Shr"
-    {
-        return 100;
-    } else if op == "FAdd" || op == "FSub" || op == "Fmax" || op == "Fmin" {
-        return 500;
-    } else if op == "Mul" {
-        return 300;
-    } else if op == "FMul" {
-        return 1500;
-    } else if op == "Div" {
-        return 500;
-    } else if op == "FDiv" {
-        return 2500;
-    } else if op == "Eq"
-        || op == "LessThan"
-        || op == "GreaterThan"
-        || op == "LessEq"
-        || op == "GreaterEq"
-    {
-        return 100;
-    } else if op == "Select" {
-        return 1500;
-    } else if op == "Smax" || op == "Smin" || op == "FEq" {
-        return 100;
-    } else if op == "FLessThan" || op == "FGreaterThan" || op == "FLessEq" || op == "FGreaterEq" {
-        return 1000;
-    } else if op == "Print" || op == "Write" || op == "Load" {
-        return 500;
-    } else if op == "Alloc" || op == "Free" {
-        return 1000;
-    } else if op == "Call" {
-        return 500000;
-    } else if op == "Program" || op == "Function" {
-        return 0;
-    // special treatment for loops and ifs somewhere else
-    } else if op == "DoWhile" {
-        return 1;
-    } else if op == "If" || op == "Switch" {
-        return 250;
-    } else if op == "Uop" || op == "Bop" || op == "Top" {
-        return 0;
-    } else {
-        crate::debug_cerr!("Encountered op of unknown cost: {}", op);
-        crate::debug_assert_tiger!(false);
-        return 0;
-    }
-}
-
-// extract all eclasses if root is -1
-pub fn greedy_extract_compute_eclasses_pick(
-    g: &EGraph,
-    root: EClassId,
-) -> (Vec<ENodeId>, Vec<Cost>) {
-    let mut pick: Vec<ENodeId> = vec![-1; g.neclasses()];
-    let mut dis: Vec<SCost> = vec![SCost::new(INF); g.neclasses()];
-    // C++ uses a max-heap on `~sum` (bitwise NOT). Mirror that exactly with
-    // `Cost::MAX - sum` (i.e. `!sum` for u64) so .peek() returns the entry
-    // with the smallest `sum`.
-    let mut maxheap: BinaryHeap<(Cost, EClassId)> = BinaryHeap::new();
-    // Optimization
-    let parents: Vec<Vec<(EClassId, ENodeId)>> = compute_reverse_index(g);
-    let mut cnt: Vec<Vec<i32>> = vec![Vec::new(); g.neclasses()];
-    // Initialize nodes
-    for i in 0..(g.neclasses() as EClassId) {
-        let c = &g.eclasses[i as usize];
-        cnt[i as usize].resize(c.nenodes(), 0);
-        for j in 0..(c.nenodes() as ENodeId) {
-            let n: &ENode = &c.enodes[j as usize];
-            cnt[i as usize][j as usize] = n.ch.len() as i32;
-            if cnt[i as usize][j as usize] == 0 {
-                let ndis: SCost = SCost::new(get_enode_cost(n));
-                if ndis < dis[i as usize] {
-                    dis[i as usize] = ndis;
-                    pick[i as usize] = j;
-                    maxheap.push((!dis[i as usize].sum, i));
-                }
+impl<'g> Greedy<'g> {
+    fn new(g: &'g EGraph) -> Self {
+        let mut greedy = Greedy {
+            g,
+            parents: g.parents(),
+            remaining: g.child_counts(),
+            best: vec![BagCost::infinite(); g.len()],
+            pick: vec![None; g.len()],
+            heap: BinaryHeap::new(),
+        };
+        for (c, n) in g.enode_ids() {
+            let enode = g.enode(c, n);
+            if enode.is_leaf() {
+                greedy.relax(c, n, BagCost::new(enode_cost(enode)));
             }
         }
+        greedy
     }
-    while maxheap.len() > 0 {
-        let d: Cost = !maxheap.peek().unwrap().0;
-        let i: EClassId = maxheap.peek().unwrap().1;
-        if i == root {
+
+    fn relax(&mut self, class: EClassId, node: ENodeId, cost: BagCost) {
+        if cost < self.best[class] {
+            self.heap.push((Reverse(cost.sum), class));
+            self.best[class] = cost;
+            self.pick[class] = Some(node);
+        }
+    }
+
+    /// Pop the cheapest e-class. Returns `None` when the heap is empty, and
+    /// skips entries made stale by a later, cheaper relaxation.
+    fn pop(&mut self) -> Option<EClassId> {
+        while let Some((Reverse(cost), class)) = self.heap.pop() {
+            if cost == self.best[class].sum {
+                return Some(class);
+            }
+        }
+        None
+    }
+
+    fn pop_unchecked(&mut self) -> Option<(Cost, EClassId)> {
+        self.heap.pop().map(|(Reverse(cost), class)| (cost, class))
+    }
+
+    /// Bag cost of `enode` given the current best costs of its children.
+    fn plain_cost(&self, own: Cost, enode: &ENode) -> BagCost {
+        let mut cost = BagCost::new(own);
+        for &child in &enode.children {
+            cost.add_child(child, &self.best[child]);
+        }
+        cost
+    }
+
+    fn picked(&self, class: EClassId) -> &'g ENode {
+        self.g
+            .enode(class, self.pick[class].expect("e-class has no pick"))
+    }
+}
+
+/// For every e-class, the cheapest e-node and its bag cost, with control-flow
+/// heuristics for `If` and `DoWhile`. Stops early once `root` is settled.
+pub fn greedy_costs(g: &EGraph, root: Option<EClassId>) -> (Vec<Option<ENodeId>>, Vec<Cost>) {
+    let mut greedy = Greedy::new(g);
+    while let Some((cost, class)) = greedy.pop_unchecked() {
+        if Some(class) == root {
             break;
         }
-        maxheap.pop();
-        if d == dis[i as usize].sum {
-            for j in 0..parents[i as usize].len() {
-                let pc: EClassId = parents[i as usize][j].0;
-                let pn: ENodeId = parents[i as usize][j].1;
-                cnt[pc as usize][pn as usize] -= 1;
-                if cnt[pc as usize][pn as usize] == 0 {
-                    let n: &ENode = &g.eclasses[pc as usize].enodes[pn as usize];
-                    let mut ndis: SCost;
-                    if n.op == "If" {
-                        crate::debug_assert_tiger!(n.ch.len() == 4);
-                        ndis = SCost::new(get_enode_cost(n));
-                        let pair0: (EClassId, SCost) = (n.ch[0], dis[n.ch[0] as usize].clone());
-                        ndis.add_assign_pair(&pair0);
-                        let pair1: (EClassId, SCost) = (n.ch[1], dis[n.ch[1] as usize].clone());
-                        ndis.add_assign_pair(&pair1);
-                        let then_cost: Cost = dis[n.ch[2] as usize].sum;
-                        let else_cost: Cost = dis[n.ch[3] as usize].sum;
-                        // Heuristics for computing cost of an If
-                        ndis.sum += std::cmp::max(then_cost, else_cost)
-                            + (std::cmp::min(then_cost, else_cost) >> 2);
-                    } else if n.op == "DoWhile" {
-                        crate::debug_assert_tiger!(n.ch.len() == 2);
-                        ndis = dis[n.ch[0] as usize].clone();
-                        let body_cost: Cost = dis[n.ch[1] as usize].sum;
-                        // Heuristics for computing cost of a loop
-                        // Can be improved further by plumbing the information from the iter analysis
-                        // This can potentially overflow due to deeply nested loops
-                        ndis.sum += body_cost * 500;
-                    } else {
-                        // Otherwise, just the bag cost
-                        ndis = SCost::new(get_enode_cost(n));
-                        for k in 0..n.ch.len() {
-                            let pair: (EClassId, SCost) = (n.ch[k], dis[n.ch[k] as usize].clone());
-                            ndis.add_assign_pair(&pair);
-                        }
-                    }
-                    if ndis < dis[pc as usize] {
-                        dis[pc as usize] = ndis;
-                        pick[pc as usize] = pn;
-                        maxheap.push((!dis[pc as usize].sum, pc));
-                    }
-                }
-            }
-        }
-    }
-    let mut dis_sum: Vec<Cost> = vec![0; g.neclasses()];
-    for i in 0..(g.neclasses() as EClassId) {
-        dis_sum[i as usize] = dis[i as usize].sum;
-    }
-    (pick, dis_sum)
-}
-
-pub fn greedy_extract_estimate_all_eclasses_cost(g: &EGraph) -> Vec<Cost> {
-    greedy_extract_compute_eclasses_pick(g, -1).1
-}
-
-pub fn get_statewalk_enode_cost(g: &EGraph, eclass_cost: &Vec<Cost>, n: &ENode) -> Cost {
-    let mut ret: Cost;
-    if n.op == "If" {
-        crate::debug_assert_tiger!(n.ch.len() == 4);
-        ret = get_enode_cost(n);
-        if !g.eclasses[n.ch[0] as usize].isEffectful {
-            ret += eclass_cost[n.ch[0] as usize];
-        }
-        if !g.eclasses[n.ch[1] as usize].isEffectful {
-            ret += eclass_cost[n.ch[1] as usize];
-        }
-        let then_cost: Cost = eclass_cost[n.ch[2] as usize];
-        let else_cost: Cost = eclass_cost[n.ch[3] as usize];
-        ret += std::cmp::max(then_cost, else_cost) + (std::cmp::min(then_cost, else_cost) >> 2);
-    } else if n.op == "DoWhile" {
-        crate::debug_assert_tiger!(n.ch.len() == 2);
-        let body_cost: Cost = eclass_cost[n.ch[1] as usize];
-        ret = body_cost * 500;
-    } else {
-        ret = get_enode_cost(n);
-        for k in 0..n.ch.len() {
-            let cid: EClassId = n.ch[k];
-            if !g.eclasses[cid as usize].isEffectful {
-                ret += eclass_cost[cid as usize];
-            }
-        }
-    }
-    ret
-}
-
-pub fn compute_statewalk_cost(g: &EGraph) -> Vec<Vec<Cost>> {
-    let eclass_cost: Vec<Cost> = greedy_extract_estimate_all_eclasses_cost(g);
-
-    let mut statewalk_cost: Vec<Vec<Cost>> = vec![Vec::new(); g.neclasses()];
-    for i in 0..(g.neclasses() as EClassId) {
-        let c = &g.eclasses[i as usize];
-        if c.isEffectful {
-            statewalk_cost[i as usize].resize(c.nenodes(), 0);
-            for j in 0..(c.nenodes() as ENodeId) {
-                let n: &ENode = &c.enodes[j as usize];
-                statewalk_cost[i as usize][j as usize] =
-                    get_statewalk_enode_cost(g, &eclass_cost, n);
-            }
-        }
-    }
-    statewalk_cost
-}
-
-pub fn project_statewalk_cost(
-    gr2g: &EGraphMapping,
-    statewalk_cost: &Vec<Vec<Cost>>,
-) -> Vec<Vec<Cost>> {
-    let mut rstatewalk_cost: Vec<Vec<Cost>> = vec![Vec::new(); gr2g.eclassidmp.len()];
-    for i in 0..(gr2g.eclassidmp.len() as EClassId) {
-        let cid: EClassId = gr2g.eclassidmp[i as usize];
-        if statewalk_cost[cid as usize].len() > 0 {
-            rstatewalk_cost[i as usize].resize(gr2g.enodeidmp[i as usize].len(), 0);
-            for j in 0..(rstatewalk_cost[i as usize].len() as ENodeId) {
-                rstatewalk_cost[i as usize][j as usize] = statewalk_cost
-                    [gr2g.eclassidmp[i as usize] as usize]
-                    [gr2g.enodeidmp[i as usize][j as usize] as usize];
-            }
-        }
-    }
-    rstatewalk_cost
-}
-
-pub fn statewalk_greedy_extraction(g: &EGraph, root: EClassId) -> Extraction {
-    let mut pick: Vec<ENodeId> = vec![-1; g.neclasses()];
-    let mut dis: Vec<SCost> = vec![SCost::new(INF); g.neclasses()];
-    let mut maxheap: BinaryHeap<(Cost, EClassId)> = BinaryHeap::new();
-    // Optimization
-    let parents: Vec<Vec<(EClassId, ENodeId)>> = compute_reverse_index(g);
-    let mut cnt: Vec<Vec<i32>> = vec![Vec::new(); g.neclasses()];
-    // Initialize nodes
-    for i in 0..(g.neclasses() as EClassId) {
-        let c = &g.eclasses[i as usize];
-        cnt[i as usize].resize(c.nenodes(), 0);
-        for j in 0..(c.nenodes() as ENodeId) {
-            let n: &ENode = &c.enodes[j as usize];
-            cnt[i as usize][j as usize] = n.ch.len() as i32;
-            if cnt[i as usize][j as usize] == 0 {
-                let ndis: SCost = SCost::new(get_enode_cost(n));
-                if ndis < dis[i as usize] {
-                    dis[i as usize] = ndis;
-                    pick[i as usize] = j;
-                    maxheap.push((!dis[i as usize].sum, i));
-                }
-            }
-        }
-    }
-    let mut e: Extraction = Extraction::new();
-    let mut extracted: Vec<ExtractionENodeId> = vec![UNEXTRACTABLE_ECLASS; g.neclasses()];
-    let mut buf_id: Vec<i32> = vec![-1; g.neclasses()];
-    let mut processed: Vec<bool> = vec![false; g.neclasses()];
-    while maxheap.len() > 0 {
-        let d: Cost = !maxheap.peek().unwrap().0;
-        let i: EClassId = maxheap.peek().unwrap().1;
-        maxheap.pop();
-        if d != dis[i as usize].sum {
+        if cost != greedy.best[class].sum {
             continue;
         }
-        if g.eclasses[i as usize].isEffectful {
-            // grow the extraction
-            let mut buf: Vec<EClassId> = Vec::new();
-            let mut edges: Vec<Vec<i32>> = Vec::new();
-            let mut bcnt: Vec<i32> = Vec::new();
-            buf_id[i as usize] = 0;
-            buf.push(i);
-            edges.push(Vec::new());
-            bcnt.push(0);
-            // Note: the C++ inner loop shadows `i` with the loop index. Mirror that
-            // by using the same name here — Rust's shadowing handles it cleanly.
-            {
-                let mut i: usize = 0;
-                while i < buf.len() {
-                    let u: EClassId = buf[i];
-                    let c = &g.eclasses[u as usize];
-                    let n: &ENode = &c.enodes[pick[u as usize] as usize];
-                    for k in 0..n.ch.len() {
-                        let v: EClassId = n.ch[k];
-                        if extracted[v as usize] == UNEXTRACTABLE_ECLASS {
-                            if buf_id[v as usize] == -1 {
-                                buf_id[v as usize] = buf.len() as i32;
-                                buf.push(v);
-                                edges.push(Vec::new());
-                                bcnt.push(0);
-                            }
-                            edges[buf_id[v as usize] as usize].push(i as i32);
-                            bcnt[i] += 1;
-                        }
-                    }
-                    i += 1;
+        for idx in 0..greedy.parents[class].len() {
+            let (pc, pn) = greedy.parents[class][idx];
+            greedy.remaining[pc][pn] -= 1;
+            if greedy.remaining[pc][pn] != 0 {
+                continue;
+            }
+            let enode = g.enode(pc, pn);
+            let cost = match enode.op.as_str() {
+                "If" => {
+                    debug_assert!(enode.children.len() == 4);
+                    let [pred, inputs, then_, else_] = enode.children[..] else {
+                        unreachable!()
+                    };
+                    let mut cost = BagCost::new(enode_cost(enode));
+                    cost.add_child(pred, &greedy.best[pred]);
+                    cost.add_child(inputs, &greedy.best[inputs]);
+                    cost.sum += if_branches_cost(greedy.best[then_].sum, greedy.best[else_].sum);
+                    cost
                 }
-            }
-            let mut q: Vec<i32> = Vec::new();
-            for i2 in 0..buf.len() {
-                if bcnt[i2] == 0 {
-                    q.push(i2 as i32);
+                "DoWhile" => {
+                    debug_assert!(enode.children.len() == 2);
+                    let [inputs, body] = enode.children[..] else {
+                        unreachable!()
+                    };
+                    let mut cost = greedy.best[inputs].clone();
+                    cost.sum += loop_body_cost(greedy.best[body].sum);
+                    cost
                 }
-            }
-            {
-                let mut i: usize = 0;
-                while i < q.len() {
-                    let u: i32 = q[i];
-                    for j in 0..edges[u as usize].len() {
-                        let v: i32 = edges[u as usize][j];
-                        bcnt[v as usize] -= 1;
-                        if bcnt[v as usize] == 0 {
-                            q.push(v);
-                        }
-                    }
-                    i += 1;
-                }
-            }
-            crate::debug_assert_tiger!(q.len() == buf.len());
-            let base: i32 = e.len() as i32;
-            e.resize(e.len() + q.len(), ExtractionENode::default());
-            for i2 in 0..q.len() {
-                let u: i32 = buf[q[i2] as usize];
-                extracted[u as usize] = base + i2 as i32;
-                let en: &mut ExtractionENode = &mut e[extracted[u as usize] as usize];
-                en.c = u;
-                en.n = pick[u as usize];
-            }
-            for i2 in 0..q.len() {
-                let u: i32 = buf[q[i2] as usize];
-                let n_ch_len: usize = g.eclasses[u as usize].enodes[pick[u as usize] as usize]
-                    .ch
-                    .len();
-                let n_ch: Vec<EClassId> = g.eclasses[u as usize].enodes[pick[u as usize] as usize]
-                    .ch
-                    .clone();
-                let en: &mut ExtractionENode = &mut e[extracted[u as usize] as usize];
-                en.ch.resize(n_ch_len, 0);
-                for j in 0..n_ch_len {
-                    en.ch[j] = extracted[n_ch[j] as usize];
-                }
-            }
-            // processed optimization
-            for j in 0..q.len() {
-                let u: i32 = buf[q[j] as usize];
-                if dis[u as usize].sum > 0 {
-                    dis[u as usize].sum = 0;
-                    dis[u as usize].bag.clear();
-                    if u != i {
-                        maxheap.push((!0u64, u));
-                    }
-                }
-            }
-        }
-        if i == root {
-            break;
-        }
-        for j in 0..parents[i as usize].len() {
-            let pc: EClassId = parents[i as usize][j].0;
-            let pn: ENodeId = parents[i as usize][j].1;
-            let trigger: bool = if processed[i as usize] {
-                cnt[pc as usize][pn as usize] == 0
-            } else {
-                cnt[pc as usize][pn as usize] -= 1;
-                cnt[pc as usize][pn as usize] == 0
+                _ => greedy.plain_cost(enode_cost(enode), enode),
             };
-            if trigger {
-                let n: &ENode = &g.eclasses[pc as usize].enodes[pn as usize];
-                let mut ndis: SCost = SCost::new(0);
-                if !g.eclasses[pc as usize].isEffectful {
-                    ndis = SCost::new(get_enode_cost(n));
-                }
-                for k in 0..n.ch.len() {
-                    let pair: (EClassId, SCost) = (n.ch[k], dis[n.ch[k] as usize].clone());
-                    ndis.add_assign_pair(&pair);
-                }
-                if ndis < dis[pc as usize] {
-                    dis[pc as usize] = ndis;
-                    pick[pc as usize] = pn;
-                    maxheap.push((!dis[pc as usize].sum, pc));
-                }
-            }
+            greedy.relax(pc, pn, cost);
         }
-        processed[i as usize] = true;
     }
-    crate::debug_assert_tiger!(extracted[root as usize] != UNEXTRACTABLE_ECLASS);
-    crate::debug_assert_tiger!(crate::debug::is_effect_safe_extraction(g, root, &e));
-    e
+    let costs = greedy.best.iter().map(|b| b.sum).collect();
+    (greedy.pick, costs)
 }
 
-// Suppress unused-import warning for `Reverse` (kept for documentation: the C++
-// max-heap on `~sum` is equivalent to a min-heap on `sum`, but we mirror the
-// C++ formulation directly with a plain `BinaryHeap` keyed on `!sum`).
-#[allow(dead_code)]
-fn _unused_reverse(_: Reverse<u64>) {}
+/// Estimated cost of every e-class.
+pub fn estimate_class_costs(g: &EGraph) -> Vec<Cost> {
+    greedy_costs(g, None).1
+}
+
+/// Cost of an effectful e-node for the statewalk DP: its own cost plus the
+/// estimated cost of its pure children (effectful children are paid for by the
+/// rest of the statewalk).
+fn statewalk_enode_cost(g: &EGraph, class_cost: &[Cost], enode: &ENode) -> Cost {
+    let pure_child_cost = |c: EClassId| if g.is_effectful(c) { 0 } else { class_cost[c] };
+    match enode.op.as_str() {
+        "If" => {
+            debug_assert!(enode.children.len() == 4);
+            let [pred, inputs, then_, else_] = enode.children[..] else {
+                unreachable!()
+            };
+            enode_cost(enode)
+                + pure_child_cost(pred)
+                + pure_child_cost(inputs)
+                + if_branches_cost(class_cost[then_], class_cost[else_])
+        }
+        "DoWhile" => {
+            debug_assert!(enode.children.len() == 2);
+            loop_body_cost(class_cost[enode.children[1]])
+        }
+        _ => {
+            enode_cost(enode)
+                + enode
+                    .children
+                    .iter()
+                    .map(|&c| pure_child_cost(c))
+                    .sum::<Cost>()
+        }
+    }
+}
+
+/// Statewalk costs for every effectful e-node (pure e-classes get an empty row).
+pub fn statewalk_costs(g: &EGraph) -> Vec<Vec<Cost>> {
+    let class_cost = estimate_class_costs(g);
+    g.classes
+        .iter()
+        .map(|class| {
+            if class.is_effectful {
+                class
+                    .enodes
+                    .iter()
+                    .map(|n| statewalk_enode_cost(g, &class_cost, n))
+                    .collect()
+            } else {
+                Vec::new()
+            }
+        })
+        .collect()
+}
+
+/// Re-index statewalk costs of the target e-graph for the source of `mapping`.
+pub fn project_statewalk_costs(mapping: &EGraphMapping, costs: &[Vec<Cost>]) -> Vec<Vec<Cost>> {
+    mapping
+        .enodes
+        .iter()
+        .enumerate()
+        .map(|(c, nodes)| {
+            let tc = mapping.class(c);
+            if costs[tc].is_empty() {
+                Vec::new()
+            } else {
+                nodes
+                    .iter()
+                    .map(|n| costs[tc][n.expect("e-node is not mapped")])
+                    .collect()
+            }
+        })
+        .collect()
+}
+
+/// Greedily extract `root` from a *linearized* e-graph, in which every
+/// effectful e-class has exactly one e-node (its statewalk pick).
+///
+/// Pure e-classes are settled cheapest first. Whenever an effectful e-class is
+/// settled, the whole term below it is emitted and its e-classes become free
+/// for everyone else to reuse (their cost drops to zero), which is what makes
+/// the shared statewalk pay for pure subterms only once.
+pub fn statewalk_greedy_extraction(g: &EGraph, root: EClassId) -> Extraction {
+    let mut greedy = Greedy::new(g);
+    let mut extraction: Extraction = Vec::new();
+    let mut extracted: Vec<Option<ExtractionId>> = vec![None; g.len()];
+    let mut processed = vec![false; g.len()];
+    let mut member_index: Vec<Option<usize>> = vec![None; g.len()];
+
+    while let Some(class) = greedy.pop() {
+        if g.is_effectful(class) {
+            emit_term(
+                &mut greedy,
+                class,
+                &mut extraction,
+                &mut extracted,
+                &mut member_index,
+            );
+        }
+        if class == root {
+            break;
+        }
+        for idx in 0..greedy.parents[class].len() {
+            let (pc, pn) = greedy.parents[class][idx];
+            // A class can be popped again after its cost was zeroed; only count
+            // it towards its parents once.
+            if !processed[class] {
+                greedy.remaining[pc][pn] -= 1;
+            }
+            if greedy.remaining[pc][pn] != 0 {
+                continue;
+            }
+            let enode = g.enode(pc, pn);
+            let own = if g.is_effectful(pc) {
+                0
+            } else {
+                enode_cost(enode)
+            };
+            let cost = greedy.plain_cost(own, enode);
+            greedy.relax(pc, pn, cost);
+        }
+        processed[class] = true;
+    }
+    debug_assert!(extracted[root].is_some());
+    debug_assert!(crate::checks::is_effect_safe(g, root, &extraction));
+    extraction
+}
+
+/// Append the picked term below `class` to `extraction` (skipping e-classes
+/// already extracted), children before parents, then zero the cost of every
+/// e-class it covers.
+fn emit_term(
+    greedy: &mut Greedy,
+    class: EClassId,
+    extraction: &mut Extraction,
+    extracted: &mut [Option<ExtractionId>],
+    member_index: &mut [Option<usize>],
+) {
+    let g = greedy.g;
+    // Members: e-classes of the picked term that are not yet extracted, in BFS order.
+    let mut members: Vec<EClassId> = vec![class];
+    let mut dependents: Vec<Vec<usize>> = vec![Vec::new()];
+    let mut pending: Vec<usize> = vec![0];
+    member_index[class] = Some(0);
+    let mut i = 0;
+    while i < members.len() {
+        for &child in &greedy.picked(members[i]).children {
+            if extracted[child].is_none() {
+                let ci = *member_index[child].get_or_insert_with(|| {
+                    members.push(child);
+                    dependents.push(Vec::new());
+                    pending.push(0);
+                    members.len() - 1
+                });
+                dependents[ci].push(i);
+                pending[i] += 1;
+            }
+        }
+        i += 1;
+    }
+    // Topological order (Kahn), children first; the root `class` comes out last.
+    let mut order: Vec<usize> = (0..members.len()).filter(|&m| pending[m] == 0).collect();
+    let mut i = 0;
+    while i < order.len() {
+        for &parent in &dependents[order[i]] {
+            pending[parent] -= 1;
+            if pending[parent] == 0 {
+                order.push(parent);
+            }
+        }
+        i += 1;
+    }
+    debug_assert!(order.len() == members.len());
+    for &m in &order {
+        let u = members[m];
+        let node = greedy.pick[u].expect("member has a pick");
+        let children = g
+            .enode(u, node)
+            .children
+            .iter()
+            .map(|&c| extracted[c].expect("children are emitted first"))
+            .collect();
+        extracted[u] = Some(extraction.len());
+        extraction.push(ExtractedNode {
+            class: u,
+            node,
+            children,
+        });
+    }
+    for &u in &members {
+        member_index[u] = None;
+        if greedy.best[u].sum > 0 {
+            greedy.best[u].set_zero();
+            if u != class {
+                greedy.heap.push((Reverse(0), u));
+            }
+        }
+    }
+}

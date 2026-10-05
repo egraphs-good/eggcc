@@ -5,7 +5,7 @@
 
 use egglog::{TermDag, TermId};
 
-use crate::egraphin::{EGraph, Extraction};
+use crate::egraph::{EGraph, Extraction};
 
 /// Build the term for extraction `e` of e-graph `g`. The extraction is in
 /// topological order with children first; its last entry is the root.
@@ -20,11 +20,11 @@ pub fn extraction_to_term(g: &EGraph, e: &Extraction, termdag: &mut TermDag) -> 
 
     let mut terms: Vec<TermId> = Vec::with_capacity(e.len());
     for en in e {
-        let n = &g.eclasses[en.c as usize].enodes[en.n as usize];
+        let n = g.enode(en.class, en.node);
         let term = if let Some(lit) = &n.lit {
             termdag.lit(lit.clone())
         } else {
-            let children: Vec<TermId> = en.ch.iter().map(|&c| terms[c as usize]).collect();
+            let children: Vec<TermId> = en.children.iter().map(|&c| terms[c]).collect();
             match n.op.as_str() {
                 "Arg" => {
                     assert!(children.is_empty());

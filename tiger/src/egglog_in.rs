@@ -20,7 +20,7 @@ use egglog::{ArcSort, Value};
 use indexmap::IndexMap;
 use rustc_hash::FxHasher;
 
-use crate::egraphin::{prune_unextractable_enodes, EClass, EClassId, EGraph, ENode, ENodeId};
+use crate::egraph::{EClass, EClassId, EGraph, ENode, ENodeId};
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
@@ -48,15 +48,15 @@ impl RawEGraph {
     }
 
     fn node(&self, i: EClassId, j: ENodeId) -> &RawENode {
-        &self.classes[i as usize][j as usize]
+        &self.classes[i][j]
     }
 
     fn nenodes(&self, i: EClassId) -> ENodeId {
-        self.classes[i as usize].len() as ENodeId
+        self.classes[i].len()
     }
 
     fn sort_name(&self, i: EClassId) -> &str {
-        &self.sort_names[i as usize]
+        &self.sort_names[i]
     }
 
     fn is_expr(&self, i: EClassId) -> bool {
@@ -74,11 +74,11 @@ impl RawEGraph {
     }
 
     fn is_primitive_eclass(&self, i: EClassId) -> bool {
-        self.classes[i as usize].iter().any(|n| n.is_primitive)
+        self.classes[i].iter().any(|n| n.is_primitive)
     }
 
     fn has_op(&self, i: EClassId, op: &str) -> bool {
-        self.classes[i as usize].iter().any(|n| n.op == op)
+        self.classes[i].iter().any(|n| n.op == op)
     }
 }
 
@@ -188,7 +188,7 @@ fn collect_raw_egraph(egraph: &egglog::EGraph) -> RawEGraph {
     };
     for node in &pending {
         if !class_ids.contains_key(&node.key) {
-            class_ids.insert(node.key, raw.len() as EClassId);
+            class_ids.insert(node.key, raw.len());
             raw.sort_names.push(sorts[node.key.0].name().to_string());
             raw.classes.push(Vec::new());
         }
@@ -203,7 +203,7 @@ fn collect_raw_egraph(egraph: &egglog::EGraph) -> RawEGraph {
                     .expect("child e-class has no e-nodes; incomplete e-graph")
             })
             .collect();
-        let class = class_ids[&node.key] as usize;
+        let class = class_ids[&node.key];
         raw.classes[class].push(RawENode {
             op: node.op,
             lit: node.lit,
@@ -217,7 +217,7 @@ fn collect_raw_egraph(egraph: &egglog::EGraph) -> RawEGraph {
 /// E-classes containing a `Function` node, in e-class order. An e-class with
 /// several `Function` nodes (e.g. a recursive function after inlining) is one root.
 fn find_function_roots(raw: &RawEGraph) -> Vec<EClassId> {
-    (0..raw.len() as EClassId)
+    (0..raw.len())
         .filter(|&i| raw.has_op(i, "Function"))
         .collect()
 }
@@ -227,7 +227,7 @@ fn propagate_effectful_types(raw: &RawEGraph) -> Vec<bool> {
     let n = raw.len();
     let mut edges: Vec<Vec<EClassId>> = vec![Vec::new(); n];
     let mut is_effectful_type = vec![false; n];
-    for i in 0..n as EClassId {
+    for i in 0..n {
         if !raw.is_type(i) {
             continue;
         }
@@ -238,24 +238,24 @@ fn propagate_effectful_types(raw: &RawEGraph) -> Vec<bool> {
                 continue;
             }
             for &v in &node.ch {
-                crate::debug_assert_tiger!(raw.is_type(v));
-                edges[v as usize].push(i);
+                debug_assert!(raw.is_type(v));
+                edges[v].push(i);
             }
         }
     }
     let mut state_t: EClassId = 0;
-    for i in 0..n as EClassId {
+    for i in 0..n {
         if raw.has_op(i, "StateT") {
             state_t = i;
         }
     }
     let mut q: VecDeque<EClassId> = VecDeque::new();
-    is_effectful_type[state_t as usize] = true;
+    is_effectful_type[state_t] = true;
     q.push_back(state_t);
     while let Some(u) = q.pop_front() {
-        for &v in &edges[u as usize] {
-            if !is_effectful_type[v as usize] {
-                is_effectful_type[v as usize] = true;
+        for &v in &edges[u] {
+            if !is_effectful_type[v] {
+                is_effectful_type[v] = true;
                 q.push_back(v);
             }
         }
@@ -267,21 +267,21 @@ fn propagate_effectful_types(raw: &RawEGraph) -> Vec<bool> {
 fn mark_effectful_exprs(raw: &RawEGraph, is_effectful_type: &[bool]) -> Vec<bool> {
     let n = raw.len();
     let mut has_effectful_type = vec![false; n];
-    for i in 0..n as EClassId {
+    for i in 0..n {
         for j in 0..raw.nenodes(i) {
             let node = raw.node(i, j);
             if node.op == "HasType" {
-                crate::debug_assert_tiger!(node.ch.len() == 2);
+                debug_assert!(node.ch.len() == 2);
                 let ec = node.ch[0];
                 let tc = node.ch[1];
-                crate::debug_assert_tiger!(raw.is_expr(ec));
-                crate::debug_assert_tiger!(raw.is_type(tc));
-                if is_effectful_type[tc as usize] {
-                    has_effectful_type[ec as usize] = true;
+                debug_assert!(raw.is_expr(ec));
+                debug_assert!(raw.is_type(tc));
+                if is_effectful_type[tc] {
+                    has_effectful_type[ec] = true;
                 }
             }
             if node.op == "Function" {
-                has_effectful_type[i as usize] = true;
+                has_effectful_type[i] = true;
             }
         }
     }
@@ -303,12 +303,12 @@ fn mark_reachable(
     reachable: &mut [bool],
     necessary_types: &mut [bool],
 ) {
-    if reachable[root as usize] {
+    if reachable[root] {
         return;
     }
     let mut q: VecDeque<EClassId> = VecDeque::new();
     let mut tq: VecDeque<EClassId> = VecDeque::new();
-    reachable[root as usize] = true;
+    reachable[root] = true;
     q.push_back(root);
     while let Some(u) = q.pop_front() {
         if raw.is_primitive_eclass(u) {
@@ -317,38 +317,38 @@ fn mark_reachable(
         for i in 0..raw.nenodes(u) {
             let node = raw.node(u, i);
             for &v in &node.ch {
-                if !reachable[v as usize] && (raw.is_expr(v) || raw.is_primitive_eclass(v)) {
-                    reachable[v as usize] = true;
+                if !reachable[v] && (raw.is_expr(v) || raw.is_primitive_eclass(v)) {
+                    reachable[v] = true;
                     q.push_back(v);
                 }
             }
             // Special cases for Function and Alloc to preserve the types they depend on
             let mut need_type = |t: EClassId| {
-                crate::debug_assert_tiger!(raw.is_type(t));
-                if !necessary_types[t as usize] {
-                    necessary_types[t as usize] = true;
+                debug_assert!(raw.is_type(t));
+                if !necessary_types[t] {
+                    necessary_types[t] = true;
                     tq.push_back(t);
                 }
             };
             if node.op == "Function" {
-                crate::debug_assert_tiger!(node.ch.len() == 4);
+                debug_assert!(node.ch.len() == 4);
                 need_type(node.ch[1]);
                 need_type(node.ch[2]);
             }
             if node.op == "Alloc" {
-                crate::debug_assert_tiger!(node.ch.len() == 4);
+                debug_assert!(node.ch.len() == 4);
                 need_type(node.ch[3]);
             }
         }
     }
     while let Some(u) = tq.pop_front() {
-        crate::debug_assert_tiger!(raw.is_type(u));
+        debug_assert!(raw.is_type(u));
         for i in 0..raw.nenodes(u) {
             let node = raw.node(u, i);
             if is_type_normal_form(&node.op) {
                 for &v in &node.ch {
-                    if !necessary_types[v as usize] {
-                        necessary_types[v as usize] = true;
+                    if !necessary_types[v] {
+                        necessary_types[v] = true;
                         tq.push_back(v);
                     }
                 }
@@ -443,50 +443,44 @@ fn build_simple_egraph(
 ) -> (EGraph, FxIndexMap<EClassId, EClassId>) {
     let mut g = EGraph::default();
     let mut new_id: FxIndexMap<EClassId, EClassId> = FxIndexMap::default();
-    let n = raw.len() as EClassId;
+    let n = raw.len();
     for i in 0..n {
-        if reachable[i as usize] && (raw.is_expr(i) || raw.is_primitive_eclass(i)) {
-            new_id.insert(i, g.eclasses.len() as EClassId);
-            g.eclasses.push(EClass {
+        if reachable[i] && (raw.is_expr(i) || raw.is_primitive_eclass(i)) {
+            new_id.insert(i, g.len());
+            g.classes.push(EClass {
                 enodes: Vec::new(),
-                isEffectful: has_effectful_type[i as usize],
+                is_effectful: has_effectful_type[i],
             });
         }
-        if necessary_types[i as usize] {
-            new_id.insert(i, g.eclasses.len() as EClassId);
-            g.eclasses.push(EClass {
+        if necessary_types[i] {
+            new_id.insert(i, g.len());
+            g.classes.push(EClass {
                 enodes: Vec::new(),
-                isEffectful: false,
+                is_effectful: false,
             });
         }
-        crate::debug_assert_tiger!(!(necessary_types[i as usize] && reachable[i as usize]));
+        debug_assert!(!(necessary_types[i] && reachable[i]));
     }
-    let make_enode = |node: &RawENode, nid: EClassId, keep_child: &dyn Fn(EClassId) -> bool| {
-        let mut en = ENode {
-            op: node.op.clone(),
-            lit: node.lit.clone(),
-            eclass: nid,
-            ch: Vec::new(),
-        };
-        for &v in &node.ch {
-            if let Some(&nv) = new_id.get(&v) {
-                if keep_child(v) {
-                    en.ch.push(nv);
-                }
-            }
-        }
-        en
+    let make_enode = |node: &RawENode, keep_child: &dyn Fn(EClassId) -> bool| ENode {
+        op: node.op.clone(),
+        lit: node.lit.clone(),
+        children: node
+            .ch
+            .iter()
+            .filter(|&&v| keep_child(v))
+            .filter_map(|v| new_id.get(v).copied())
+            .collect(),
     };
     for i in 0..n {
-        if reachable[i as usize] {
+        if reachable[i] {
             if raw.is_expr(i) {
                 let nid = new_id[&i];
                 for j in 0..raw.nenodes(i) {
                     let node = raw.node(i, j);
                     if is_extractable(node) {
                         let keeps_types = node.op == "Function" || node.op == "Alloc";
-                        let en = make_enode(node, nid, &|v| !raw.is_type(v) || keeps_types);
-                        g.eclasses[nid as usize].enodes.push(en);
+                        let en = make_enode(node, &|v| !raw.is_type(v) || keeps_types);
+                        g.classes[nid].enodes.push(en);
                     }
                 }
             } else {
@@ -494,24 +488,24 @@ fn build_simple_egraph(
                     let node = raw.node(i, j);
                     if node.is_primitive && is_extractable(node) {
                         let nid = new_id[&i];
-                        let en = make_enode(node, nid, &|v| !raw.is_type(v));
-                        g.eclasses[nid as usize].enodes.push(en);
+                        let en = make_enode(node, &|v| !raw.is_type(v));
+                        g.classes[nid].enodes.push(en);
                     }
                 }
             }
         }
         // preserve necessary types
-        if necessary_types[i as usize] {
+        if necessary_types[i] {
             let nid = new_id[&i];
             for j in 0..raw.nenodes(i) {
                 let node = raw.node(i, j);
                 if is_type_normal_form(&node.op) {
-                    let en = make_enode(node, nid, &|_| true);
-                    crate::debug_assert_tiger!(en.ch.len() == node.ch.len());
-                    g.eclasses[nid as usize].enodes.push(en);
+                    let en = make_enode(node, &|_| true);
+                    debug_assert!(en.children.len() == node.ch.len());
+                    g.classes[nid].enodes.push(en);
                 }
             }
-            crate::debug_assert_tiger!(g.eclasses[nid as usize].enodes.len() == 1);
+            debug_assert!(g.classes[nid].enodes.len() == 1);
         }
     }
     (g, new_id)
@@ -530,16 +524,8 @@ pub fn build_egraph(egraph: &egglog::EGraph) -> (EGraph, Vec<EClassId>) {
         mark_reachable(&raw, root, &mut reachable, &mut necessary_types);
     }
     let (g, new_id) = build_simple_egraph(&raw, &reachable, &necessary_types, &has_effectful_type);
-    crate::debug_assert_tiger!(crate::debug::is_wellformed_egraph(&g, true, true));
-    let (pruned, mapping) = prune_unextractable_enodes(&g, -1);
-    let new_roots = roots
-        .iter()
-        .map(|r| {
-            let mapped = new_id[r];
-            let nr = mapping.eclassidmp[mapped as usize];
-            crate::debug_assert_tiger!(0 <= nr && nr < pruned.neclasses() as EClassId);
-            nr
-        })
-        .collect();
+    debug_assert!(crate::checks::is_wellformed(&g, true, true));
+    let (pruned, mapping) = g.prune_unextractable(None);
+    let new_roots = roots.iter().map(|r| mapping.class(new_id[r])).collect();
     (pruned, new_roots)
 }

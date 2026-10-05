@@ -6,7 +6,7 @@ use crate::egraphin::{
     EGraph, EGraphMapping, ENodeId, Extraction,
 };
 use crate::greedy::statewalk_greedy_extraction;
-use crate::statewalkdp::{statewalkDP, Statewalk, StatewalkWidthStat};
+use crate::statewalkdp::{statewalkDP, Statewalk};
 
 pub type Cost = u64;
 
@@ -89,63 +89,4 @@ pub fn extract_regionalized_egraph_tiger(
     );
     crate::debug_assert_tiger!(crate::debug::is_effect_safe_extraction(g, root, &e));
     e
-}
-
-pub struct StatewalkWidthReport {
-    pub max_width: usize,
-    pub avg_width: f64,
-}
-
-impl StatewalkWidthReport {
-    pub fn new(data: &Vec<usize>) -> Self {
-        let max_width = *data.iter().max().unwrap();
-        let avg_width = data.iter().map(|x| *x as i64).sum::<i64>() as f64 / data.len() as f64;
-        Self { max_width, avg_width }
-    }
-}
-
-pub struct StatewalkWidthReports {
-    pub liveon_satelliteon: StatewalkWidthReport,
-    pub liveon_satelliteoff: StatewalkWidthReport,
-    pub liveoff_satelliteon: StatewalkWidthReport,
-    pub liveoff_satelliteoff: StatewalkWidthReport,
-}
-
-impl StatewalkWidthReports {
-    pub fn new(
-        liveon_sat_on: StatewalkWidthReport,
-        liveon_sat_off: StatewalkWidthReport,
-        liveoff_sat_on: StatewalkWidthReport,
-        liveoff_sat_off: StatewalkWidthReport,
-    ) -> Self {
-        Self {
-            liveon_satelliteon: liveon_sat_on,
-            liveon_satelliteoff: liveon_sat_off,
-            liveoff_satelliteon: liveoff_sat_on,
-            liveoff_satelliteoff: liveoff_sat_off,
-        }
-    }
-}
-
-pub fn get_stat_regionalized_egraph_tiger(
-    g: &EGraph,
-    root: EClassId,
-    statewalk_cost: &Vec<Vec<Cost>>,
-) -> StatewalkWidthReports {
-    let mut liveness_satelliteon: StatewalkWidthStat = StatewalkWidthStat::new();
-    let mut liveness_satelliteoff: StatewalkWidthStat = StatewalkWidthStat::new();
-    let mut noliveness_satelliteon: StatewalkWidthStat = StatewalkWidthStat::new();
-    let mut noliveness_satelliteoff: StatewalkWidthStat = StatewalkWidthStat::new();
-
-    statewalkDP(g, root, statewalk_cost, true, true, Some(&mut liveness_satelliteon));
-    statewalkDP(g, root, statewalk_cost, true, false, Some(&mut liveness_satelliteoff));
-    statewalkDP(g, root, statewalk_cost, false, true, Some(&mut noliveness_satelliteon));
-    statewalkDP(g, root, statewalk_cost, false, false, Some(&mut noliveness_satelliteoff));
-
-    StatewalkWidthReports::new(
-        StatewalkWidthReport::new(&liveness_satelliteon),
-        StatewalkWidthReport::new(&liveness_satelliteoff),
-        StatewalkWidthReport::new(&noliveness_satelliteon),
-        StatewalkWidthReport::new(&noliveness_satelliteoff),
-    )
 }

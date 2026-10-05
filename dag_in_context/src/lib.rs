@@ -628,23 +628,20 @@ fn extract_with_effsafe(
     let outputs = egraph
         .parse_and_run_program(
             None,
-            "(run-schedule (saturate effectful-marking))\n(effsafe-extract-all Effectful Function :include-subsumed)",
+            "(run-schedule (saturate effectful-marking))\n(print-function Function :extractor effsafe :include-subsumed)",
         )
         .unwrap_or_else(|err| panic!("effect-safe extraction failed: {err}"));
-    let output = outputs
+    let (termdag, terms): (&TermDag, Vec<TermId>) = outputs
         .iter()
         .find_map(|output| match output {
-            egglog::CommandOutput::UserDefined(output) => output
-                .as_ref()
-                .as_any()
-                .downcast_ref::<egglog::EffsafeExtractOutput>(
-            ),
+            egglog::CommandOutput::PrintFunction(_, termdag, terms, _) => {
+                Some((termdag, terms.iter().map(|(term, _)| *term).collect()))
+            }
             _ => None,
         })
-        .expect("effsafe-extract-all produced no output");
+        .expect("print-function :effsafe produced no output");
     let extracted =
-        program_from_function_terms(original_prog, batch, &output.terms, &output.termdag)
-            .override_arg_types();
+        program_from_function_terms(original_prog, batch, &terms, termdag).override_arg_types();
     (extracted, start.elapsed())
 }
 

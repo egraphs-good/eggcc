@@ -140,7 +140,6 @@ pub const SCHEMA: Schema = Schema {
         "Function",
         "DoWhile",
         "If",
-        "Switch",
         // Schema
         "Bop",
         "Uop",

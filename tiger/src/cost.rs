@@ -45,7 +45,7 @@ pub fn enode_cost(enode: &ENode) -> Cost {
         "Call" => 500_000,
         "Program" | "Function" => 0,
         "DoWhile" => 1,
-        "If" | "Switch" => 250,
+        "If" => 250,
         "Uop" | "Bop" | "Top" => 0,
         _ => {
             debug_assert!(false, "op of unknown cost: {op}");

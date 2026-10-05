@@ -338,6 +338,11 @@ def optimize(benchmark):
 
   # get the commands we need to run
   (eggcc_run_mode, llvm_args) = get_eggcc_options(benchmark)
+  # Every eggcc `optimize` run extracts with tiger. While the Rust port of tiger
+  # is being reworked, the eval uses the original C++ extractor as the reference
+  # so benchmark results stay comparable; drop this once the port is the default.
+  if eggcc_run_mode.startswith("optimize"):
+    eggcc_run_mode += " --tiger-cpp"
   os.makedirs(f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}", exist_ok=True)
   llvm_out_file = f"{DATA_DIR}/llvm/{benchmark.name}/{benchmark.treatment}/optimized.ll"
   cmd1 = f'{EGGCC_BINARY} {benchmark.path} --run-mode {eggcc_run_mode} --run-data-out {eggcc_run_data}'

@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "b14ef1d", package = "egglog-experimental" }
 indexmap = "2.0"
 rand_mt = { version = "6.0", default-features = false }
 rustc-hash = "1.1"

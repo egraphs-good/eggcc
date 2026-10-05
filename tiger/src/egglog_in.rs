@@ -12,6 +12,7 @@
 use std::collections::VecDeque;
 use std::hash::BuildHasherDefault;
 
+use egglog::ast::FunctionSubtype;
 use egglog::ast::Literal;
 use egglog::sort::{F, S};
 use egglog::{ArcSort, Value};
@@ -257,7 +258,7 @@ fn primitive_node(egraph: &egglog::EGraph, sort: &ArcSort, v: Value, key: ClassK
     }
 }
 
-/// Walk every function table and build the raw e-graph.
+/// Walk every table and build the raw e-graph.
 fn collect_raw_egraph(egraph: &egglog::EGraph) -> RawEGraph {
     // Sorts are interned so class keys stay small.
     let mut sort_index: FxIndexMap<String, usize> = FxIndexMap::default();
@@ -270,50 +271,50 @@ fn collect_raw_egraph(egraph: &egglog::EGraph) -> RawEGraph {
                 sorts.len() - 1
             })
     };
-    let key_of = |sort_idx: usize, sort: &ArcSort, v: Value| -> ClassKey {
-        (sort_idx, egraph.get_canonical_value(v, sort))
-    };
 
+    // Stored rows are canonical after a rebuild, so values key e-classes directly.
     let mut pending: Vec<PendingNode> = Vec::new();
     let mut seen_primitive: FxIndexMap<ClassKey, ()> = FxIndexMap::default();
-    for name in egraph.get_function_names() {
-        let func = egraph
-            .get_function(&name)
-            .expect("function listed but not found");
+    for (name, func) in egraph.functions_iter() {
         if func.is_let_binding() {
             continue;
         }
-        let schema = func.schema();
-        let out_sort = &schema.output;
+        let func_type = func.func_type();
+        let out_sort = &func_type.output;
         let out_idx = intern_sort(out_sort);
-        let in_idxs: Vec<usize> = schema.input.iter().map(&mut intern_sort).collect();
+        let in_idxs: Vec<usize> = func_type.input.iter().map(&mut intern_sort).collect();
 
-        egraph
-            .function_for_each(&name, |row| {
-                let (out, inputs) = row.vals.split_last().expect("row has an output");
-                // egglog serializes the output value first (adding a node only when it
-                // is a primitive), then the inputs, then the row itself.
-                let out_key = key_of(out_idx, out_sort, *out);
-                if !out_sort.is_eq_sort() && seen_primitive.insert(out_key, ()).is_none() {
-                    pending.push(primitive_node(egraph, out_sort, *out, out_key));
+        let mut visit_row = |inputs: &[Value], out: Value| {
+            // The old serializer emitted the output value first (adding a node only
+            // when it is a primitive), then the inputs, then the row itself.
+            let out_key = (out_idx, out);
+            if !out_sort.is_eq_sort() && seen_primitive.insert(out_key, ()).is_none() {
+                pending.push(primitive_node(egraph, out_sort, out, out_key));
+            }
+            let mut children: Vec<ClassKey> = Vec::with_capacity(inputs.len());
+            for ((&v, sort), &sort_idx) in inputs.iter().zip(&func_type.input).zip(&in_idxs) {
+                let key = (sort_idx, v);
+                if !sort.is_eq_sort() && seen_primitive.insert(key, ()).is_none() {
+                    pending.push(primitive_node(egraph, sort, v, key));
                 }
-                let mut children: Vec<ClassKey> = Vec::with_capacity(inputs.len());
-                for ((v, sort), &sort_idx) in inputs.iter().zip(&schema.input).zip(&in_idxs) {
-                    let key = key_of(sort_idx, sort, *v);
-                    if !sort.is_eq_sort() && seen_primitive.insert(key, ()).is_none() {
-                        pending.push(primitive_node(egraph, sort, *v, key));
-                    }
-                    children.push(key);
-                }
-                pending.push(PendingNode {
-                    key: out_key,
-                    children,
-                    op: name.clone(),
-                    lit: None,
-                    is_primitive: false,
-                });
-            })
-            .expect("function listed but not found");
+                children.push(key);
+            }
+            pending.push(PendingNode {
+                key: out_key,
+                children,
+                op: name.clone(),
+                lit: None,
+                is_primitive: false,
+            });
+        };
+        match func_type.subtype {
+            FunctionSubtype::Constructor => egraph
+                .constructor_enodes(name, |enode| visit_row(enode.children, enode.eclass))
+                .expect("constructor table exists"),
+            FunctionSubtype::Custom => egraph
+                .function_entries(name, |entry| visit_row(entry.inputs, entry.output))
+                .expect("function table exists"),
+        }
     }
 
     // Number e-classes in order of first appearance as a node's own class.

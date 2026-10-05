@@ -3,19 +3,16 @@ name = "tiger"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "tiger-rs"
-path = "src/main.rs"
+[lib]
+path = "src/lib.rs"
 
 [dependencies]
+egglog = { git = "https://github.com/egraphs-good/egglog-experimental", rev = "08771f9", package = "egglog-experimental" }
 indexmap = "2.0"
-mimalloc = { version = "0.1", default-features = false }
 rand_mt = { version = "6.0", default-features = false }
 rustc-hash = "1.1"
 
 [features]
 default = []
+# Enables the invariant checks behind `debug_assert_tiger!` (mirrors the C++ -DDEBUG build).
 debug = []
-
-[profile.release]
-opt-level = 3

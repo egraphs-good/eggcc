@@ -323,20 +323,15 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
     term1 == term2
 }
 
-pub fn serialized_egraph(egglog_egraph: egglog::EGraph) -> egraph_serialize::EGraph {
+/// Serialize the e-graph. Only needed for the C++ tiger binary and for
+/// `--egraph-out-dir`; the Rust extractor reads the egglog e-graph directly.
+pub fn serialized_egraph(egglog_egraph: &egglog::EGraph) -> egraph_serialize::EGraph {
     let config = SerializeConfig::default();
-    // egglog now encodes unextractable functions directly in the serialized
-    // egraph (tiger reads this), so we no longer return a separate set.
     egglog_egraph.serialize(config).egraph
 }
 
-fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
-    for (_, node) in &serialized_egraph.nodes {
-        if node.op == "DebugExpr" {
-            return true;
-        }
-    }
-    false
+fn has_debug_exprs(egraph: &egglog::EGraph) -> bool {
+    egraph.get_function("DebugExpr").is_some() && egraph.get_size("DebugExpr") > 0
 }
 
 /// Adds the program to the egraph and extracts it with tiger.
@@ -350,9 +345,8 @@ pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let mut egraph = new_single_threaded_egraph();
     egraph.parse_and_run_program(None, &egglog_prog).unwrap();
 
-    let serialized = serialized_egraph(egraph);
     let config = EggccConfig::default();
-    let (res, _, _) = run_tiger_pipeline(&config, program, &fns, &serialized);
+    let (res, _, _) = extract(&config, program, &fns, &egraph, None);
 
     let (original_with_ctx, _) = program.add_dummy_ctx();
     let (res_with_ctx, _) = res.add_dummy_ctx();
@@ -390,8 +384,9 @@ pub struct EggccConfig {
     pub ablate: Option<String>,
     /// Use ILP extraction in tiger instead of greedy extraction.
     pub tiger_ilp: bool,
-    /// Run the original C++ tiger binary instead of the Rust port (`tiger-rs`).
-    /// Kept for side-by-side comparison while the port is being worked on.
+    /// Run the original C++ tiger binary (as a subprocess on the serialized
+    /// e-graph) instead of the in-process Rust port. Kept as the reference
+    /// extractor for comparison while the port is being worked on.
     pub tiger_cpp: bool,
     /// When true, collect region timing samples by running both the tiger and ILP extractors.
     pub time_ilp: bool,
@@ -465,6 +460,12 @@ impl Default for EggccTimeStatistics {
 }
 
 impl EggccConfig {
+    /// Whether extraction runs the C++ tiger binary. Requested explicitly with
+    /// `--tiger-cpp`, and implied by the ILP modes, which only the C++ binary implements.
+    pub fn uses_cpp_tiger(&self) -> bool {
+        self.tiger_cpp || self.tiger_ilp || self.time_ilp
+    }
+
     pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
         match self.schedule {
             Schedule::Parallel => parallel_schedule(self),
@@ -545,6 +546,8 @@ fn find_tiger_binary(binary: &str) -> Option<PathBuf> {
 
 // This function is a helper for extracting using egglog's built-in extraction, which doesn't consider linearity.
 // We currently only use it for extracting from the egraph tiger produces, which doesn't do any unions (it just encodes a single program).
+/// Read the extracted `Function` terms back out of the e-graph the C++ tiger
+/// output was run in.
 fn extract_program_with_egglog(
     original_prog: &TreeProgram,
     batch: &[String],
@@ -556,22 +559,30 @@ fn extract_program_with_egglog(
             panic!("Failed to convert egglog egraph to term dag: {err}");
         }
     };
+    // output_rows contains the output values for constructors
+    let output_terms =
+        output_rows.expect("function_to_dag should return output rows when include_output=true");
+    program_from_function_terms(original_prog, batch, &output_terms, &termdag)
+}
 
+/// Replace the functions named in `batch` with the given extracted
+/// `(Function name in-ty out-ty body)` terms.
+fn program_from_function_terms(
+    original_prog: &TreeProgram,
+    batch: &[String],
+    function_terms: &[TermId],
+    termdag: &TermDag,
+) -> TreeProgram {
     let target_names: IndexSet<String> = batch.iter().cloned().collect();
 
     let mut converter = FromEgglog {
-        termdag: &termdag,
+        termdag,
         conversion_cache: IndexMap::new(),
     };
 
     let mut extracted: IndexMap<String, RcExpr> = IndexMap::new();
-
-    // output_rows contains the output values for constructors
-    let output_terms =
-        output_rows.expect("function_to_dag should return output rows when include_output=true");
-    for value_term in output_terms {
-        // For constructors, the extracted term is in the output position.
-        let expr = converter.expr_from_egglog(value_term);
+    for &term in function_terms {
+        let expr = converter.expr_from_egglog(term);
         match expr.as_ref() {
             Expr::Function(func_name, _, _, _) => {
                 if !target_names.contains(func_name) {
@@ -591,10 +602,26 @@ fn extract_program_with_egglog(
     let mut res = original_prog.clone();
 
     for name in &target_names {
-        res.replace_fn(name, extracted.get(name).unwrap().clone());
+        let func = extracted
+            .get(name)
+            .unwrap_or_else(|| panic!("Extraction did not produce function {name}"));
+        res.replace_fn(name, func.clone());
     }
 
     res
+}
+
+/// Extract with the Rust tiger extractor, in process, straight from the egglog e-graph.
+fn extract_with_tiger_rs(
+    original_prog: &TreeProgram,
+    batch: &[String],
+    egraph: &egglog::EGraph,
+) -> (TreeProgram, Duration) {
+    let start = Instant::now();
+    let (function_terms, termdag) = tiger::extract_from_egglog(egraph);
+    let extracted = program_from_function_terms(original_prog, batch, &function_terms, &termdag)
+        .override_arg_types();
+    (extracted, start.elapsed())
 }
 
 const TIGER_MEMORY_LIMIT_BYTES: u64 = 8 * 1024 * 1024 * 1024; // 8 GiB
@@ -664,8 +691,9 @@ fn diagnose_tiger_egraph(egraph: &egraph_serialize::EGraph, batch: &[String]) ->
     msg
 }
 
-// Run tiger extractor pipeline using the tiger binaries built from c++.
-// See the build.rs file.
+// Run the C++ tiger extractor (built by build.rs) as a subprocess on the
+// serialized e-graph. This is the reference extractor and the only one with
+// ILP support; the default path is `extract_with_tiger_rs`.
 fn run_tiger_pipeline(
     eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
@@ -677,13 +705,8 @@ fn run_tiger_pipeline(
         .unwrap();
     let json_input = format!("{json}\n");
 
-    let tiger_bin_name = if eggcc_config.tiger_cpp {
-        "tiger"
-    } else {
-        "tiger-rs"
-    };
-    let tiger_bin = find_tiger_binary(tiger_bin_name)
-        .ok_or_else(|| format!("{tiger_bin_name} binary not found; build the tiger tools first"))
+    let tiger_bin = find_tiger_binary("tiger")
+        .ok_or_else(|| "tiger binary not found; build the tiger tools first".to_string())
         .unwrap();
 
     let mut tiger_args: Vec<OsString> = Vec::new();
@@ -903,14 +926,35 @@ fn run_tiger_pipeline(
     (extracted, region_timings, eggcc_extraction_time)
 }
 
+/// Extract the functions in `batch` from the e-graph.
+///
+/// Uses the Rust tiger extractor unless the config asks for the C++ one
+/// (`--tiger-cpp`, or the ILP modes which only the C++ binary implements).
+/// `serialized` lets the caller pass an already serialized e-graph for the
+/// C++ path; otherwise it is serialized here when needed.
+///
 /// Returns the extracted program, timing information, and the total extraction duration.
 fn extract(
     eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
-    batch: Vec<String>,
-    egraph: &egraph_serialize::EGraph,
+    batch: &[String],
+    egraph: &egglog::EGraph,
+    serialized: Option<&egraph_serialize::EGraph>,
 ) -> (TreeProgram, Vec<ExtractRegionTiming>, Duration) {
-    run_tiger_pipeline(eggcc_config, original_prog, &batch, egraph)
+    if eggcc_config.uses_cpp_tiger() {
+        let owned;
+        let serialized = match serialized {
+            Some(s) => s,
+            None => {
+                owned = serialized_egraph(egraph);
+                &owned
+            }
+        };
+        run_tiger_pipeline(eggcc_config, original_prog, batch, serialized)
+    } else {
+        let (prog, duration) = extract_with_tiger_rs(original_prog, batch, egraph);
+        (prog, vec![], duration)
+    }
 }
 
 // Optimizes a tree program using the given schedule.
@@ -983,15 +1027,19 @@ pub fn optimize(
             let mut egraph = new_single_threaded_egraph();
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
+            // The Rust extractor reads the egglog e-graph directly; serialization is
+            // only needed for the C++ extractor and for dumping.
+            let needs_serialized =
+                eggcc_config.uses_cpp_tiger() || eggcc_config.egraph_dump_dir.is_some();
             let serialization_start = Instant::now();
-            let serialized = serialized_egraph(egraph);
+            let serialized = needs_serialized.then(|| serialized_egraph(&egraph));
             let serialization_duration = serialization_start.elapsed();
 
             if let Some(dir) = eggcc_config.egraph_dump_dir.as_ref() {
                 tiger_dump_counter += 1;
                 let filename = format!("tiger_egraph_{tiger_dump_counter:04}.json");
                 let path = dir.join(filename);
-                let json = serde_json::to_string_pretty(&serialized).unwrap_or_else(|err| {
+                let json = serde_json::to_string_pretty(serialized.as_ref().unwrap()).unwrap_or_else(|err| {
                     panic!(
                         "Failed to serialize tiger e-graph #{tiger_dump_counter:04} for dumping: {err}"
                     )
@@ -1005,14 +1053,14 @@ pub fn optimize(
                 });
             }
 
-            let has_debug_exprs = has_debug_exprs(&serialized);
+            let has_debug_exprs = has_debug_exprs(&egraph);
             if has_debug_exprs {
                 log::info!(
                     "Program has debug expressions, extracting them instead of original program."
                 );
             }
             let (iter_result, region_timings, extract_time) =
-                extract(eggcc_config, &res, batch.clone(), &serialized);
+                extract(eggcc_config, &res, &batch, &egraph, serialized.as_ref());
 
             eggcc_extraction_time += extract_time;
             eggcc_serialization_time += serialization_duration;

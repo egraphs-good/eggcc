@@ -4,8 +4,8 @@
 use std::cell::RefCell;
 
 use crate::egraphin::{
-    inverse_egraph_mapping, project_extraction, prune_unextractable_enodes, EClassId, EGraph,
-    EGraphMapping, ENode, ENodeId, EClass, Extraction, ExtractionENode, ExtractionENodeId,
+    inverse_egraph_mapping, project_extraction, prune_unextractable_enodes, EClass, EClassId,
+    EGraph, EGraphMapping, ENode, ENodeId, Extraction, ExtractionENode, ExtractionENodeId,
     UNEXTRACTABLE_ECLASS,
 };
 use crate::greedy::{compute_statewalk_cost, project_statewalk_cost, Cost};
@@ -22,7 +22,10 @@ thread_local! {
     static REGION_ECLASS_INV: RefCell<Vec<EClassId>> = RefCell::new(Vec::new());
 }
 
-pub fn construct_regionalized_egraph(g: &EGraph, root: EClassId) -> (EGraph, (EClassId, EGraphMapping)) {
+pub fn construct_regionalized_egraph(
+    g: &EGraph,
+    root: EClassId,
+) -> (EGraph, (EClassId, EGraphMapping)) {
     REGION_VIS.with(|c| {
         let mut v = c.borrow_mut();
         v.resize(g.neclasses(), 0);
@@ -107,7 +110,8 @@ pub fn construct_regionalized_egraph(g: &EGraph, root: EClassId) -> (EGraph, (EC
         for j in 0..(c.nenodes() as ENodeId) {
             let n: &ENode = &c.enodes[j as usize];
             let nn: &mut ENode = &mut nc.enodes[j as usize];
-            nn.head = n.head.clone();
+            nn.op = n.op.clone();
+            nn.lit = n.lit.clone();
             nn.eclass = i;
             let mut isSubregionchild: bool = false;
             for k in 0..n.ch.len() {
@@ -140,7 +144,9 @@ pub fn construct_regionalized_egraph(g: &EGraph, root: EClassId) -> (EGraph, (EC
         //composes to grp2g
         grp2gr.eclassidmp[i as usize] = gr2g[grp2gr.eclassidmp[i as usize] as usize];
     }
-    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(&grp2gr, &grp, g, false, true, false, false));
+    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(
+        &grp2gr, &grp, g, false, true, false, false
+    ));
     (grp, (nroot, grp2gr))
 }
 
@@ -160,15 +166,22 @@ pub fn extract_region_tiger(
         // if has not been computed yet
         let res: (EGraph, (EClassId, EGraphMapping)) = construct_regionalized_egraph(g, root);
         let gr: &EGraph = &res.0;
-        let nroot: EClassId = res.1.0;
-        let gr2g: &EGraphMapping = &res.1.1;
-        let tmpe: Extraction = extract_regionalized_egraph_tiger(gr, nroot, &project_statewalk_cost(gr2g, statewalk_cost), true, true);
+        let nroot: EClassId = res.1 .0;
+        let gr2g: &EGraphMapping = &res.1 .1;
+        let tmpe: Extraction = extract_regionalized_egraph_tiger(
+            gr,
+            nroot,
+            &project_statewalk_cost(gr2g, statewalk_cost),
+            true,
+            true,
+        );
         region_extraction_cache[rid as usize].0 = project_extraction(gr2g, &tmpe);
     }
 
     let mut subregions: Vec<ExtractionENodeId> = Vec::new();
     {
-        let cache_len: ExtractionENodeId = region_extraction_cache[rid as usize].0.len() as ExtractionENodeId;
+        let cache_len: ExtractionENodeId =
+            region_extraction_cache[rid as usize].0.len() as ExtractionENodeId;
         let mut i: ExtractionENodeId = 0;
         while i < cache_len {
             // Pull out the fields we need so we don't hold a borrow during the recursive call.
@@ -180,7 +193,14 @@ pub fn extract_region_tiger(
                 let v: EClassId = n_ch[j];
                 if g.eclasses[v as usize].isEffectful {
                     if isSubregionChild {
-                        let sub: ExtractionENodeId = extract_region_tiger(g, v, e, region_root_id, region_extraction_cache, statewalk_cost);
+                        let sub: ExtractionENodeId = extract_region_tiger(
+                            g,
+                            v,
+                            e,
+                            region_root_id,
+                            region_extraction_cache,
+                            statewalk_cost,
+                        );
                         subregions.push(sub);
                     } else {
                         isSubregionChild = true;
@@ -194,7 +214,8 @@ pub fn extract_region_tiger(
     let new_len: usize = base as usize + region_extraction_cache[rid as usize].0.len();
     e.resize(new_len, ExtractionENode::default());
     {
-        let cache_len: ExtractionENodeId = region_extraction_cache[rid as usize].0.len() as ExtractionENodeId;
+        let cache_len: ExtractionENodeId =
+            region_extraction_cache[rid as usize].0.len() as ExtractionENodeId;
         let mut i: ExtractionENodeId = 0;
         let mut l: usize = 0;
         while i < cache_len {
@@ -315,8 +336,17 @@ pub fn extract_all_fun_roots_tiger(g: &EGraph, fun_roots: &Vec<EClassId>) -> Vec
         for j in 0..(region_roots.len() as RegionId) {
             region_extraction_cache[j as usize].1 = -1;
         }
-        extract_region_tiger(g, fun_root, &mut ret[i], &region_root_id, &mut region_extraction_cache, &statewalk_cost);
-        crate::debug_assert_tiger!(crate::debug::is_effect_safe_extraction(g, fun_root, &ret[i]));
+        extract_region_tiger(
+            g,
+            fun_root,
+            &mut ret[i],
+            &region_root_id,
+            &mut region_extraction_cache,
+            &statewalk_cost,
+        );
+        crate::debug_assert_tiger!(crate::debug::is_effect_safe_extraction(
+            g, fun_root, &ret[i]
+        ));
     }
     ret
 }

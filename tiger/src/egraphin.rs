@@ -2,7 +2,8 @@
 // Direct line-by-line translation.
 
 use std::collections::VecDeque;
-use std::io::{BufReader, Read};
+
+use egglog::ast::Literal;
 
 pub type EClassId = i32;
 pub type ENodeId = i32;
@@ -13,26 +14,17 @@ pub const UNEXTRACTABLE_ECLASS: EClassId = -1;
 
 #[derive(Clone, Default)]
 pub struct ENode {
-    pub head: String,
+    /// Constructor name, or the literal's text for primitive leaves.
+    pub op: String,
+    /// `Some` for primitive leaves (ints, bools, floats, strings).
+    pub lit: Option<Literal>,
     pub eclass: EClassId,
     pub ch: Vec<EClassId>,
 }
 
 impl ENode {
-    pub fn get_name(&self) -> String {
-        // C++: int pos = head.find("###"); return head.substr(0, pos);
-        // If "###" is missing, fall back to the whole head string.
-        let pos = self.head.find("###").unwrap_or(self.head.len());
-        self.head[..pos].to_string()
-    }
-
-    pub fn get_op(&self) -> String {
-        // C++: int pos = head.find("###"); return head.substr(pos + 3, head.length() - pos - 3);
-        // If "###" is missing, fall back to empty string.
-        match self.head.find("###") {
-            Some(pos) => self.head[pos + 3..].to_string(),
-            None => String::new(),
-        }
+    pub fn is_primitive(&self) -> bool {
+        self.lit.is_some()
     }
 }
 
@@ -136,15 +128,24 @@ pub fn inverse_egraph_mapping(gp: &EGraph, g2gp: &EGraphMapping) -> EGraphMappin
     let mut gp2g = EGraphMapping::from_egraph(gp);
     for i in 0..(g2gp.eclassidmp.len() as EClassId) {
         if g2gp.eclassidmp[i as usize] != UNEXTRACTABLE_ECLASS {
-            crate::debug_assert_tiger!(0 <= g2gp.eclassidmp[i as usize] && g2gp.eclassidmp[i as usize] < gp.neclasses() as EClassId);
+            crate::debug_assert_tiger!(
+                0 <= g2gp.eclassidmp[i as usize]
+                    && g2gp.eclassidmp[i as usize] < gp.neclasses() as EClassId
+            );
             gp2g.eclassidmp[g2gp.eclassidmp[i as usize] as usize] = i;
         }
     }
     for i in 0..(g2gp.eclassidmp.len() as EClassId) {
         for j in 0..(g2gp.enodeidmp[i as usize].len() as ENodeId) {
             if g2gp.enodeidmp[i as usize][j as usize] != UNEXTRACTABLE_ECLASS {
-                crate::debug_assert_tiger!(0 <= g2gp.enodeidmp[i as usize][j as usize] && g2gp.enodeidmp[i as usize][j as usize] < gp.eclasses[g2gp.eclassidmp[i as usize] as usize].nenodes() as ENodeId);
-                gp2g.enodeidmp[g2gp.eclassidmp[i as usize] as usize][g2gp.enodeidmp[i as usize][j as usize] as usize] = j;
+                crate::debug_assert_tiger!(
+                    0 <= g2gp.enodeidmp[i as usize][j as usize]
+                        && g2gp.enodeidmp[i as usize][j as usize]
+                            < gp.eclasses[g2gp.eclassidmp[i as usize] as usize].nenodes()
+                                as ENodeId
+                );
+                gp2g.enodeidmp[g2gp.eclassidmp[i as usize] as usize]
+                    [g2gp.enodeidmp[i as usize][j as usize] as usize] = j;
             }
         }
     }
@@ -243,7 +244,9 @@ pub fn prune_unextractable_enodes(g: &EGraph, root: EClassId) -> (EGraph, EGraph
                 let mut isExtractable = true;
                 for k in 0..n.ch.len() {
                     let v: EClassId = n.ch[k];
-                    if v == UNEXTRACTABLE_ECLASS || mp.eclassidmp[v as usize] == UNEXTRACTABLE_ECLASS {
+                    if v == UNEXTRACTABLE_ECLASS
+                        || mp.eclassidmp[v as usize] == UNEXTRACTABLE_ECLASS
+                    {
                         isExtractable = false;
                         break;
                     }
@@ -251,7 +254,8 @@ pub fn prune_unextractable_enodes(g: &EGraph, root: EClassId) -> (EGraph, EGraph
                 if isExtractable {
                     let n = &c.enodes[j as usize];
                     let mut nn = ENode::default();
-                    nn.head = n.head.clone();
+                    nn.op = n.op.clone();
+                    nn.lit = n.lit.clone();
                     nn.ch.resize(n.ch.len(), 0);
                     for k in 0..n.ch.len() {
                         nn.ch[k] = mp.eclassidmp[n.ch[k] as usize];
@@ -265,167 +269,8 @@ pub fn prune_unextractable_enodes(g: &EGraph, root: EClassId) -> (EGraph, EGraph
         }
     }
     crate::debug_assert_tiger!(crate::debug::is_wellformed_egraph(&gp, false, true));
-    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(&mp, g, &gp, true, true, true, true));
+    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(
+        &mp, g, &gp, true, true, true, true
+    ));
     (gp, mp)
-}
-
-// Token reader that mirrors fscanf("%d") / fscanf("%zd") whitespace-delimited
-// reads while still letting us pull a full line for the head string.
-struct TokenReader<R: Read> {
-    inner: BufReader<R>,
-    // pushback for a single byte (used by peek-after-int to handle the newline)
-    peeked: Option<u8>,
-}
-
-impl<R: Read> TokenReader<R> {
-    fn new(r: R) -> Self {
-        TokenReader { inner: BufReader::new(r), peeked: None }
-    }
-
-    fn read_byte(&mut self) -> Option<u8> {
-        if let Some(b) = self.peeked.take() {
-            return Some(b);
-        }
-        let mut buf = [0u8; 1];
-        match self.inner.read(&mut buf) {
-            Ok(0) => None,
-            Ok(_) => Some(buf[0]),
-            Err(_) => None,
-        }
-    }
-
-    fn read_int_i32(&mut self) -> i32 {
-        // skip whitespace
-        let mut b;
-        loop {
-            match self.read_byte() {
-                Some(c) if (c as char).is_ascii_whitespace() => continue,
-                Some(c) => { b = c; break; }
-                None => return 0,
-            }
-        }
-        let mut s = String::new();
-        // optional sign
-        if b == b'-' || b == b'+' {
-            s.push(b as char);
-            b = self.read_byte().unwrap_or(b' ');
-        }
-        while (b as char).is_ascii_digit() {
-            s.push(b as char);
-            match self.read_byte() {
-                Some(c) => b = c,
-                None => { return s.parse::<i32>().unwrap_or(0); }
-            }
-        }
-        // push back the non-digit byte (this is how fscanf leaves the stream)
-        self.peeked = Some(b);
-        s.parse::<i32>().unwrap_or(0)
-    }
-
-    fn read_int_usize(&mut self) -> usize {
-        let v = self.read_int_i32();
-        v as usize
-    }
-
-    // mirror fgets: read up to and including '\n' (or EOF)
-    fn read_line_into(&mut self, buf: &mut String) {
-        buf.clear();
-        loop {
-            match self.read_byte() {
-                Some(c) => {
-                    buf.push(c as char);
-                    if c == b'\n' {
-                        return;
-                    }
-                }
-                None => return,
-            }
-        }
-    }
-}
-
-pub fn read_egraph<R: Read>(input: &mut R) -> EGraph {
-    let mut g: EGraph = EGraph::default();
-    let mut tr = TokenReader::new(input);
-    let mut cnt: i32 = 0;
-    let mut buf: String = String::new();
-    let n: i32 = tr.read_int_i32();
-    g.eclasses.resize(n as usize, EClass::default());
-    for i in 0..n {
-        let f: i32;
-        let m: i32;
-        f = tr.read_int_i32();
-        m = tr.read_int_i32();
-        cnt += m;
-        {
-            let c: &mut EClass = &mut g.eclasses[i as usize];
-            c.isEffectful = f != 0;
-            c.enodes.resize(m as usize, ENode::default());
-        }
-        for j in 0..m {
-            // handle names with spaces
-            tr.read_line_into(&mut buf);
-            tr.read_line_into(&mut buf);
-            crate::debug_assert_tiger!(buf.len() > 1);
-            // strip trailing newline (matches buf[strlen(buf)-1] = '\0')
-            if buf.ends_with('\n') {
-                buf.pop();
-            }
-            let l: usize = {
-                // Set head + eclass before reading l so we don't hold a long borrow.
-                let n_node: &mut ENode = &mut g.eclasses[i as usize].enodes[j as usize];
-                n_node.head = buf.clone();
-                n_node.eclass = i;
-                0usize
-            };
-            let _ = l;
-            let l: usize = tr.read_int_usize();
-            {
-                let n_node: &mut ENode = &mut g.eclasses[i as usize].enodes[j as usize];
-                n_node.ch.resize(l, 0);
-                for k in 0..l {
-                    n_node.ch[k] = tr.read_int_i32();
-                }
-            }
-            // scanf("%d", &n.cost);
-        }
-    }
-    crate::debug_cerr!(" # eclasses: {}  # enodes : {}", n, cnt);
-    g
-}
-
-pub fn print_egraph(g: &EGraph) {
-    println!("{}", g.neclasses());
-    for i in 0..(g.neclasses() as EClassId) {
-        let c = &g.eclasses[i as usize];
-        let f: i32 = if c.isEffectful { 1 } else { 0 };
-        let m: i32 = c.nenodes() as i32;
-        println!("{} {}", f, m);
-        for j in 0..m {
-            let n = &c.enodes[j as usize];
-            let l: usize = n.ch.len();
-            print!("{}\n{}{}", n.head, l, if l == 0 { '\n' } else { ' ' });
-            for k in 0..l {
-                print!("{}{}", n.ch[k], if k == l - 1 { '\n' } else { ' ' });
-            }
-            // printf("%d\n", n.cost);
-        }
-    }
-}
-
-pub fn print_extraction(g: &EGraph, e: &Extraction) {
-    for i in 0..(e.len() as ExtractionENodeId) {
-        print!(
-            "#{} {}{} {} {}{}",
-            i,
-            e[i as usize].c,
-            if g.eclasses[e[i as usize].c as usize].isEffectful { '!' } else { ' ' },
-            e[i as usize].n,
-            g.eclasses[e[i as usize].c as usize].enodes[e[i as usize].n as usize].head,
-            if e[i as usize].ch.len() == 0 { '\n' } else { ' ' }
-        );
-        for j in 0..e[i as usize].ch.len() {
-            print!("#{}{}", e[i as usize].ch[j], if j == e[i as usize].ch.len() - 1 { '\n' } else { ' ' });
-        }
-    }
 }

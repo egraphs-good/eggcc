@@ -62,7 +62,9 @@ pub fn rebuild_egraph_statewalk(g: &EGraph, sw: &Statewalk) -> (EGraph, EGraphMa
         i -= 1;
     }
     crate::debug_assert_tiger!(crate::debug::is_wellformed_egraph(&gp, true, false));
-    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(&gp2g, &gp, g, false, false, false, true));
+    crate::debug_assert_tiger!(crate::debug::is_valid_egraph_mapping(
+        &gp2g, &gp, g, false, false, false, true
+    ));
     (gp, gp2g)
 }
 
@@ -73,7 +75,14 @@ pub fn extract_regionalized_egraph_tiger(
     use_liveness: bool,
     use_satellite_opt: bool,
 ) -> Extraction {
-    let sw: Statewalk = statewalkDP(g, root, statewalk_cost, use_liveness, use_satellite_opt, None);
+    let sw: Statewalk = statewalkDP(
+        g,
+        root,
+        statewalk_cost,
+        use_liveness,
+        use_satellite_opt,
+        None,
+    );
 
     let res: (EGraph, EGraphMapping) = rebuild_egraph_statewalk(g, &sw);
     let gp: &EGraph = &res.0;
@@ -85,7 +94,10 @@ pub fn extract_regionalized_egraph_tiger(
     let nroot: EClassId = gp2gpp.eclassidmp[root as usize];
     let e: Extraction = project_extraction(
         gp2g,
-        &project_extraction(&inverse_egraph_mapping(gpp, gp2gpp), &statewalk_greedy_extraction(gpp, nroot)),
+        &project_extraction(
+            &inverse_egraph_mapping(gpp, gp2gpp),
+            &statewalk_greedy_extraction(gpp, nroot),
+        ),
     );
     crate::debug_assert_tiger!(crate::debug::is_effect_safe_extraction(g, root, &e));
     e

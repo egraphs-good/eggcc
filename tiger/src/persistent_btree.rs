@@ -100,19 +100,14 @@ impl<const BP: usize, const S: usize> PersistentBTree<BP, S> {
     }
 
     #[inline]
-    pub(crate) fn single_node_capacity_P(&self) -> usize {
-        self.single_cell_capacity_P() + BP
-    }
-
-    #[inline]
     pub(crate) fn single_node_capacity(&self) -> usize {
         self.single_cell_capacity() << BP
     }
 
     #[inline]
     pub(crate) fn chid(&self, h: i32, i: i32) -> i32 {
-        ((i >> ((h * BP as i32) + self.single_cell_capacity_P() as i32))
-            & (self.B() as i32 - 1)) as i32
+        ((i >> ((h * BP as i32) + self.single_cell_capacity_P() as i32)) & (self.B() as i32 - 1))
+            as i32
     }
 
     #[inline]
@@ -136,7 +131,8 @@ impl<const BP: usize, const S: usize> PersistentBTree<BP, S> {
         } else {
             let b = self.B();
             for i in 0..b {
-                let cl: i32 = l + ((i as i32) << (h * BP as i32 + self.single_cell_capacity_P() as i32));
+                let cl: i32 =
+                    l + ((i as i32) << (h * BP as i32 + self.single_cell_capacity_P() as i32));
                 if cl as usize >= data.len() {
                     *self.getc_mut(cur, i as i32) = u32::MAX; // -1 cast to unsigned
                 } else {

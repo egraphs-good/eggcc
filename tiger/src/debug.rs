@@ -1,7 +1,8 @@
 // Port of debug.h / debug.cpp.
+// The invariant checkers below are only called behind `debug_assert_tiger!`.
+#![cfg_attr(not(feature = "debug"), allow(dead_code))]
 // The DEBUG_ASSERT and DEBUG_CERR macros are gated on the `debug` cargo feature
-// (mirrors C++ `-DDEBUG`). Invariant checkers (is_wellformed_egraph etc.) are
-// translated by the wave-1 debug agent below.
+// (mirrors C++ `-DDEBUG`).
 
 #[macro_export]
 macro_rules! debug_assert_tiger {
@@ -23,19 +24,13 @@ macro_rules! debug_cerr {
     };
 }
 
-// TODO(wave-1 debug agent): port debug.cpp invariant checkers
-// (is_wellformed_egraph, is_valid_egraph_mapping, arg_check_regionalized_egraph,
-// is_valid_statewalk, is_valid_extraction, is_effect_safe_extraction,
-// debug_print_egraph, debug_print_extraction).
-
 use std::collections::VecDeque;
 
 use crate::egraphin::{
     EClass, EClassId, EGraph, EGraphMapping, ENode, ENodeId, Extraction, ExtractionENode,
     ExtractionENodeId, UNEXTRACTABLE_ECLASS,
 };
-
-pub type Statewalk = Vec<(EClassId, ENodeId)>;
+use crate::statewalkdp::Statewalk;
 
 pub fn debug_print_egraph(g: &EGraph) {
     eprintln!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>begin:debug_print_egraph");
@@ -53,11 +48,15 @@ pub fn debug_print_egraph(g: &EGraph) {
         for j in 0..m {
             let n: &ENode = &c.enodes[j as usize];
             let l: usize = n.ch.len();
-            eprint!("{}\n{}{}", n.head, l, if l == 0 { '\n' } else { ' ' });
+            eprint!("{}\n{}{}", n.op, l, if l == 0 { '\n' } else { ' ' });
             for k in 0..l {
                 eprint!(
                     "{}{}{}",
-                    if g.eclasses[n.ch[k] as usize].isEffectful { "!" } else { " " },
+                    if g.eclasses[n.ch[k] as usize].isEffectful {
+                        "!"
+                    } else {
+                        " "
+                    },
                     n.ch[k],
                     if k == l - 1 { '\n' } else { ' ' }
                 );
@@ -75,22 +74,38 @@ pub fn debug_print_extraction(g: &EGraph, e: &Extraction) {
             "#{} {}{} {} {}{}",
             i,
             e[i as usize].c,
-            if g.eclasses[e[i as usize].c as usize].isEffectful { '!' } else { ' ' },
+            if g.eclasses[e[i as usize].c as usize].isEffectful {
+                '!'
+            } else {
+                ' '
+            },
             e[i as usize].n,
-            g.eclasses[e[i as usize].c as usize].enodes[e[i as usize].n as usize].head,
-            if e[i as usize].ch.len() == 0 { '\n' } else { ' ' }
+            g.eclasses[e[i as usize].c as usize].enodes[e[i as usize].n as usize].op,
+            if e[i as usize].ch.len() == 0 {
+                '\n'
+            } else {
+                ' '
+            }
         );
         for j in 0..e[i as usize].ch.len() {
             eprint!(
                 "#{}{}",
                 e[i as usize].ch[j],
-                if j == e[i as usize].ch.len() - 1 { '\n' } else { ' ' }
+                if j == e[i as usize].ch.len() - 1 {
+                    '\n'
+                } else {
+                    ' '
+                }
             );
         }
     }
 }
 
-pub fn is_wellformed_egraph(g: &EGraph, allow_unextractable_child: bool, allow_subregion_child: bool) -> bool {
+pub fn is_wellformed_egraph(
+    g: &EGraph,
+    allow_unextractable_child: bool,
+    allow_subregion_child: bool,
+) -> bool {
     let mut ret: bool = true;
     for i in 0..(g.neclasses() as EClassId) {
         let c: &EClass = &g.eclasses[i as usize];
@@ -107,7 +122,9 @@ pub fn is_wellformed_egraph(g: &EGraph, allow_unextractable_child: bool, allow_s
             let mut effectful_ch_cnt: i32 = 0;
             for k in 0..n.ch.len() {
                 let chc: EClassId = n.ch[k];
-                if !((allow_unextractable_child && chc == UNEXTRACTABLE_ECLASS) || (0 <= chc && chc < g.neclasses() as EClassId)) {
+                if !((allow_unextractable_child && chc == UNEXTRACTABLE_ECLASS)
+                    || (0 <= chc && chc < g.neclasses() as EClassId))
+                {
                     ret = false;
                     eprintln!("Error: Invalid child edge {},{},{}", i, j, k);
                 }
@@ -147,7 +164,15 @@ pub fn debug_print_egraph_mapping(g2gp: &EGraphMapping, g: &EGraph, gp: &EGraph)
     eprintln!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<end:debug_print_egraph_mapping");
 }
 
-pub fn is_valid_egraph_mapping_helper(g2gp: &EGraphMapping, g: &EGraph, gp: &EGraph, isPartial: bool, isInjective: bool, isSurjective: bool, checkChildrenConsistentcy: bool) -> bool {
+pub fn is_valid_egraph_mapping_helper(
+    g2gp: &EGraphMapping,
+    g: &EGraph,
+    gp: &EGraph,
+    isPartial: bool,
+    isInjective: bool,
+    isSurjective: bool,
+    checkChildrenConsistentcy: bool,
+) -> bool {
     if g2gp.eclassidmp.len() != g.neclasses() || g2gp.enodeidmp.len() != g.neclasses() {
         eprintln!("Error: Wrong domain #eclasses");
         return false;
@@ -167,12 +192,18 @@ pub fn is_valid_egraph_mapping_helper(g2gp: &EGraphMapping, g: &EGraph, gp: &EGr
             continue;
         }
         if !(0 <= cpid && cpid < gp.neclasses() as EClassId) {
-            eprintln!("Error: Invalid codomain eclass for eclass #{} mapped to #{}", i, cpid);
+            eprintln!(
+                "Error: Invalid codomain eclass for eclass #{} mapped to #{}",
+                i, cpid
+            );
             return false;
         }
         let cp: &EClass = &gp.eclasses[cpid as usize];
         if c.isEffectful != cp.isEffectful {
-            eprintln!("Error: Mismatching effectful flags for eclass #{} mapped to #{}", i, cpid);
+            eprintln!(
+                "Error: Mismatching effectful flags for eclass #{} mapped to #{}",
+                i, cpid
+            );
             return false;
         }
         for j in 0..(c.nenodes() as ENodeId) {
@@ -182,11 +213,16 @@ pub fn is_valid_egraph_mapping_helper(g2gp: &EGraphMapping, g: &EGraph, gp: &EGr
                 continue;
             }
             if !(0 <= npid && npid < cp.nenodes() as ENodeId) {
-                eprintln!("Error: Invalid codomain enode for enode #{},{} mapped to #{},{}", i, j, cpid, npid);
+                eprintln!(
+                    "Error: Invalid codomain enode for enode #{},{} mapped to #{},{}",
+                    i, j, cpid, npid
+                );
                 return false;
             }
             if isInjective && vis_gp[cpid as usize][npid as usize] {
-                eprintln!("Error: egraph mapping not injective / multiple enodes map into the same enode");
+                eprintln!(
+                    "Error: egraph mapping not injective / multiple enodes map into the same enode"
+                );
                 return false;
             }
             vis_gp[cpid as usize][npid as usize] = true;
@@ -211,7 +247,10 @@ pub fn is_valid_egraph_mapping_helper(g2gp: &EGraphMapping, g: &EGraph, gp: &EGr
         for i in 0..(gp.neclasses() as EClassId) {
             for j in 0..(gp.eclasses[i as usize].nenodes() as ENodeId) {
                 if !vis_gp[i as usize][j as usize] {
-                    eprintln!("Error: egraph mapping not surjective / enode in codomain not mapped {},{}", i, j);
+                    eprintln!(
+                        "Error: egraph mapping not surjective / enode in codomain not mapped {},{}",
+                        i, j
+                    );
                     return false;
                 }
             }
@@ -220,8 +259,24 @@ pub fn is_valid_egraph_mapping_helper(g2gp: &EGraphMapping, g: &EGraph, gp: &EGr
     true
 }
 
-pub fn is_valid_egraph_mapping(g2gp: &EGraphMapping, g: &EGraph, gp: &EGraph, isPartial: bool, isInjective: bool, isSurjective: bool, checkChildrenConsistentcy: bool) -> bool {
-    let ret: bool = is_valid_egraph_mapping_helper(g2gp, g, gp, isPartial, isInjective, isSurjective, checkChildrenConsistentcy);
+pub fn is_valid_egraph_mapping(
+    g2gp: &EGraphMapping,
+    g: &EGraph,
+    gp: &EGraph,
+    isPartial: bool,
+    isInjective: bool,
+    isSurjective: bool,
+    checkChildrenConsistentcy: bool,
+) -> bool {
+    let ret: bool = is_valid_egraph_mapping_helper(
+        g2gp,
+        g,
+        gp,
+        isPartial,
+        isInjective,
+        isSurjective,
+        checkChildrenConsistentcy,
+    );
     if !ret {
         debug_print_egraph_mapping(g2gp, g, gp);
     }
@@ -254,9 +309,15 @@ pub fn arg_check_regionalized_egraph(g: &EGraph) -> bool {
     }
     if cntn > 1 {
         ret = false;
-        eprintln!("Error: Found multiple arg enodes in a regionalized egraph #{}", cntn);
+        eprintln!(
+            "Error: Found multiple arg enodes in a regionalized egraph #{}",
+            cntn
+        );
         if cntc > 1 {
-            eprintln!("Error: Found multiple arg eclasses in a regionalized egraph #{}", cntc);
+            eprintln!(
+                "Error: Found multiple arg eclasses in a regionalized egraph #{}",
+                cntc
+            );
         }
     }
     if !ret {
@@ -376,7 +437,12 @@ pub fn is_valid_extraction(g: &EGraph, root: EClassId, e: &Extraction) -> bool {
     ret
 }
 
-pub fn is_effect_safe_extraction_helper(g: &EGraph, rootid: ExtractionENodeId, e: &Extraction, subregion_checked: &mut Vec<bool>) -> bool {
+pub fn is_effect_safe_extraction_helper(
+    g: &EGraph,
+    rootid: ExtractionENodeId,
+    e: &Extraction,
+    subregion_checked: &mut Vec<bool>,
+) -> bool {
     let mut statewalk: Vec<ExtractionENodeId> = Vec::new();
     let mut vis: Vec<bool> = vec![false; e.len()];
     let mut onpath: Vec<bool> = vec![false; e.len()];
@@ -437,7 +503,12 @@ pub fn is_effect_safe_extraction(g: &EGraph, root: EClassId, e: &Extraction) -> 
     }
     // prevent double-checking each subregion
     let mut subregion_checked: Vec<bool> = vec![false; e.len()];
-    let ret: bool = is_effect_safe_extraction_helper(g, (e.len() - 1) as ExtractionENodeId, e, &mut subregion_checked);
+    let ret: bool = is_effect_safe_extraction_helper(
+        g,
+        (e.len() - 1) as ExtractionENodeId,
+        e,
+        &mut subregion_checked,
+    );
     if !ret {
         debug_print_egraph(g);
         debug_print_extraction(g, e);

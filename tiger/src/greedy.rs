@@ -89,28 +89,43 @@ impl Ord for SCost {
     }
 }
 
-pub fn isPrimitive(name: &str) -> bool {
-    name.len() > 9 && &name[..9] == "primitive"
-}
-
 pub fn isType(op: &str) -> bool {
-    op == "IntT" || op == "BoolT" || op == "FloatT"
-        || op == "PointerT" || op == "StateT" || op == "Base"
-        || op == "TupleT" || op == "TNil" || op == "TCons"
+    op == "IntT"
+        || op == "BoolT"
+        || op == "FloatT"
+        || op == "PointerT"
+        || op == "StateT"
+        || op == "Base"
+        || op == "TupleT"
+        || op == "TNil"
+        || op == "TCons"
 }
 
 pub fn get_enode_cost(n: &ENode) -> Cost {
-    let name: String = n.get_name();
-    let op: String = n.get_op();
+    if n.is_primitive() {
+        return 0;
+    }
+    let op: &str = n.op.as_str();
     if op == "Const" {
         return 10;
-    } else if op == "Arg" || isPrimitive(&name) || isType(&op) || op == "Int" || op == "Bool" || op == "Float" {
+    } else if op == "Arg" || isType(op) || op == "Int" || op == "Bool" || op == "Float" {
         return 0;
     } else if op == "Empty" || op == "Single" || op == "Concat" || op == "Nil" || op == "Cons" {
         return 0;
     } else if op == "Get" {
         return 1;
-    } else if op == "Abs" || op == "Bitand" || op == "Neg" || op == "Add" || op == "PtrAdd" || op == "Sub" || op == "And" || op == "Or" || op == "Not" || op == "Shl" || op == "Shr" {
+    } else if op == "Abs"
+        || op == "Bitand"
+        || op == "Neg"
+        || op == "Add"
+        || op == "PtrAdd"
+        || op == "Sub"
+        || op == "And"
+        || op == "Or"
+        || op == "Not"
+        || op == "Shl"
+        || op == "Shr"
+    {
         return 100;
     } else if op == "FAdd" || op == "FSub" || op == "Fmax" || op == "Fmin" {
         return 500;
@@ -122,7 +137,12 @@ pub fn get_enode_cost(n: &ENode) -> Cost {
         return 500;
     } else if op == "FDiv" {
         return 2500;
-    } else if op == "Eq" || op == "LessThan" || op == "GreaterThan" || op == "LessEq" || op == "GreaterEq" {
+    } else if op == "Eq"
+        || op == "LessThan"
+        || op == "GreaterThan"
+        || op == "LessEq"
+        || op == "GreaterEq"
+    {
         return 100;
     } else if op == "Select" {
         return 1500;
@@ -146,14 +166,17 @@ pub fn get_enode_cost(n: &ENode) -> Cost {
     } else if op == "Uop" || op == "Bop" || op == "Top" {
         return 0;
     } else {
-        crate::debug_cerr!("Encountered op of unknown cost: {} {}", name, op);
+        crate::debug_cerr!("Encountered op of unknown cost: {}", op);
         crate::debug_assert_tiger!(false);
         return 0;
     }
 }
 
 // extract all eclasses if root is -1
-pub fn greedy_extract_compute_eclasses_pick(g: &EGraph, root: EClassId) -> (Vec<ENodeId>, Vec<Cost>) {
+pub fn greedy_extract_compute_eclasses_pick(
+    g: &EGraph,
+    root: EClassId,
+) -> (Vec<ENodeId>, Vec<Cost>) {
     let mut pick: Vec<ENodeId> = vec![-1; g.neclasses()];
     let mut dis: Vec<SCost> = vec![SCost::new(INF); g.neclasses()];
     // C++ uses a max-heap on `~sum` (bitwise NOT). Mirror that exactly with
@@ -194,8 +217,8 @@ pub fn greedy_extract_compute_eclasses_pick(g: &EGraph, root: EClassId) -> (Vec<
                 cnt[pc as usize][pn as usize] -= 1;
                 if cnt[pc as usize][pn as usize] == 0 {
                     let n: &ENode = &g.eclasses[pc as usize].enodes[pn as usize];
-                    let mut ndis: SCost = SCost::new(0);
-                    if n.get_op() == "If" {
+                    let mut ndis: SCost;
+                    if n.op == "If" {
                         crate::debug_assert_tiger!(n.ch.len() == 4);
                         ndis = SCost::new(get_enode_cost(n));
                         let pair0: (EClassId, SCost) = (n.ch[0], dis[n.ch[0] as usize].clone());
@@ -205,8 +228,9 @@ pub fn greedy_extract_compute_eclasses_pick(g: &EGraph, root: EClassId) -> (Vec<
                         let then_cost: Cost = dis[n.ch[2] as usize].sum;
                         let else_cost: Cost = dis[n.ch[3] as usize].sum;
                         // Heuristics for computing cost of an If
-                        ndis.sum += std::cmp::max(then_cost, else_cost) + (std::cmp::min(then_cost, else_cost) >> 2);
-                    } else if n.get_op() == "DoWhile" {
+                        ndis.sum += std::cmp::max(then_cost, else_cost)
+                            + (std::cmp::min(then_cost, else_cost) >> 2);
+                    } else if n.op == "DoWhile" {
                         crate::debug_assert_tiger!(n.ch.len() == 2);
                         ndis = dis[n.ch[0] as usize].clone();
                         let body_cost: Cost = dis[n.ch[1] as usize].sum;
@@ -243,8 +267,8 @@ pub fn greedy_extract_estimate_all_eclasses_cost(g: &EGraph) -> Vec<Cost> {
 }
 
 pub fn get_statewalk_enode_cost(g: &EGraph, eclass_cost: &Vec<Cost>, n: &ENode) -> Cost {
-    let mut ret: Cost = 0;
-    if n.get_op() == "If" {
+    let mut ret: Cost;
+    if n.op == "If" {
         crate::debug_assert_tiger!(n.ch.len() == 4);
         ret = get_enode_cost(n);
         if !g.eclasses[n.ch[0] as usize].isEffectful {
@@ -256,7 +280,7 @@ pub fn get_statewalk_enode_cost(g: &EGraph, eclass_cost: &Vec<Cost>, n: &ENode) 
         let then_cost: Cost = eclass_cost[n.ch[2] as usize];
         let else_cost: Cost = eclass_cost[n.ch[3] as usize];
         ret += std::cmp::max(then_cost, else_cost) + (std::cmp::min(then_cost, else_cost) >> 2);
-    } else if n.get_op() == "DoWhile" {
+    } else if n.op == "DoWhile" {
         crate::debug_assert_tiger!(n.ch.len() == 2);
         let body_cost: Cost = eclass_cost[n.ch[1] as usize];
         ret = body_cost * 500;
@@ -282,22 +306,27 @@ pub fn compute_statewalk_cost(g: &EGraph) -> Vec<Vec<Cost>> {
             statewalk_cost[i as usize].resize(c.nenodes(), 0);
             for j in 0..(c.nenodes() as ENodeId) {
                 let n: &ENode = &c.enodes[j as usize];
-                statewalk_cost[i as usize][j as usize] = get_statewalk_enode_cost(g, &eclass_cost, n);
+                statewalk_cost[i as usize][j as usize] =
+                    get_statewalk_enode_cost(g, &eclass_cost, n);
             }
         }
     }
     statewalk_cost
 }
 
-pub fn project_statewalk_cost(gr2g: &EGraphMapping, statewalk_cost: &Vec<Vec<Cost>>) -> Vec<Vec<Cost>> {
+pub fn project_statewalk_cost(
+    gr2g: &EGraphMapping,
+    statewalk_cost: &Vec<Vec<Cost>>,
+) -> Vec<Vec<Cost>> {
     let mut rstatewalk_cost: Vec<Vec<Cost>> = vec![Vec::new(); gr2g.eclassidmp.len()];
     for i in 0..(gr2g.eclassidmp.len() as EClassId) {
         let cid: EClassId = gr2g.eclassidmp[i as usize];
         if statewalk_cost[cid as usize].len() > 0 {
             rstatewalk_cost[i as usize].resize(gr2g.enodeidmp[i as usize].len(), 0);
             for j in 0..(rstatewalk_cost[i as usize].len() as ENodeId) {
-                rstatewalk_cost[i as usize][j as usize] =
-                    statewalk_cost[gr2g.eclassidmp[i as usize] as usize][gr2g.enodeidmp[i as usize][j as usize] as usize];
+                rstatewalk_cost[i as usize][j as usize] = statewalk_cost
+                    [gr2g.eclassidmp[i as usize] as usize]
+                    [gr2g.enodeidmp[i as usize][j as usize] as usize];
             }
         }
     }
@@ -404,8 +433,12 @@ pub fn statewalk_greedy_extraction(g: &EGraph, root: EClassId) -> Extraction {
             }
             for i2 in 0..q.len() {
                 let u: i32 = buf[q[i2] as usize];
-                let n_ch_len: usize = g.eclasses[u as usize].enodes[pick[u as usize] as usize].ch.len();
-                let n_ch: Vec<EClassId> = g.eclasses[u as usize].enodes[pick[u as usize] as usize].ch.clone();
+                let n_ch_len: usize = g.eclasses[u as usize].enodes[pick[u as usize] as usize]
+                    .ch
+                    .len();
+                let n_ch: Vec<EClassId> = g.eclasses[u as usize].enodes[pick[u as usize] as usize]
+                    .ch
+                    .clone();
                 let en: &mut ExtractionENode = &mut e[extracted[u as usize] as usize];
                 en.ch.resize(n_ch_len, 0);
                 for j in 0..n_ch_len {

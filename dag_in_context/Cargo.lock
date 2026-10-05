@@ -380,6 +380,7 @@ dependencies = [
  "symbol_table",
  "tempfile",
  "thiserror 1.0.69",
+ "tiger",
 ]
 
 [[package]]
@@ -1212,6 +1213,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_mt"
+version = "6.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab79b42e3c44cf58883b476bbcfa5750130c28cb0c6a9bcbc76ad820aed05873"
+
+[[package]]
 name = "rand_xoshiro"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1520,6 +1527,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.90",
+]
+
+[[package]]
+name = "tiger"
+version = "0.1.0"
+dependencies = [
+ "egglog-experimental",
+ "indexmap",
+ "rand_mt",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]

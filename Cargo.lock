@@ -910,7 +910,7 @@ dependencies = [
 [[package]]
 name = "egglog-experimental"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog-experimental?rev=b361bcf#b361bcffbba241a6d254bf09343c02952ffcebb3"
+source = "git+https://github.com/oflatt-claude/egglog-experimental?rev=0e9fdc4#0e9fdc44ab8f12820cf29d5a6825f420747828bb"
 dependencies = [
  "egglog",
  "egglog-ast",

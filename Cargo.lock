@@ -798,7 +798,7 @@ dependencies = [
 [[package]]
 name = "egglog"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "chrono",
  "clap",
@@ -830,7 +830,7 @@ dependencies = [
 [[package]]
 name = "egglog-add-primitive"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "quote",
  "syn 2.0.114",
@@ -839,7 +839,7 @@ dependencies = [
 [[package]]
 name = "egglog-ast"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "ordered-float",
 ]
@@ -847,7 +847,7 @@ dependencies = [
 [[package]]
 name = "egglog-bridge"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "anyhow",
  "dyn-clone",
@@ -870,7 +870,7 @@ dependencies = [
 [[package]]
 name = "egglog-concurrency"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "arc-swap",
  "bumpalo",
@@ -882,7 +882,7 @@ dependencies = [
 [[package]]
 name = "egglog-core-relations"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "anyhow",
  "bumpalo",
@@ -910,7 +910,7 @@ dependencies = [
 [[package]]
 name = "egglog-experimental"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog-experimental?rev=68396f2#68396f2b8b992f8427fc297d65687ceed509a616"
+source = "git+https://github.com/oflatt-claude/egglog-experimental?rev=f9a5762#f9a576244e467f06c9f574438d0e200e54ad9c0e"
 dependencies = [
  "egglog",
  "egglog-ast",
@@ -929,12 +929,12 @@ dependencies = [
 [[package]]
 name = "egglog-numeric-id"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 
 [[package]]
 name = "egglog-reports"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "clap",
  "hashbrown 0.16.1",
@@ -948,7 +948,7 @@ dependencies = [
 [[package]]
 name = "egglog-union-find"
 version = "3.0.0"
-source = "git+https://github.com/oflatt-claude/egglog.git?rev=de4a742#de4a742c2a48691c15401263f87e2fed231c81f9"
+source = "git+https://github.com/oflatt-claude/egglog.git?rev=25f3cee#25f3cee9f346951ccd8188d009c0dd676b7811f0"
 dependencies = [
  "crossbeam",
  "egglog-concurrency",

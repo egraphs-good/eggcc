@@ -2,8 +2,8 @@
 ;; know which e-classes carry the program state. An expression is effectful
 ;; when its type contains StateT; function roots always are.
 ;;
-;; The `:regions` annotations on If and DoWhile in schema.egg mark the children
-;; that start subregions (branches and loop bodies).
+;; The `:regions` annotations on Function, If and DoWhile in schema.egg mark
+;; the children that start subregions (function bodies, branches and loop bodies).
 
 (relation EffectfulBaseType (BaseType))
 (relation EffectfulTypeList (TypeList))
@@ -18,8 +18,8 @@
 (rule ((= t (Base b)) (EffectfulBaseType b)) ((EffectfulType t)) :ruleset effectful-marking)
 (rule ((= t (TupleT l)) (EffectfulTypeList l)) ((EffectfulType t)) :ruleset effectful-marking)
 
-(rule ((HasType e ty) (EffectfulType ty)) ((set-effectful e)) :ruleset effectful-marking)
-(rule ((= f (Function name in out body))) ((set-effectful f)) :ruleset effectful-marking)
+(rule ((HasType e ty) (EffectfulType ty)) ((set-effectful Expr e)) :ruleset effectful-marking)
+(rule ((= f (Function name in out body))) ((set-effectful Expr f)) :ruleset effectful-marking)
 
 ;; Contexts refer back to the regions they describe, so they cannot be
 ;; extracted as finite terms. Extraction emits this dummy context instead

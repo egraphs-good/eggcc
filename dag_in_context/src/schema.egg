@@ -206,7 +206,7 @@
 ;                      entry function     other functions
 (constructor Program     (Expr               ListExpr) ProgramType)
 ;                   name   input ty  output ty  output
-(constructor Function (String Type      Type       Expr)      Expr)
+(constructor Function (String Type      Type       Expr)      Expr :regions (3))
 
 ; to get the type of a funciton, look in this table
 ; since we might not be optimizing the entire program

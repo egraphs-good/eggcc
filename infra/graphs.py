@@ -437,7 +437,13 @@ def make_fenwick_cycles_bar_chart(data, output):
   colors = []
 
   for treatment in treatments:
-    row = get_row(data, benchmark, treatment)
+    try:
+      row = get_row(data, benchmark, treatment)
+    except KeyError:
+      # The chart is specific to one benchmark; local runs on a subset of the
+      # suite usually don't include it, so skip the chart instead of failing.
+      print(f"WARNING: Skipping Fenwick cycles bar chart because {benchmark} {treatment} was not run")
+      return
     cycles = row["cycles"]
     if row["failed"] or not cycles:
       print(f"WARNING: Skipping Fenwick cycles bar chart because {benchmark} {treatment} has no cycle data")

@@ -82,6 +82,10 @@ struct Args {
 
     #[clap(long)]
     tiger_ilp: bool,
+    /// Run the original C++ tiger extractor instead of the Rust port (for comparison).
+    /// The ILP modes (--tiger-ilp, --time-ilp) always use the C++ extractor.
+    #[clap(long)]
+    tiger_cpp: bool,
     #[clap(long)]
     time_ilp: bool,
     /// Percentage of regions to run ILP timing on (0.0 to 100.0). Defaults to 100.0.
@@ -159,6 +163,7 @@ fn main() {
             optimize_functions: args.optimize_function.map(|s| once(s.clone()).collect()),
             ablate: args.ablate,
             tiger_ilp: args.tiger_ilp,
+            tiger_cpp: args.tiger_cpp,
             time_ilp: args.time_ilp,
             percent_regions: args.percent_regions,
             ilp_timeout_seconds: args.ilp_timeout_seconds,

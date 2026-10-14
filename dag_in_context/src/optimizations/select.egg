@@ -8,11 +8,11 @@
 
         (ExprIsPure (Get thn i))
         (ExprIsPure (Get els i))
-        
+
         (> 10 (Expr-size (Get thn i))) ; TODO: Tune these size limits
         (> 10 (Expr-size (Get els i)))
-        (= (TCPair t1 c1) (ExtractedExpr (Get thn i)))
-        (= (TCPair t2 c2) (ExtractedExpr (Get els i)))
+        (= t1 (pair-first (ExtractedExpr (Get thn i))))
+        (= t2 (pair-first (ExtractedExpr (Get els i))))
 
         (ContextOf if_e ctx)
        )

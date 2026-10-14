@@ -16,7 +16,7 @@ fn listlike(el_tys: Vec<&str>, el_relations: Vec<&str>) -> String {
   (Nil-{datatype})
   (Cons-{datatype} {tys_s} {datatype}))
 
-(function Length-{datatype} ({datatype}) i64 :no-merge)
+(function Length-{datatype} ({datatype}) i64 :merge old)
 (rule ((= x (Nil-{datatype})))
       ((set (Length-{datatype} x) 0))
       :ruleset always-run)

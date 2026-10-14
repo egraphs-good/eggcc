@@ -2,24 +2,14 @@
 
 (ruleset ivt-analysis)
 
-(sort IVTRes)
-;;                              perm passthrough-perm passthrough-type passthrough-type-len
-(constructor IVTAnalysisRes (Expr Expr             TypeList         i64) IVTRes)
-(constructor IVTMin (IVTRes IVTRes) IVTRes)
-
-(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
-       (<= len1 len2))
-      ((union lhs (IVTAnalysisRes _a _b _c len1)))
-        :ruleset ivt-analysis)
-(rule ((= lhs (IVTMin (IVTAnalysisRes _a _b _c len1) (IVTAnalysisRes _d _e _f len2)))
-       (> len1 len2))
-      ((union lhs (IVTAnalysisRes _d _e _f len2)))
-        :ruleset ivt-analysis)
-
+(sort IVTPayload)
+;;                                      perm passthrough-perm passthrough-type
+(constructor IVTAnalysisPayload (Expr Expr             TypeList) IVTPayload)
+(sort IVTRes (Pair IVTPayload i64))
 
 ;; use an analysis to avoid exploring all combinations of passthrough vs not passed through values. Always prefer not passed through
 ;;                                  expr1 curr  if  result
-(function IVTNewInputsAnalysisImpl (Expr  Expr  Node) IVTRes :merge (IVTMin old new))
+(function IVTNewInputsAnalysisImpl (Expr  Expr  Node) IVTRes :merge (pair-min-by-second-i64 old new))
 
 ;; IVTNewInputsAnalysis computes a permutation perm which corresponds to accessing elements of an if region.
 ;; It also makes accesses of passthrough arguments access new indices after the length of the if region.
@@ -29,7 +19,7 @@
 ;; This new permutation is intended to be used with a substitution argument (Concat if-statement passthrough-args)
 ;; Also produced is a passthrough-perm, which selects all of the passthrough arguments and puts them in a single tuple
 ;;                              expr1 if result
-(function IVTNewInputsAnalysis (Expr  Node) IVTRes :merge (IVTMin old new))
+(function IVTNewInputsAnalysis (Expr  Node) IVTRes :merge (pair-min-by-second-i64 old new))
 
 
 (rule (
@@ -50,23 +40,27 @@
     (let perm (Empty (TmpType) (InFunc "no-ctx")))
     (set
      (IVTNewInputsAnalysisImpl loop-body rest (IfNode if-eclass pred inputs thn else))
-     (IVTAnalysisRes perm perm (TNil) 0))
+     (pair (IVTAnalysisPayload perm perm (TNil)) 0))
 ) :ruleset ivt-analysis)
 
 ;; recursive case for accessing the if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Concat (Single (Get if-eclass ith)) rest))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
     (set (IVTNewInputsAnalysisImpl loop-body rest ifnode)
-         (IVTAnalysisRes new-perm  pperm passthrough-tys len))
+         (pair (IVTAnalysisPayload new-perm pperm passthrough-tys) len))
 ) :ruleset ivt-analysis)
 
 ;; recursive case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Concat (Single (Get (Arg ty ctx) ith)) rest))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
@@ -79,22 +73,26 @@
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
     (set (IVTNewInputsAnalysisImpl loop-body rest ifnode)
-         (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
+         (pair (IVTAnalysisPayload new-perm new-pperm new-passthrough-tys) (+ len 1)))
 ) :ruleset ivt-analysis)
 
 ; base case for accessing if statement
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body (Single last) ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body (Single last) ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= last (Get if-eclass ith))
 ) (
     (let new-perm (Concat perm (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith))))
-    (set (IVTNewInputsAnalysis loop-body ifnode) (IVTAnalysisRes new-perm pperm passthrough-tys len))
+    (set (IVTNewInputsAnalysis loop-body ifnode) (pair (IVTAnalysisPayload new-perm pperm passthrough-tys) len))
 ) :ruleset ivt-analysis)
 
 ; base case for accessing a passed-through argument
 (rule (
-    (= (IVTNewInputsAnalysisImpl loop-body curr ifnode) (IVTAnalysisRes perm pperm passthrough-tys len))
+    (= ivt-res (IVTNewInputsAnalysisImpl loop-body curr ifnode))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first ivt-res))
+    (= len (pair-second ivt-res))
     (= ifnode (IfNode if-eclass pred inputs then else))
     (= curr (Single (Get (Arg ty ctx) ith)))
     (= (Get loop-body (+ ith 1)) (Get curr 0))
@@ -106,7 +104,7 @@
     (let original-get-index (Single (Get (Arg (TmpType) (InFunc "no-ctx")) ith)))
     (let new-pperm (Concat pperm original-get-index))
     (let new-passthrough-tys (TLConcat passthrough-tys (TCons new-ty (TNil))))
-    (set (IVTNewInputsAnalysis loop-body ifnode) (IVTAnalysisRes new-perm new-pperm new-passthrough-tys (+ len 1)))
+    (set (IVTNewInputsAnalysis loop-body ifnode) (pair (IVTAnalysisPayload new-perm new-pperm new-passthrough-tys) (+ len 1)))
 ) :ruleset ivt-analysis)
 
 
@@ -114,7 +112,7 @@
 
 (rule (
     (= loop (DoWhile inpW outW))
-    (= (IVTNewInputsAnalysis outW ifnode) (IVTAnalysisRes perm pperm passthrough-tys _len))
+    (= (IVTAnalysisPayload perm pperm passthrough-tys) (pair-first (IVTNewInputsAnalysis outW ifnode)))
     (= ifnode (IfNode if if-cond if-inputs then else))
     (= if-inputs-len (tuple-length if-inputs))
     (= passthrough-len (TypeList-length passthrough-tys))

@@ -6,7 +6,7 @@
 ;; speeds up the InvCodeMotionCandidate relation by removing indirection
 (relation ExtractedExprCache (Term Expr Assumption))
 
-(rule ((= (TCPair t1 c1) (ExtractedExpr e1))
+(rule ((= t1 (pair-first (ExtractedExpr e1)))
        (ContextOf e1 ctx1))
       ((ExtractedExprCache t1 e1 ctx1))
       :ruleset cicm-index)
@@ -28,25 +28,24 @@
 
         (= e1 (Uop o x))
         (HasType e1 (Base ty))
-        (= (TCPair t1 c1) (ExtractedExpr e1))
+        (= t1 (pair-first (ExtractedExpr e1)))
         (> 10 (Expr-size e1))
         (ExprIsPure e1)
         (ContextOf e1 (InIf true pred orig_ins))
 
         (= e2 (Uop o y))
         (HasType e2 (Base ty))
-        (= (TCPair t2 c2) (ExtractedExpr e2))
+        (= t1 (pair-first (ExtractedExpr e2)))
         (> 10 (Expr-size e2))
         (ExprIsPure e2)
         (ContextOf e2 (InIf false pred orig_ins))
 
-        (= t1 t2)
         (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
-        (let new_term (TermSubst outer_ctx orig_ins t1)) 
-        
+        (let new_term (TermSubst outer_ctx orig_ins t1))
+
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
@@ -63,11 +62,11 @@
         ; New regions
         (let new_thn (Subst if_tr st_tr thn))
         (let new_els (Subst if_fa st_fa els))
-        
+
         ; Union the new arg with the original expr in each branch
         (union (Get (Arg new_ins_ty if_tr) orig_ins_len) (Subst if_tr st_tr e1))
         (union (Get (Arg new_ins_ty if_fa) orig_ins_len) (Subst if_fa st_fa e2))
-        
+
         ; Subsume the original exprs now that the new arg is there
         ; Doing this prevents us from pulling the same exprs out of the new if
         ; Can only subsume an e-node (not an e-class), and we don't want to
@@ -87,7 +86,7 @@
       )
     :ruleset cicm)
 
-       
+
 
 (rule (
         (InvCodeMotionCandidate e1 e2)
@@ -99,28 +98,27 @@
         (ContextOf e1 (InIf true pred orig_ins))
         (ContextOf e2 (InIf false pred orig_ins))
         (= e1 (Bop o x1 y1))
-        
+
         (= e2 (Bop o x2 y2))
-        
-        (= (TCPair t1 c1) (ExtractedExpr e1))
+
+        (= t1 (pair-first (ExtractedExpr e1)))
         (> 10 (Expr-size e1))
         (ExprIsPure e1)
         (HasType e1 (Base ty))
-        
 
-        
+
+
         (HasType e2 (Base ty))
-        (= (TCPair t2 c2) (ExtractedExpr e2))
+        (= t1 (pair-first (ExtractedExpr e2)))
         (> 10 (Expr-size e2))
         (ExprIsPure e2)
 
-        (= t1 t2)
         (= orig_ins_len (TypeList-length tylist))
       )
       (
         ; pull the term out to the outer context
-        (let new_term (TermSubst outer_ctx orig_ins t1)) 
-        
+        (let new_term (TermSubst outer_ctx orig_ins t1))
+
         ; Add it as an input to the new if
         (let new_ins (Concat orig_ins (Single new_term)))
         (let new_ins_ty (TupleT (TLConcat tylist (TCons ty (TNil)))))
@@ -137,11 +135,11 @@
         ; New regions
         (let new_thn (Subst if_tr st_tr thn))
         (let new_els (Subst if_fa st_fa els))
-        
+
         ; Union the new arg with the original expr in each branch
         (union (Get (Arg new_ins_ty if_tr) orig_ins_len) (Subst if_tr st_tr e1))
         (union (Get (Arg new_ins_ty if_fa) orig_ins_len) (Subst if_fa st_fa e2))
-        
+
         ; Subsume the original exprs now that the new arg is there
         ; Doing this prevents us from pulling the same exprs out of the new if
         ; Can only subsume an e-node (not an e-class), and we don't want to
@@ -160,4 +158,3 @@
         (union if_e (If pred new_ins new_thn new_els))
       )
     :ruleset cicm)
-

@@ -12,7 +12,7 @@
 (rewrite (ExprSet-insert (ES set1) x)
          (ES (set-insert set1 x))
          :ruleset memory-helpers)
-(function ExprSet-length (ExprSet) i64 :no-merge)
+(function ExprSet-length (ExprSet) i64 :merge old)
 (rule ((ES set1))
       ((set (ExprSet-length (ES set1)) (set-length set1)))
       :ruleset memory-helpers)
@@ -291,8 +291,8 @@
            (AddIntIntervalToPtrPointees
              (MkIntInterval (I lo) (I hi))
              (UnwrapPtrPointsTo (PointsToCells x aps))))
-         :when ((= (IntB lo) (lo-bound e))
-                (= (IntB hi) (hi-bound e)))
+         :when ((= lo (either-unwrap-left (maybe-unwrap (lo-bound e))))
+                (= hi (either-unwrap-left (maybe-unwrap (hi-bound e)))))
          :ruleset memory-helpers)
 
 (rewrite (PointsToCells (If c inputs t e) aps)
@@ -331,7 +331,7 @@
       :ruleset memory-helpers)
 
 ; avoid quadratic query
-(function succ (i64) i64 :no-merge)
+(function succ (i64) i64 :merge old)
 (rule ((PointsToCellsAtIter aps inputs pred-body i))
       ((set (succ i) (+ i 1)))
       :ruleset memory-helpers)

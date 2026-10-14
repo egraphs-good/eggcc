@@ -865,18 +865,9 @@ impl Run {
                     eggcc_config.use_context,
                     eggcc_config.disable_hacker_rules,
                 );
-                let mut egraph = egglog::new_experimental_egraph();
-                let resolved = egraph
-                    .resolve_program(None, &egglog)
-                    .map_err(EggCCError::EggLog)?;
-                let desugared_egglog = egglog::ast::sanitize_internal_names(&resolved)
-                    .iter()
-                    .map(|cmd| cmd.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n");
                 (
                     vec![Visualization {
-                        result: desugared_egglog,
+                        result: egglog,
                         file_extension: ".egg".to_string(),
                         name: "".to_string(),
                     }],

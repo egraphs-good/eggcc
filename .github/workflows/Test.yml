@@ -12,7 +12,8 @@ jobs:
     - run: sudo apt install graphviz 
     - run: ./install_ubuntu.sh
     - uses: Swatinem/rust-cache@v2
-    - run: cargo install cargo-insta
+    # --locked: the latest dependencies can need a newer rustc than rust-toolchain pins.
+    - run: cargo install cargo-insta --locked
     - run: make runtime
     - run: make test
   nits:

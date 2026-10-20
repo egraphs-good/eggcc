@@ -91,9 +91,9 @@ impl TreeCostModel<DefaultCost> for EggccRegionCosts {
     fn fold_enode_cost(&self, boundary: Boundary, child_costs: &[DefaultCost]) -> DefaultCost {
         let regions = match (boundary.kind, child_costs) {
             // (If pred inputs then else)
-            (BoundaryKind::If, &[_, _, then_cost, else_cost]) => {
-                then_cost.max(else_cost) + (then_cost.min(else_cost) >> 2)
-            }
+            (BoundaryKind::If, &[_, _, then_cost, else_cost]) => then_cost
+                .max(else_cost)
+                .saturating_add(then_cost.min(else_cost) >> 2),
             // (DoWhile inputs body); could be improved by plumbing in the
             // loop iteration analysis.
             (BoundaryKind::DoWhile, &[_, body]) => body.saturating_mul(500),

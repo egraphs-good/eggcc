@@ -82,7 +82,8 @@ struct Args {
 
     #[clap(long)]
     tiger_ilp: bool,
-    /// Run the original C++ tiger extractor instead of the Rust port (for comparison).
+    /// Run the C++ tiger extractor instead of egglog-experimental's effect-safe extractor
+    /// (for comparison).
     /// The ILP modes (--tiger-ilp, --time-ilp) always use the C++ extractor.
     #[clap(long)]
     tiger_cpp: bool,

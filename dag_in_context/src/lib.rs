@@ -342,7 +342,7 @@ pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
 }
 
 /// Serialize the e-graph. Only needed for the C++ tiger binary and for
-/// `--egraph-out-dir`; the Rust extractor reads the egglog e-graph directly.
+/// `--egraph-out-dir`; the effect-safe extractor reads the egglog e-graph directly.
 pub fn serialized_egraph(egglog_egraph: &egglog::EGraph) -> egraph_serialize::EGraph {
     let config = SerializeConfig::default();
     egglog_egraph.serialize(config).egraph
@@ -352,7 +352,7 @@ fn has_debug_exprs(egraph: &egglog::EGraph) -> bool {
     egraph.get_function("DebugExpr").is_some() && egraph.get_size("DebugExpr") > 0
 }
 
-/// Adds the program to the egraph and extracts it with tiger.
+/// Adds the program to the egraph and extracts it again.
 /// Checks that the extracted program is the same as the input program.
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let fns = program.fns();
@@ -724,7 +724,7 @@ fn diagnose_tiger_egraph(egraph: &egraph_serialize::EGraph, batch: &[String]) ->
 
 // Run the C++ tiger extractor (built by build.rs) as a subprocess on the
 // serialized e-graph. This is the reference extractor and the only one with
-// ILP support; the default path is `extract_with_tiger_rs`.
+// ILP support; the default path is `extract_with_effsafe`.
 fn run_tiger_pipeline(
     eggcc_config: &EggccConfig,
     original_prog: &TreeProgram,
@@ -1057,7 +1057,7 @@ pub fn optimize(
             let mut egraph = new_single_threaded_egraph();
             egraph.parse_and_run_program(None, &egglog_prog)?;
 
-            // The Rust extractor reads the egglog e-graph directly; serialization is
+            // The effect-safe extractor reads the egglog e-graph directly; serialization is
             // only needed for the C++ extractor and for dumping.
             let needs_serialized =
                 eggcc_config.uses_cpp_tiger() || eggcc_config.egraph_dump_dir.is_some();

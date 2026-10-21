@@ -1,6 +1,8 @@
 # eggcc
 
 See the talk on eggcc here: https://www.youtube.com/watch?v=nYucEGRk4Kk
+
+
 See the paper on eggcc and it's extraction algorithm here: https://arxiv.org/abs/2609.31887
 
 

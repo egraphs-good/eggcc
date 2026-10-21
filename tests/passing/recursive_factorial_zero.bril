@@ -1,0 +1,20 @@
+# ARGS: 0
+@main(n: int) {
+  result: int = call @factorial n;
+  print result;
+}
+
+@factorial(n: int): int {
+  zero: int = const 0;
+  is_zero: bool = eq n zero;
+  br is_zero .base .recursive;
+.base:
+  one: int = const 1;
+  ret one;
+.recursive:
+  one: int = const 1;
+  previous: int = sub n one;
+  partial: int = call @factorial previous;
+  result: int = mul n partial;
+  ret result;
+}

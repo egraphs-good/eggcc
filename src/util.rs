@@ -532,6 +532,7 @@ impl Run {
 
         // also test no context mode
         let mut no_ctx = Run::new(prog.clone(), RunMode::Optimize);
+        no_ctx.interp = InterpMode::Interp;
         no_ctx.eggcc_config = Self::test_eggcc_config();
         no_ctx.eggcc_config.use_context = false;
         res.push(no_ctx);

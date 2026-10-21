@@ -117,7 +117,6 @@
    (let new-extra
     (Subst fresh-ctx
            (SubTuple (Arg loop-ty fresh-ctx) 0 always-runs-len) extra))
-   ;; acc starts at 0
    (let loop-inputs
      (Concat (Arg start-ty (InIf true pred always-runs)) (Single (Const (Int initial-int) start-ty (InIf true pred always-runs)))))
    (let loop-outputs
@@ -125,9 +124,7 @@
          (Single (Subst fresh-ctx new-rec-case pred))
          (Concat
            (Subst fresh-ctx new-rec-case always-runs)
-           ;; add extra to acc
            (Single (Bop acc-op (Get (Arg loop-ty fresh-ctx) always-runs-len) new-extra)))))
-   ;; loop starts at zero, adds extra each iteration
    (let loop
      (DoWhile loop-inputs loop-outputs))
    ;; union fresh-ctx
@@ -138,12 +135,11 @@
          loop
          (Concat
            (Arg start-ty (InIf false pred always-runs))
-           ;; otherwise acc is 0
-           (Single (Const (Int 0) start-ty (InIf false pred always-runs))))))
+           ;; A skipped loop keeps the operator's initial accumulator.
+           (Single (Const (Int initial-int) start-ty (InIf false pred always-runs))))))
    ;; base case over latest start value
    (let new-base-case
      (Subst body-ctx (SubTuple outer-if 0 always-runs-len) base-case))
-   ;; add base case to acc
    (let res
      (Concat
       (Single (Bop base-case-op (Get new-base-case 0) (Get outer-if always-runs-len)))

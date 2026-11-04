@@ -783,7 +783,7 @@ impl Run {
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
                 //println!("{}", program);
-                let mut egraph = egglog::new_experimental_egraph();
+                let mut egraph = egglog::EGraph::default();
                 egraph.parse_and_run_program(None, &program).unwrap();
                 (vec![], None, EggccTimeStatistics::default())
             }
@@ -865,7 +865,7 @@ impl Run {
                     eggcc_config.use_context,
                     eggcc_config.disable_hacker_rules,
                 );
-                let mut egraph = egglog::new_experimental_egraph();
+                let mut egraph = egglog::EGraph::default();
                 let resolved = egraph
                     .resolve_program(None, &egglog)
                     .map_err(EggCCError::EggLog)?;

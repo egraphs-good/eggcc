@@ -63,7 +63,7 @@ fn new_single_threaded_egraph() -> egglog::EGraph {
             .num_threads(1)
             .build_global();
     });
-    egglog::new_experimental_egraph()
+    egglog::EGraph::default()
 }
 
 fn prologue_for_config(config: &EggccConfig) -> String {

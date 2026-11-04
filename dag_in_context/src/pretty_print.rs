@@ -118,7 +118,7 @@ impl PrettyPrinter {
         let binding = pp.mk_fresh("EXPR".into());
         let bounded_expr = format!("(let {} {})", binding.clone(), str_expr);
         let prog = prologue().to_owned() + &bounded_expr;
-        let mut egraph = egglog::new_experimental_egraph();
+        let mut egraph = egglog::EGraph::default();
         egraph.parse_and_run_program(None, &prog).unwrap();
         let (sort, value) = egraph
             .eval_expr(&egglog::ast::Expr::Var(Span::Panic, binding.clone()))

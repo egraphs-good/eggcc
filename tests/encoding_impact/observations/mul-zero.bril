@@ -1,0 +1,14 @@
+# ARGS: 0
+# New minimized valid-input wrapping-i64 sign-bound reproducer.
+@main(x: int) {
+  zero: int = const 0;
+  two: int = const 2;
+  positive: bool = lt zero x;
+  br positive .positive .done;
+.positive:
+  product: int = mul x two;
+  answer: bool = lt product zero;
+  print answer;
+.done:
+  ret;
+}

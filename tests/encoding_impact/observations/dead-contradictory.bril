@@ -1,0 +1,20 @@
+# ARGS: 1
+@main(x: int) {
+ zero: int = const 0;
+ two: int = const 2;
+ positive: bool = lt zero x;
+ br positive .outer .done;
+.outer:
+ negative: bool = lt x zero;
+ br negative .dead .live;
+.dead:
+ product: int = mul x two;
+ bad: bool = lt product zero;
+ print bad;
+ jmp .done;
+.live:
+ good: bool = lt x two;
+ print good;
+.done:
+ ret;
+}

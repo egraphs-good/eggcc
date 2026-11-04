@@ -1,0 +1,19 @@
+# ARGS: -1
+# New source-derived sign-bound falsifier: interval_analysis.egg:159-168.
+@main(x: int) {
+  zero: int = const 0;
+  two: int = const 2;
+  positive: bool = lt zero x;
+  br positive .positive .other;
+.positive:
+  product: int = mul x two;
+  wrapped_negative: bool = lt product zero;
+  print wrapped_negative;
+  jmp .done;
+.other:
+  no: bool = const false;
+  print no;
+  jmp .done;
+.done:
+  ret;
+}

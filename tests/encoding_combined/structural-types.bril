@@ -1,0 +1,14 @@
+@identity(tag: int, pointer: ptr<int>): ptr<int> {
+  ret pointer;
+}
+
+@main() {
+  one: int = const 1;
+  value: int = const 7;
+  pointer: ptr<int> = alloc one;
+  store pointer value;
+  alias: ptr<int> = call @identity value pointer;
+  loaded: int = load alias;
+  print loaded;
+  free pointer;
+}

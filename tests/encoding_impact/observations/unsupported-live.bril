@@ -1,0 +1,17 @@
+# ARGS: -2
+@main(x: int) {
+ zero: int = const 0;
+ two: int = const 2;
+ positive: bool = lt zero x;
+ br positive .supported .unsupported;
+.supported:
+ good: bool = lt x two;
+ print good;
+ jmp .done;
+.unsupported:
+ q: int = div x two;
+ bad: bool = lt q zero;
+ print bad;
+.done:
+ ret;
+}

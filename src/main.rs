@@ -1,5 +1,5 @@
-use clap::Parser;
-use dag_in_context::{EggccConfig, IlpSolver, Schedule};
+use clap::{CommandFactory, Parser};
+use dag_in_context::{EggccConfig, IlpSolver, ObservationMode, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
@@ -103,6 +103,15 @@ struct Args {
     /// Choose which ILP solver to use when running the tiger extractor.
     #[clap(long, value_enum, default_value_t = IlpSolver::Gurobi)]
     ilp_solver: IlpSolver,
+    /// Restricted feasible-path Bool translation validator (diagnostic, opt-in).
+    #[clap(long, value_enum, default_value_t = ObservationMode::Off)]
+    observations: ObservationMode,
+    /// Evidence root; each enabled invocation retains a unique persistent child.
+    #[clap(long)]
+    observation_evidence_dir: Option<PathBuf>,
+    /// Read-only E1 query-coverage probe before source rules (Injective only; not for cost runs).
+    #[clap(long)]
+    observation_prepass_probe: bool,
 }
 
 fn main() {
@@ -135,7 +144,7 @@ fn main() {
         None => panic!("could not parse file extension"),
     };
 
-    let run = Run {
+    let mut run = Run {
         prog_with_args: file.read_program(),
         test_type: args.run_mode,
         interp: if args.interp {
@@ -164,8 +173,19 @@ fn main() {
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,
+            observations: None,
         },
     };
+
+    if let Err(error) = run.configure_observations(
+        args.observations,
+        args.observation_evidence_dir,
+        args.observation_prepass_probe,
+    ) {
+        Args::command()
+            .error(clap::error::ErrorKind::InvalidValue, error)
+            .exit();
+    }
 
     let mut result = match run.run() {
         Ok(result) => result,

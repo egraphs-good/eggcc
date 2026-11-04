@@ -1,0 +1,13 @@
+# ARGS: 2
+@main(x: int) {
+  zero: int = const 0;
+  one: int = const 1;
+  positive: bool = lt zero x;
+  br positive .positive .done;
+.positive:
+  shifted: int = add x one;
+  answer: bool = lt shifted zero;
+  print answer;
+.done:
+  ret;
+}

@@ -20,6 +20,8 @@ pub(crate) mod rvsdg;
 pub mod util;
 
 #[cfg(test)]
+mod observation_tests;
+#[cfg(test)]
 pub(crate) mod test_util;
 
 #[derive(Debug, Error)]

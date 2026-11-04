@@ -1,6 +1,71 @@
 #[cfg(test)]
 use crate::{ast::*, egglog_test, interpreter::*, schema::*};
 
+#[test]
+fn arithmetic_interval_guard_preserves_bounded_nonwrapping_ranges() {
+    for (op, la, ha, lb, hb, lo, hi) in [
+        ("Add", 1, 3, 4, 7, 5, 10),
+        ("Add", -8, -4, -4, -1, -12, -5),
+        ("Add", i64::MIN, i64::MIN, 1, 1, i64::MIN + 1, i64::MIN + 1),
+        ("Add", i64::MAX - 1, i64::MAX - 1, 1, 1, i64::MAX, i64::MAX),
+        ("Sub", 1, 3, -5, -2, 3, 8),
+        ("Sub", -8, -4, 1, 2, -10, -5),
+        ("Sub", i64::MIN + 1, i64::MIN + 1, 1, 1, i64::MIN, i64::MIN),
+        ("Sub", i64::MAX, i64::MAX, 1, 1, i64::MAX - 1, i64::MAX - 1),
+    ] {
+        let mut graph = crate::new_single_threaded_egraph();
+        graph
+            .parse_and_run_program(
+                None,
+                &format!(
+                    "{}\n\
+             (let arg (Arg (TupleT (TCons (IntT) (TCons (IntT) (TNil)))) (InFunc \"bounds\")))\n\
+             (let a (Get arg 0)) (let b (Get arg 1)) (let result (Bop ({op}) a b))\n\
+             (set (lo-bound a) (IntB {la})) (set (hi-bound a) (IntB {ha}))\n\
+             (set (lo-bound b) (IntB {lb})) (set (hi-bound b) (IntB {hb}))\n\
+             (run-schedule (saturate interval-analysis))\n\
+             (check (= (lo-bound result) (IntB {lo})))\n\
+             (check (= (hi-bound result) (IntB {hi})))",
+                    crate::prologue()
+                ),
+            )
+            .unwrap();
+    }
+}
+
+#[test]
+fn arithmetic_interval_guard_declines_missing_nonnumeric_or_wrapping_ranges() {
+    for (op, bounds) in [
+        ("Add", "(set (lo-bound a) (IntB 1)) (set (lo-bound b) (IntB 1))".to_owned()),
+        ("Add", "(set (hi-bound a) (IntB 1)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Sub", "(set (hi-bound a) (IntB -1)) (set (lo-bound b) (IntB 1))".to_owned()),
+        ("Sub", "(set (lo-bound a) (IntB -1)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Add", "(set (lo-bound a) (Dead)) (set (hi-bound a) (Dead)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Sub", "(set (lo-bound a) (Dead)) (set (hi-bound a) (Dead)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Add", "(set (lo-bound a) (BoolB false)) (set (hi-bound a) (BoolB true)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Sub", "(set (lo-bound a) (BoolB false)) (set (hi-bound a) (BoolB true)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        // Mixed-kind combinators stay symbolic: interval-analysis has no matching reduction.
+        ("Add", "(set (lo-bound a) (bound-max (IntB 0) (BoolB false))) (set (hi-bound a) (IntB 1)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Sub", "(set (lo-bound a) (bound-max (IntB 0) (BoolB false))) (set (hi-bound a) (IntB 1)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 1))".to_owned()),
+        ("Add", format!("(set (lo-bound a) (IntB 1)) (set (hi-bound a) (IntB {})) (set (lo-bound b) (IntB 1)) (set (hi-bound b) (IntB 1))", i64::MAX)),
+        ("Add", format!("(set (lo-bound a) (IntB {})) (set (hi-bound a) (IntB -1)) (set (lo-bound b) (IntB -1)) (set (hi-bound b) (IntB -1))", i64::MIN)),
+        ("Sub", format!("(set (lo-bound a) (IntB {})) (set (hi-bound a) (IntB -1)) (set (lo-bound b) (IntB 1)) (set (hi-bound b) (IntB 1))", i64::MIN)),
+        ("Sub", format!("(set (lo-bound a) (IntB 1)) (set (hi-bound a) (IntB {})) (set (lo-bound b) (IntB -1)) (set (hi-bound b) (IntB -1))", i64::MAX)),
+        ("Add", "(set (lo-bound a) (IntB 3)) (set (hi-bound a) (IntB 1)) (set (lo-bound b) (IntB 0)) (set (hi-bound b) (IntB 0))".to_owned()),
+    ] {
+        let mut graph = crate::new_single_threaded_egraph();
+        graph.parse_and_run_program(None, &format!(
+            "{}\n\
+             (let arg (Arg (TupleT (TCons (IntT) (TCons (IntT) (TNil)))) (InFunc \"bounds\")))\n\
+             (let a (Get arg 0)) (let b (Get arg 1)) (let result (Bop ({op}) a b))\n\
+             {bounds}\n\
+             (run-schedule (saturate interval-analysis))\n\
+             (fail (check (= bound (lo-bound result))))\n\
+             (fail (check (= bound (hi-bound result))))", crate::prologue()
+        )).unwrap();
+    }
+}
+
 #[cfg(test)]
 fn int_interval_test(
     inp: RcExpr,

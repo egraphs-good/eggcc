@@ -425,6 +425,8 @@ pub struct RunResult {
     pub eggcc_serialization_time: Duration,
     /// Per-region timings collected from the tiger extractor.
     pub extract_region_timings: Vec<ExtractRegionTiming>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observation_evidence: Option<dag_in_context::ObservationEvidence>,
 }
 
 impl Run {
@@ -595,6 +597,40 @@ impl Run {
         }
 
         name
+    }
+
+    pub fn configure_observations(
+        &mut self,
+        mode: dag_in_context::ObservationMode,
+        evidence_dir: Option<std::path::PathBuf>,
+    ) -> Result<(), String> {
+        use dag_in_context::{ObservationConfig, ObservationMode};
+        if mode == ObservationMode::Off {
+            if evidence_dir.is_some() {
+                return Err(
+                    "observation evidence/probe requires an enabled observation mode".into(),
+                );
+            }
+            self.eggcc_config.observations = None;
+            return Ok(());
+        }
+        if self.test_type != RunMode::Optimize
+            || !self.eggcc_config.use_context
+            || self.eggcc_config.ablate.is_some()
+        {
+            return Err(
+                "observations require --run-mode optimize --with-context and no --ablate".into(),
+            );
+        }
+        let mut input = Optimizer::parse_arguments(self.prog_with_args.args.clone());
+        input.push(dag_in_context::interpreter::Value::StateV);
+        self.eggcc_config.observations = Some(ObservationConfig {
+            mode,
+            root_inputs: vec![dag_in_context::interpreter::Value::Tuple(input)],
+            evidence_dir: evidence_dir
+                .ok_or("enabled observations require --observation-evidence-dir")?,
+        });
+        Ok(())
     }
 
     pub fn run(&self) -> Result<RunResult, EggCCError> {
@@ -770,15 +806,8 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let tree = rvsdg.to_dag_encoding();
-                let unfolded_program = build_program(
-                    &tree,
-                    None,
-                    &tree.fns(),
-                    "",
-                    self.eggcc_config.ablate.as_deref(),
-                    self.eggcc_config.use_context,
-                    self.eggcc_config.disable_hacker_rules,
-                );
+                let unfolded_program =
+                    build_program(&tree, None, &tree.fns(), "", &self.eggcc_config, 0, None);
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -861,13 +890,13 @@ impl Run {
                     inline_program,
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
-                    eggcc_config.ablate.as_deref(),
-                    eggcc_config.use_context,
-                    eggcc_config.disable_hacker_rules,
+                    &eggcc_config,
+                    cutoff,
+                    None,
                 );
                 let mut egraph = egglog::new_experimental_egraph();
                 let resolved = egraph
-                    .resolve_program(None, &egglog)
+                    .resolve_program(None, &egglog.to_string())
                     .map_err(EggCCError::EggLog)?;
                 let desugared_egglog = egglog::ast::sanitize_internal_names(&resolved)
                     .iter()
@@ -1032,6 +1061,7 @@ impl Run {
             eggcc_extraction_time: time_statistics.eggcc_extraction_time,
             eggcc_serialization_time: time_statistics.eggcc_serialization_time,
             extract_region_timings: time_statistics.extract_region_timings,
+            observation_evidence: time_statistics.observation_evidence,
         })
     }
 

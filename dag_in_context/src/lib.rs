@@ -34,7 +34,9 @@ pub mod dag_typechecker;
 pub mod from_egglog;
 pub mod interpreter;
 pub(crate) mod interval_analysis;
+mod observations;
 mod optimizations;
+pub use observations::{ObservationConfig, ObservationEvidence, ObservationMode};
 mod remove_context;
 mod remove_dead_code_nodes;
 pub mod schema;
@@ -206,15 +208,42 @@ pub fn print_with_intermediate_vars(termdag: &TermDag, term: TermId) -> String {
 // Adds context to the program before optimizing.
 // If `inline_program` is true, it also inlines calls in `fns`.
 // `inline_program` is the program to inline calls from, allowing us to inline unoptimized function bodies.
+pub struct BuiltProgram {
+    pub initialization: String,
+    pub schedule: String,
+    observations: Option<observations::PreparedObservations>,
+}
+
+impl std::fmt::Display for BuiltProgram {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}\n; Schedule\n{}\n",
+            self.initialization, self.schedule
+        )
+    }
+}
+
 pub fn build_program(
     program: &TreeProgram,
     inline_program: Option<&TreeProgram>,
     fns: &[String],
     schedule: &str,
-    ablate: Option<&str>,
-    use_context: bool,
-    disable_hacker_rules: bool,
-) -> String {
+    config: &EggccConfig,
+    pass: usize,
+    observation_evidence: Option<&ObservationEvidence>,
+) -> BuiltProgram {
+    if config
+        .observations
+        .as_ref()
+        .is_some_and(|o| o.mode != ObservationMode::Off)
+    {
+        assert!(config.use_context, "observations require actual contexts");
+        assert!(
+            config.ablate.is_none(),
+            "observations do not support CLI ablation"
+        );
+    }
     // inlining first before adding context
     let to_inline = inline_program.unwrap_or(program);
     let inlined = if inline_program.is_some() {
@@ -228,7 +257,7 @@ pub fn build_program(
     };
 
     // Then add context or dummy context based on flag
-    let (program, context_cache) = if use_context {
+    let (program, context_cache) = if config.use_context {
         inlined.add_context()
     } else {
         inlined.add_dummy_ctx()
@@ -270,28 +299,52 @@ pub fn build_program(
         .unwrap();
     }
 
+    let prepared_observations = config
+        .observations
+        .as_ref()
+        .filter(|o| o.mode != ObservationMode::Off)
+        .map(|observations| {
+            observations::PreparedObservations::prepare(
+                &program,
+                fns,
+                observations,
+                pass,
+                observation_evidence,
+                &mut tree_state,
+                &mut term_cache,
+                &mut printed,
+            )
+        });
     let config_for_prologue = EggccConfig {
-        disable_hacker_rules,
+        disable_hacker_rules: config.disable_hacker_rules,
         ..EggccConfig::default()
     };
     let mut prologue = prologue_for_config(&config_for_prologue);
     let mut schedule = schedule.to_string();
 
-    if let Some(ablate) = ablate {
+    if let Some(ablate) = config.ablate.as_deref() {
         prologue = ablate_prologue(&prologue, ablate);
         schedule = ablate_schedule(&schedule, ablate);
     }
 
-    let prologue = if !use_context {
+    let prologue = if !config.use_context {
         remove_new_contexts(&prologue)
     } else {
         prologue
     };
 
-    format!(
+    let observation_declarations = prepared_observations
+        .as_ref()
+        .map(|o| o.declarations.as_str())
+        .unwrap_or("");
+    let observation_initialization = prepared_observations
+        .as_ref()
+        .map(|o| o.initialization.as_str())
+        .unwrap_or("");
+    let initialization = format!(
         "
 ; Prologue
-{prologue}
+{prologue}{observation_declarations}
 
 ; required by function_inlining_unoins
 ; Function inlining unions
@@ -300,7 +353,7 @@ pub fn build_program(
 (ruleset initialization)
 (rule () (
     ; Program nodes
-    {printed}
+    {printed}{observation_initialization}
 
     ; Loop context unions
     {loop_context_unions}
@@ -309,11 +362,13 @@ pub fn build_program(
     {function_inlining_unions}
 ) :ruleset initialization)
 (run initialization 1) 
-
-; Schedule
-{schedule}
 "
-    )
+    );
+    BuiltProgram {
+        initialization,
+        schedule,
+        observations: prepared_observations,
+    }
 }
 
 pub fn are_progs_eq(program1: TreeProgram, program2: TreeProgram) -> bool {
@@ -344,11 +399,21 @@ fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let fns = program.fns();
     let schedule = format!("\n(run-schedule\n   {})", schedule::types_only());
-    let egglog_prog = build_program(program, None, &fns, &schedule, None, true, false);
+    let egglog_prog = build_program(
+        program,
+        None,
+        &fns,
+        &schedule,
+        &EggccConfig::default(),
+        0,
+        None,
+    );
 
     log::info!("Running egglog program...");
     let mut egraph = new_single_threaded_egraph();
-    egraph.parse_and_run_program(None, &egglog_prog).unwrap();
+    egraph
+        .parse_and_run_program(None, &egglog_prog.to_string())
+        .unwrap();
 
     let serialized = serialized_egraph(egraph);
     let config = EggccConfig::default();
@@ -408,6 +473,8 @@ pub struct EggccConfig {
     pub ilp_solver: IlpSolver,
     /// When set, dump the serialized e-graphs sent to tiger into this directory.
     pub egraph_dump_dir: Option<PathBuf>,
+    /// Bounded feasible Boolean observations; None/Off preserves the pipeline.
+    pub observations: Option<ObservationConfig>,
 }
 
 fn default_true() -> bool {
@@ -449,6 +516,7 @@ pub struct EggccTimeStatistics {
     pub eggcc_extraction_time: Duration,
     pub eggcc_serialization_time: Duration,
     pub extract_region_timings: Vec<ExtractRegionTiming>,
+    pub observation_evidence: Option<ObservationEvidence>,
 }
 
 impl Default for EggccTimeStatistics {
@@ -457,6 +525,7 @@ impl Default for EggccTimeStatistics {
             eggcc_extraction_time: Duration::from_millis(0),
             eggcc_serialization_time: Duration::from_millis(0),
             extract_region_timings: vec![],
+            observation_evidence: None,
         }
     }
 }
@@ -497,6 +566,7 @@ impl Default for EggccConfig {
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,
+            observations: None,
         }
     }
 }
@@ -912,6 +982,19 @@ pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<(TreeProgram, EggccTimeStatistics), egglog::Error> {
+    let invocation = eggcc_config
+        .observations
+        .as_ref()
+        .filter(|o| o.mode != ObservationMode::Off)
+        .map(observations::allocate_invocation)
+        .transpose()?;
+    let configured = invocation.as_ref().map(|(observations, _)| {
+        let mut config = eggcc_config.clone();
+        config.observations = Some(observations.clone());
+        config
+    });
+    let eggcc_config = configured.as_ref().unwrap_or(eggcc_config);
+    let observation_evidence = invocation.as_ref().map(|(_, evidence)| evidence.clone());
     let mut eggcc_serialization_time = Duration::from_millis(0);
     let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.get_schedule_list();
@@ -965,14 +1048,25 @@ pub fn optimize(
                 inline_program.as_ref(),
                 &batch,
                 schedule.egglog_schedule(),
-                eggcc_config.ablate.as_deref(),
-                eggcc_config.use_context,
-                eggcc_config.disable_hacker_rules,
+                eggcc_config,
+                i,
+                observation_evidence.as_ref(),
             );
 
             log::info!("Running egglog program...");
             let mut egraph = new_single_threaded_egraph();
-            egraph.parse_and_run_program(None, &egglog_prog)?;
+            if let Some(observations) = &egglog_prog.observations {
+                observations.initialize(
+                    &mut egraph,
+                    &egglog_prog.initialization,
+                    &egglog_prog.schedule,
+                )?;
+                observations.run_source(&mut egraph, &egglog_prog.schedule)?;
+                observations.audit(&mut egraph)?;
+                observations.serialization_entry()?;
+            } else {
+                egraph.parse_and_run_program(None, &egglog_prog.to_string())?;
+            }
 
             let serialization_start = Instant::now();
             let serialized = serialized_egraph(egraph);
@@ -1014,8 +1108,14 @@ pub fn optimize(
             iter_result.typecheck();
 
             res = iter_result;
+            if let Some(evidence) = &observation_evidence {
+                evidence.update(Some(i), "native-round-trip-complete", None)?;
+            }
 
             if has_debug_exprs {
+                if let Some(evidence) = &observation_evidence {
+                    evidence.update(None, "optimizer-complete", Some("complete"))?;
+                }
                 log::info!("Program has debug expressions, stopping pass {}.", i);
                 return Ok((
                     res,
@@ -1023,10 +1123,14 @@ pub fn optimize(
                         eggcc_extraction_time,
                         eggcc_serialization_time,
                         extract_region_timings,
+                        observation_evidence,
                     },
                 ));
             }
         }
+    }
+    if let Some(evidence) = &observation_evidence {
+        evidence.update(None, "optimizer-complete", Some("complete"))?;
     }
     Ok((
         res,
@@ -1034,6 +1138,7 @@ pub fn optimize(
             eggcc_extraction_time,
             eggcc_serialization_time,
             extract_region_timings,
+            observation_evidence,
         },
     ))
 }

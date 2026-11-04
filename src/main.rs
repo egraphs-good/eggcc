@@ -1,5 +1,5 @@
-use clap::Parser;
-use dag_in_context::{EggccConfig, IlpSolver, Schedule};
+use clap::{CommandFactory, Parser};
+use dag_in_context::{EggccConfig, IlpSolver, ObservationMode, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
@@ -93,6 +93,12 @@ struct Args {
     /// When provided, dump each e-graph we extract from into this directory.
     #[clap(long)]
     egraph_out_dir: Option<PathBuf>,
+    /// Audit reached pure Boolean observations before native extraction.
+    #[clap(long, value_enum, default_value_t = ObservationMode::Off)]
+    observations: ObservationMode,
+    /// Fresh evidence root for enabled observation audits.
+    #[clap(long)]
+    observation_evidence_dir: Option<PathBuf>,
     /// By default,  rules that match on context are disabled. References to context in the rule body are replaced with a dummy context. Finally, any rules that depend on context fundamentally (annotated manually) are skipped.
     /// Using this flag enables all context-aware rules and adds context to the initial program.
     #[clap(long)]
@@ -138,7 +144,7 @@ fn main() {
         None => panic!("could not parse file extension"),
     };
 
-    let run = Run {
+    let mut run = Run {
         prog_with_args: file.read_program(),
         test_type: args.run_mode,
         interp: if args.interp {
@@ -168,8 +174,16 @@ fn main() {
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,
+            observations: None,
         },
     };
+
+    if let Err(error) = run.configure_observations(args.observations, args.observation_evidence_dir)
+    {
+        Args::command()
+            .error(clap::error::ErrorKind::InvalidValue, error)
+            .exit();
+    }
 
     let mut result = match run.run() {
         Ok(result) => result,

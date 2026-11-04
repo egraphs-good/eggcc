@@ -1,0 +1,13 @@
+# ARGS: -9223372036854775808
+@main(x: int) {
+  zero: int = const 0;
+  one: int = const 1;
+  negative: bool = lt x zero;
+  br negative .negative .done;
+.negative:
+  shifted: int = sub x one;
+  answer: bool = lt zero shifted;
+  print answer;
+.done:
+  ret;
+}

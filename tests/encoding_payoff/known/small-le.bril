@@ -1,0 +1,7 @@
+# New source-derived endpoint falsifier: canonicalize.egg:14-38, not a production workload.
+@main {
+  x: int = const -7;
+  answer: bool = le x x;
+  print answer;
+  ret;
+}

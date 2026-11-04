@@ -116,36 +116,37 @@
 ; =================================
 ; Arithmetic
 ; =================================
-; + a b interval is (+ la lb) (+ ha hb)
+; Add/Sub wrap as i64, so signed interval transfer requires both operand
+; ranges and no wrap anywhere in their Cartesian product. The min/max clamps
+; keep threshold arithmetic in range even when the guard does not match.
 (rule (
        (= lhs (Bop (Add) a b))
        (= (IntB la) (lo-bound a))
-       (= (IntB lb) (lo-bound b))
-      )
-      ((set (lo-bound lhs) (IntB (+ la lb))))
-      :ruleset interval-analysis)
-(rule (
-       (= lhs (Bop (Add) a b))
        (= (IntB ha) (hi-bound a))
+       (= (IntB lb) (lo-bound b))
        (= (IntB hb) (hi-bound b))
+       (<= la ha)
+       (<= lb hb)
+       (>= la (- -9223372036854775808 (min lb 0)))
+       (<= ha (- 9223372036854775807 (max hb 0)))
       )
-      ((set (hi-bound lhs) (IntB (+ ha hb))))
+      ((set (lo-bound lhs) (IntB (+ la lb)))
+       (set (hi-bound lhs) (IntB (+ ha hb))))
       :ruleset interval-analysis)
 
-; - a b interval is (- la hb) (- ha lb)
 (rule (
        (= lhs (Bop (Sub) a b))
        (= (IntB la) (lo-bound a))
-       (= (IntB hb) (hi-bound b))
-      )
-      ((set (lo-bound lhs) (IntB (- la hb))))
-      :ruleset interval-analysis)
-(rule (
-       (= lhs (Bop (Sub) a b))
        (= (IntB ha) (hi-bound a))
        (= (IntB lb) (lo-bound b))
+       (= (IntB hb) (hi-bound b))
+       (<= la ha)
+       (<= lb hb)
+       (>= la (+ -9223372036854775808 (max hb 0)))
+       (<= ha (+ 9223372036854775807 (min lb 0)))
       )
-      ((set (hi-bound lhs) (IntB (- ha lb))))
+      ((set (lo-bound lhs) (IntB (- la hb)))
+       (set (hi-bound lhs) (IntB (- ha lb))))
       :ruleset interval-analysis)
 
 ; Multiplication for two constants

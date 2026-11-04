@@ -770,15 +770,8 @@ impl Run {
                 let rvsdg =
                     crate::Optimizer::program_to_rvsdg(&self.prog_with_args.program).unwrap();
                 let tree = rvsdg.to_dag_encoding();
-                let unfolded_program = build_program(
-                    &tree,
-                    None,
-                    &tree.fns(),
-                    "",
-                    self.eggcc_config.ablate.as_deref(),
-                    self.eggcc_config.use_context,
-                    self.eggcc_config.disable_hacker_rules,
-                );
+                let unfolded_program =
+                    build_program(&tree, None, &tree.fns(), "", &self.eggcc_config);
                 let folded_program = tree.pretty_print_to_egglog();
                 let program =
                     format!("{unfolded_program} \n {folded_program} \n (check (= PROG_PP PROG))");
@@ -861,9 +854,7 @@ impl Run {
                     inline_program,
                     &dag.fns(),
                     last_schedule_step.egglog_schedule(),
-                    eggcc_config.ablate.as_deref(),
-                    eggcc_config.use_context,
-                    eggcc_config.disable_hacker_rules,
+                    &eggcc_config,
                 );
                 (
                     vec![Visualization {

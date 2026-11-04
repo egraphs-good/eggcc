@@ -1,0 +1,16 @@
+# Proposed real-compiler input, derived from the operation sequence in
+# dag_in_context/src/optimizations/memory.rs:439-469, not a captured compiler run.
+@main() {
+    one: int = const 1;
+    old: int = const 17;
+    new: int = const 99;
+    p: ptr<int> = alloc one;
+    q: ptr<int> = alloc one;
+    store p old;
+    store q new;
+    value: int = load p;
+    print value;
+    free q;
+    free p;
+    ret;
+}

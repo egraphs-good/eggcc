@@ -1,0 +1,15 @@
+# Zero-offset alias control: the later write must win.
+@main() {
+    one: int = const 1;
+    zero: int = const 0;
+    old: int = const 17;
+    new: int = const 99;
+    p: ptr<int> = alloc one;
+    q: ptr<int> = ptradd p zero;
+    store p old;
+    store q new;
+    value: int = load p;
+    print value;
+    free p;
+    ret;
+}

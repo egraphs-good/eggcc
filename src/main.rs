@@ -1,5 +1,5 @@
-use clap::Parser;
-use dag_in_context::{EggccConfig, IlpSolver, Schedule};
+use clap::{CommandFactory, Parser};
+use dag_in_context::{EggccConfig, ExactLocalAddressMode, IlpSolver, Schedule};
 use eggcc::util::{visualize, InterpMode, LLVMOptLevel, Run, RunMode, TestProgram};
 use std::{ffi::OsStr, iter::once, path::PathBuf};
 
@@ -92,8 +92,11 @@ struct Args {
     egraph_out_dir: Option<PathBuf>,
     /// By default,  rules that match on context are disabled. References to context in the rule body are replaced with a dummy context. Finally, any rules that depend on context fundamentally (annotated manually) are skipped.
     /// Using this flag enables all context-aware rules and adds context to the initial program.
-    #[clap(long)]
+    #[clap(long, required_if_eq_any = [("exact_local_addresses", "keys"), ("exact_local_addresses", "query"), ("exact_local_addresses", "manual")])]
     with_context: bool,
+    /// Restricted exact local address analysis; enabled modes require --with-context.
+    #[clap(long, value_enum, default_value_t = ExactLocalAddressMode::Off)]
+    exact_local_addresses: ExactLocalAddressMode,
     /// Disable the hacker ruleset in hackers_delight.egg.
     #[clap(long)]
     no_hacker_rules: bool,
@@ -107,6 +110,14 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
+    if args.exact_local_addresses != ExactLocalAddressMode::Off && args.ablate.is_some() {
+        Args::command()
+            .error(
+                clap::error::ErrorKind::ArgumentConflict,
+                "--exact-local-addresses enabled modes do not support --ablate",
+            )
+            .exit();
+    }
 
     // enable logging
     env_logger::init();
@@ -164,6 +175,7 @@ fn main() {
             ilp_minimize_objective: !args.ilp_no_minimize,
             ilp_solver: args.ilp_solver,
             egraph_dump_dir: args.egraph_out_dir,
+            exact_local_addresses: args.exact_local_addresses,
         },
     };
 
@@ -199,5 +211,29 @@ fn main() {
             println!("{}", visualization.result);
             println!();
         }
+    }
+}
+
+#[cfg(test)]
+mod exact_address_cli_tests {
+    use super::*;
+
+    #[test]
+    fn enabled_modes_require_contexts() {
+        for mode in ["keys", "query", "manual"] {
+            assert!(
+                Args::try_parse_from(["eggcc", "--exact-local-addresses", mode, "input.bril"])
+                    .is_err()
+            );
+            assert!(Args::try_parse_from([
+                "eggcc",
+                "--with-context",
+                "--exact-local-addresses",
+                mode,
+                "input.bril"
+            ])
+            .is_ok());
+        }
+        assert!(Args::try_parse_from(["eggcc", "input.bril"]).is_ok());
     }
 }

@@ -1,0 +1,13 @@
+# Same-address control: the later write must win.
+@main() {
+    one: int = const 1;
+    old: int = const 17;
+    new: int = const 99;
+    p: ptr<int> = alloc one;
+    store p old;
+    store p new;
+    value: int = load p;
+    print value;
+    free p;
+    ret;
+}

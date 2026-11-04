@@ -67,7 +67,7 @@ fn new_single_threaded_egraph() -> egglog::EGraph {
 }
 
 fn prologue_for_config(config: &EggccConfig) -> String {
-    [
+    let mut prologue = [
         include_str!("schema.egg"),
         include_str!("type_analysis.egg"),
         include_str!("utility/util.egg"),
@@ -108,7 +108,12 @@ fn prologue_for_config(config: &EggccConfig) -> String {
         include_str!("optimizations/non_weakly_linear.egg"),
         &rulesets(config),
     ]
-    .join("\n")
+    .join("\n");
+    if config.exact_local_addresses != ExactLocalAddressMode::Off {
+        prologue.push('\n');
+        prologue.push_str(include_str!("optimizations/exact_local_addresses.egg"));
+    }
+    prologue
 }
 
 pub fn prologue() -> String {
@@ -211,10 +216,9 @@ pub fn build_program(
     inline_program: Option<&TreeProgram>,
     fns: &[String],
     schedule: &str,
-    ablate: Option<&str>,
-    use_context: bool,
-    disable_hacker_rules: bool,
+    config: &EggccConfig,
 ) -> String {
+    config.assert_valid_exact_local_addresses();
     // inlining first before adding context
     let to_inline = inline_program.unwrap_or(program);
     let inlined = if inline_program.is_some() {
@@ -228,7 +232,7 @@ pub fn build_program(
     };
 
     // Then add context or dummy context based on flag
-    let (program, context_cache) = if use_context {
+    let (program, context_cache) = if config.use_context {
         inlined.add_context()
     } else {
         inlined.add_dummy_ctx()
@@ -270,19 +274,15 @@ pub fn build_program(
         .unwrap();
     }
 
-    let config_for_prologue = EggccConfig {
-        disable_hacker_rules,
-        ..EggccConfig::default()
-    };
-    let mut prologue = prologue_for_config(&config_for_prologue);
+    let mut prologue = prologue_for_config(config);
     let mut schedule = schedule.to_string();
 
-    if let Some(ablate) = ablate {
+    if let Some(ablate) = config.ablate.as_deref() {
         prologue = ablate_prologue(&prologue, ablate);
         schedule = ablate_schedule(&schedule, ablate);
     }
 
-    let prologue = if !use_context {
+    let prologue = if !config.use_context {
         remove_new_contexts(&prologue)
     } else {
         prologue
@@ -311,8 +311,9 @@ pub fn build_program(
 (run initialization 1) 
 
 ; Schedule
-{schedule}
-"
+{schedule}{}
+",
+        config.exact_local_addresses.egglog_schedule(),
     )
 }
 
@@ -344,7 +345,7 @@ fn has_debug_exprs(serialized_egraph: &egraph_serialize::EGraph) -> bool {
 pub fn check_roundtrip_egraph(program: &TreeProgram) {
     let fns = program.fns();
     let schedule = format!("\n(run-schedule\n   {})", schedule::types_only());
-    let egglog_prog = build_program(program, None, &fns, &schedule, None, true, false);
+    let egglog_prog = build_program(program, None, &fns, &schedule, &EggccConfig::default());
 
     log::info!("Running egglog program...");
     let mut egraph = new_single_threaded_egraph();
@@ -378,6 +379,45 @@ pub enum IlpSolver {
     Cbc,
 }
 
+/// Opt-in controls for the restricted exact local address case study.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+pub enum ExactLocalAddressMode {
+    #[default]
+    Off,
+    Keys,
+    Query,
+    Manual,
+}
+
+impl ExactLocalAddressMode {
+    // Propagation is deliberately one round at a time. Only the nongenerative
+    // audit may saturate before the consumer, so cyclic histories reject promptly.
+    fn egglog_schedule(self) -> String {
+        let consumer = match self {
+            Self::Off => return String::new(),
+            Self::Keys => "",
+            Self::Query => "exact-query",
+            Self::Manual => "exact-manual-pairs exact-manual-consumer",
+        };
+        let types = schedule::types_and_indexing();
+        format!(
+            "
+(run-schedule
+  (saturate
+    (saturate exact-addresses injectivity exact-address-audit)
+    {consumer}
+    exact-address-audit
+    mem-simple
+    {types}
+    exact-address-audit))
+(run-schedule injectivity exact-address-audit)
+(fail (check (ConflictingKey pointer)))
+(fail (check (ConflictingOrdinal state)))
+"
+        )
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct EggccConfig {
     pub schedule: Schedule,
@@ -406,6 +446,8 @@ pub struct EggccConfig {
     pub ilp_solver: IlpSolver,
     /// When set, dump the serialized e-graphs sent to tiger into this directory.
     pub egraph_dump_dir: Option<PathBuf>,
+    /// Restricted ordinary-mode exact local address analysis and consumer.
+    pub exact_local_addresses: ExactLocalAddressMode,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -452,6 +494,18 @@ impl Default for EggccTimeStatistics {
 }
 
 impl EggccConfig {
+    // Validate both graph-building and optimize's zero-pass return path.
+    fn assert_valid_exact_local_addresses(&self) {
+        assert!(
+            self.exact_local_addresses == ExactLocalAddressMode::Off || self.use_context,
+            "exact local addresses require contexts"
+        );
+        assert!(
+            self.exact_local_addresses == ExactLocalAddressMode::Off || self.ablate.is_none(),
+            "exact local addresses do not support ablation"
+        );
+    }
+
     pub fn get_schedule_list(&self) -> Vec<CompilerPass> {
         match self.schedule {
             Schedule::Parallel => parallel_schedule(self),
@@ -486,6 +540,7 @@ impl Default for EggccConfig {
             ilp_minimize_objective: true,
             ilp_solver: IlpSolver::default(),
             egraph_dump_dir: None,
+            exact_local_addresses: ExactLocalAddressMode::Off,
         }
     }
 }
@@ -892,6 +947,7 @@ pub fn optimize(
     program: &TreeProgram,
     eggcc_config: &EggccConfig,
 ) -> std::result::Result<(TreeProgram, EggccTimeStatistics), egglog::Error> {
+    eggcc_config.assert_valid_exact_local_addresses();
     let mut eggcc_serialization_time = Duration::from_millis(0);
     let mut eggcc_extraction_time = Duration::from_millis(0);
     let schedule_list = eggcc_config.get_schedule_list();
@@ -945,9 +1001,7 @@ pub fn optimize(
                 inline_program.as_ref(),
                 &batch,
                 schedule.egglog_schedule(),
-                eggcc_config.ablate.as_deref(),
-                eggcc_config.use_context,
-                eggcc_config.disable_hacker_rules,
+                eggcc_config,
             );
 
             log::info!("Running egglog program...");
@@ -1153,3 +1207,6 @@ fn egglog_test_internal(
 
     Ok(res?)
 }
+
+#[cfg(test)]
+mod exact_local_addresses_tests;
